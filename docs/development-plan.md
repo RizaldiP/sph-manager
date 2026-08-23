@@ -7,7 +7,7 @@
 | Fase | Nama | Status |
 |---|---|---|
 | 0 | Analisis & Dokumentasi | ✅ Selesai |
-| 1 | Foundation (Wails + Go + Vue + SQLite) | ⬜ Belum |
+| 1 | Foundation (Wails + Go + Vue + SQLite) | ✅ Selesai |
 | 2 | Database (migration + model) | ⬜ Belum |
 | 3 | Master Pekerjaan | ⬜ Belum |
 | 4 | Template | ⬜ Belum |
@@ -30,11 +30,13 @@
 
 **Acceptance:** semua dokumen terbuat dan konsisten; file referensi di-exclude dari git.
 
-## PHASE 1 — Foundation
+## PHASE 1 — Foundation ✅
 
 **Scope:** install Wails CLI; scaffold proyek Wails v2; Go backend + SQLite (GORM) + migration framework + config + structured logging; Vue 3 + TypeScript + Pinia + Vue Router + Tailwind CSS (design system dasar: biru flat + orange flat); layout Sidebar+Topbar; halaman Dashboard stub.
 
-**Test:** `wails dev` — aplikasi terbuka, navigasi antar halaman stub berfungsi.
+**Hasil:** Wails v2.15.0; GORM 1.31 + glebarez/sqlite (pure-Go, tanpa CGO); slog multi-sink; config JSON AppData; layout sidebar/topbar + 14 route; design token `brand-*`/`accent-*`; binding `Health()` teruji.
+
+**Test:** `wails build` sukses → `SPHManager.exe` jalan (proses hidup, database WAL dibuat, log tertulis); `wails dev` sukses (vite 5173 + WebView2 environment created).
 
 **Acceptance:** aplikasi jalan offline; lint/format bersih; build dev sukses.
 
