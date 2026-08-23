@@ -30,10 +30,6 @@ func Open(path string, lg *slog.Logger) (*gorm.DB, error) {
 	return db, nil
 }
 
-func Migrate(db *gorm.DB) error {
-	return nil
-}
-
 func Close(db *gorm.DB) error {
 	sqlDB, err := db.DB()
 	if err != nil {

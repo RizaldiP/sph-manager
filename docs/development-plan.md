@@ -8,7 +8,7 @@
 |---|---|---|
 | 0 | Analisis & Dokumentasi | ✅ Selesai |
 | 1 | Foundation (Wails + Go + Vue + SQLite) | ✅ Selesai |
-| 2 | Database (migration + model) | ⬜ Belum |
+| 2 | Database (migration + model) | ✅ Selesai |
 | 3 | Master Pekerjaan | ⬜ Belum |
 | 4 | Template | ⬜ Belum |
 | 5 | SPH Builder | ⬜ Belum |
