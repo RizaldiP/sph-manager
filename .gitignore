@@ -1,0 +1,39 @@
+# ===== Data bisnis sensitif — TIDAK di-commit =====
+# File referensi SPH berisi harga asli perusahaan
+*.xls
+*.xlsx
+*.xlsb
+!**/testdata/*.xlsx
+!**/testdata/*.xls
+
+# ===== Dependencies =====
+node_modules/
+frontend/node_modules/
+
+# ===== Build output =====
+frontend/dist/
+build/bin/
+dist/
+*.exe
+*.exe~
+
+# ===== Runtime data (dibuat oleh aplikasi) =====
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+backups/
+exports/
+logs/
+
+# ===== IDE / Editor =====
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ===== OS =====
+Thumbs.db
+.DS_Store
+desktop.ini
