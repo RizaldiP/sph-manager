@@ -38,7 +38,7 @@ const router = createRouter({
         { path: 'data/customer', name: 'customer', component: DataPartnerPage, meta: { title: 'Customer & Kapal', breadcrumb: ['Master Data', 'Customer'] } },
         { path: 'data/material', name: 'material', component: MaterialPage, meta: { title: 'Material', breadcrumb: ['Master Data', 'Material'] } },
         { path: 'impor-ekspor', name: 'impor-ekspor', component: ImportPage, meta: { title: 'Import / Export', breadcrumb: ['Import / Export'] } },
-        { path: 'backup', name: 'backup', component: PlaceholderPage, meta: { title: 'Backup', breadcrumb: ['Backup'], phase: 'Phase 10' } },
+        { path: 'backup', name: 'backup', component: PlaceholderPage, meta: { title: 'Backup', breadcrumb: ['Backup'], phase: 'Phase 11' } },
         { path: 'pengaturan', name: 'pengaturan', component: PengaturanPage, meta: { title: 'Pengaturan', breadcrumb: ['Pengaturan'] } }
       ]
     }

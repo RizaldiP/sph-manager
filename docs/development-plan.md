@@ -14,11 +14,12 @@
 | 5 | SPH Builder (+ CRUD Customer & Kapal) | ✅ Selesai |
 | 6 | Pembobotan & Rounding | ✅ Selesai |
 | 7 | Kombinasi Multi Pekerjaan | ✅ Selesai |
-| 8 | Import Excel | ⬜ Belum |
-| 9 | Export (Excel + PDF) | ⬜ Belum |
-| 10 | Backup & Restore | ⬜ Belum |
-| 11 | Polish UI/UX | ⬜ Belum |
-| 12 | Release (build + push GitHub) | ⬜ Belum |
+| 8 | Import Excel | ✅ Selesai |
+| 9 | Export (Excel + PDF) | ✅ Selesai |
+| 10 | Kolaborasi Real-Time LAN (Work Together) | ⬜ Belum |
+| 11 | Backup & Restore | ⬜ Belum |
+| 12 | Polish UI/UX | ⬜ Belum |
+| 13 | Release (build + push GitHub) | ⬜ Belum |
 
 ---
 
@@ -132,7 +133,7 @@
 - Test hijau: parser Gaya A/B & splitMarker & angka Indonesia, reader XLSX fixture excelize runtime + integrasi opsional file referensi asli (skip bila absen), service happy path/rollback/blokir/sub-tanpa-induk. Fixture dibuat via excelize saat runtime (tanpa binary testdata); dokumentasi `docs/import-excel.md`.
 - Pasca-ulasan (harga tidak muncul): layout referensi ternyata mencampur konvensi — banyak baris menaruh harga di kolom **HARGA SATUAN** dengan JASA/MAT kosong. Ditambahkan `UnitPriceCol` + `UnitPriceAs` pada `ColumnMapping`: fallback bila JASA & MATERIAL keduanya kosong, arah Jasa/Material dipilih di wizard; `SuggestMapping` mengenali header dua baris HARGA/SATUAN via teks gabungan band-kolom (referensi: UnitPriceCol=7 tanpa menelan kolom SAT=6). Test file asli kini mengaserti harga baris terdeteksi (Sensor Oli = 2.200.000) sebagai regresi permanen.
 
-## PHASE 9 — Export
+## PHASE 9 — Export ✅
 
 **Scope:** generator Excel (layout kolom B–K, merge, border, format Rupiah, repeating header, Pindahan, Terbilang, ttd, page setup A4 landscape) + generator PDF (A4 portrait/landscape, multi-page, header/footer, page number, terbilang, ttd).
 
@@ -140,7 +141,26 @@
 
 **Acceptance:** dokumen profesional & konsisten dengan format perusahaan. Dokumentasi `docs/export-document.md`.
 
-## PHASE 10 — Backup & Restore
+**Hasil:**
+- Package `internal/exporters` (netral data → dua renderer): `data.go` (`BuildData` meratakan snapshot dokumen + profil perusahaan menjadi `ExportData`; main point = nilai **roll-up** tebal sesuai BR-01, sub point menjorok dengan nilainya sendiri + `[bobot N%]` pada mode PEMBOBOTAN; `FormatDateID`), `excel.go` (`BuildExcel`: kop logo+profil, nomor dokumen + rev, judul bermarge, header tabel 2 baris di r8–r9 dengan print titles `_xlnm.Print_Titles`, data dari r10 dengan tinggi baris terhitung dari panjang uraian, rekap Sub Total Jasa/Material → Grand Total bergaya double-rule, Terbilang italic, catatan, blok ttd kanan; page setup A4 landscape fit-width 1 halaman lebar + print area eksplisit + header cetak `&P`; gridlines disembunyikan), `pdf.go` (`BuildPDF`: paginator pra-hitung per halaman dgn baris **Pindahan** berisi akumulasi jasa/material/jumlah halaman-halaman sebelumnya — hanya di PDF sesuai keputusan desain; kop+judul+info dokumen hanya halaman 1; header tabel berulang tiap halaman; footer "Halaman X dari Y" via AliasNbPages; orientasi landscape default / portrait; kolom & lebar menyesuaikan).
+- `services/export_service.go`: `ExportData(id)` menggabungkan `SphService.Get` (snapshot preload + terbilang sinkron) dan profil Pengaturan; `ExportExcel(id, dest)` / `ExportPDF(id, dest, orientation)` — validasi folder tujuan & ekstensi otomatis `.xlsx`/`.pdf`, audit `EXPORT` (BR-13) tidak membatalkan export bila gagal.
+- Binding `app_export.go`: `ExportSphExcel/ExportSphPdf/OpenExportFolder` — dialog Simpan Wails dengan nama default `SPH_<nomor-sanitized>_rev<N>[_portrait].ext`, folder awal `cfg.ExportDir`, batal = "" tanpa error; "Buka Folder" via BrowserOpenURL. Service ter-wire di `app.go`.
+- UI `SphDetailPage.vue`: dropdown Export ▾ (Excel/PDF Landscape/PDF Portrait) di actions header, banner hijau berisi path hasil + tombol Buka Folder.
+- Test hijau: struktur Excel (merge r8–r9, nilai roll-up `Rp11,250,000`, bobot sub, rekap, terbilang, defined names print titles/area, blok ttd), paginator & computeCarry (unit), PDF multi-halaman kedua orientasi + magic bytes `%PDF`/`%%EOF`, service end-to-end (file benar-benar tersimpan & terbuka excelize, audit EXPORT, validasi orientasi/folder/ErrNotFound). Dokumentasi `docs/export-document.md`.
+
+## PHASE 10 — Kolaborasi Real-Time LAN (Work Together)
+
+**Scope:** co-edit satu draft SPH bersama beberapa PC di jaringan lokal yang sama — tanpa internet/hosting/domain. Model host-authoritative: satu PC membuat **Room** (WebSocket server in-app, port default `48765`), PC lain join via discovery UDP broadcast atau manual IP + access code. Sinkronisasi hanya state SPH aktif (item/sub point, harga, qty, bobot, urutan, status) dengan event granular, versioning room, initial sync, reconnect, presence nama peserta, dan activity log. Master data tidak ikut disinkronkan; hanya DRAFT yang bisa diedit dalam Room.
+
+**Spesifikasi detail:** [`docs/collaboration-lan.md`](collaboration-lan.md) §10.1–10.48 (arsitektur, envelope pesan, event model, keamanan, acceptance criteria, checklist eksekusi & format laporan akhir).
+
+**Keputusan terkunci:** room in-memory di host · UDP broadcast (nol dependensi baru; `gorilla/websocket`+`google/uuid` sudah tersedia) · Room dibuat dari draft SPH existing · konflik = host-authoritative last accepted operation.
+
+**Test:** unit (envelope/versioning/presence/op validation); integration in-process (host localhost + multi WS client: join→sync→op bersamaan→konvergensi→reconnect→close→crash); manual checklist multi-PC nyata, internet OFF + LAN ON, firewall Windows.
+
+**Acceptance:** kolaborasi terasa real-time namun sederhana, aman, sepenuhnya lokal; Solo Mode tidak berubah. Dokumentasi `docs/collaboration-lan.md`.
+
+## PHASE 11 — Backup & Restore
 
 **Scope:** backup manual, restore (konfirmasi → backup dulu → restore → validate → reload), auto backup (saat tutup + harian), retention 10, validasi file backup.
 
@@ -148,13 +168,13 @@
 
 **Acceptance:** restore aman (rollback jika gagal). Dokumentasi `docs/backup-restore.md`.
 
-## PHASE 11 — Polish
+## PHASE 12 — Polish
 
 **Scope:** UI/UX final (loading, empty, error state), keyboard shortcut (Ctrl+N/S/F/P, Esc), performance, accessibility, konsistensi design system biru flat + orange flat.
 
 **Acceptance:** semua halaman konsisten; shortcut berfungsi; tidak ada regresi test.
 
-## PHASE 12 — Release
+## PHASE 13 — Release
 
 **Scope:** build Windows executable + installer + portable build; versioning; installation guide; test di environment bersih; **push seluruh riwayat ke `https://github.com/RizaldiP/sph-manager.git`**.
 

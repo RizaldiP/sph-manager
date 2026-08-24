@@ -34,9 +34,10 @@ sph-manager/
 │   ├── repositories/            # (Phase 3+) akses data
 │   ├── services/                # (Phase 3+) business rule, perhitungan, validasi
 │   ├── validators/              # (Phase 5+) validasi input & dokumen
-│   ├── documents/               # (Phase 9) generator Excel/PDF
-│   ├── importers/               # (Phase 8) reader & parser Excel
-│   ├── backup/                  # (Phase 10) backup/restore/auto-backup
+│   ├── exporters/                # (Phase 9) generator Excel/PDF
+│   ├── importers/                # (Phase 8) reader & parser Excel
+│   ├── collaboration/            # (Phase 10) room/host-client kolaborasi LAN
+│   ├── backup/                   # (Phase 11) backup/restore/auto-backup
 │   └── migrations/              # (Phase 2) migrasi skema
 ├── frontend/
 │   ├── src/
@@ -85,7 +86,7 @@ sph-manager/
 %AppData%\sph-manager\
 ├── config.json      # konfigurasi aplikasi
 ├── database\sph.db  # SQLite (+ .wal/.shm saat berjalan)
-├── backups\         # hasil backup (Phase 10)
+├── backups\         # hasil backup (Phase 11)
 ├── exports\         # hasil export dokumen (Phase 9)
 ├── logs\app.log     # structured log
 └── templates\       # aset dokumen (Phase 9)
