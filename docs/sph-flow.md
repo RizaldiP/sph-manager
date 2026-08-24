@@ -128,7 +128,7 @@ terbesar, tie-break urutan baris) sehingga Σ alokasi = nilai main point
 
 - Master material tersedia (FR-M7) dan bisa dipakai langsung dari wizard:
   tombol ⌕ di kolom Mat. (main point langkah 3, sub point harga langsung
-  langkah 4) membuka pemilih material aktif — memilih mengisi harga material
-  baris (dan satuan bila masih kosong) sehingga ikut dihitung. Baris tetap
+  langkah 4) membuka pemilih material aktif — memilih mengisi nama, satuan,
+  dan harga material baris dari master sehingga ikut dihitung. Baris tetap
   tidak tersimpan sebagai tautan ke master; nilai ter-snapshot apa adanya.
 - Export PDF/print menyusul di fase export.

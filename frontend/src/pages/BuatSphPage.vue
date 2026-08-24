@@ -620,7 +620,7 @@ async function openPick(itemIdx: number, subIdx?: number) {
   await materialStore.load()
 }
 
-// Isi harga material baris target dari master; satuan ikut bila masih kosong.
+// Isi baris target dari master material: nama, satuan, dan harga ikut master (timpa).
 function applyPick(m: MaterialView) {
   const t = pickTarget.value
   if (!t) return
@@ -628,8 +628,9 @@ function applyPick(m: MaterialView) {
   if (!it) return
   const row = t.subIdx === undefined ? it : it.subItems[t.subIdx]
   if (!row) return
+  row.name = m.name
+  row.unit = m.unit || ''
   row.materialUnitPrice = m.defaultPrice
-  if (!row.unit.trim()) row.unit = m.unit || ''
   pickOpen.value = false
 }
 
