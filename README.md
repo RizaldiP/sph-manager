@@ -6,7 +6,7 @@
 
 ## Status Proyek
 
-**PHASE 0–3: SELESAI** ✅ (Analisis → Foundation → Database → Master Pekerjaan) · Menunggu instruksi `LANJUT PHASE 4` (Template).
+**PHASE 0–5: SELESAI** ✅ (Analisis → Foundation → Database → Master Pekerjaan → Template → SPH Builder + Customer & Kapal) · Menunggu instruksi `LANJUT PHASE 6` (Pembobotan & Rounding).
 
 Rencana lengkap: [docs/development-plan.md](docs/development-plan.md).
 
@@ -42,7 +42,7 @@ Rencana lengkap: [docs/development-plan.md](docs/development-plan.md).
 | [docs/development-plan.md](docs/development-plan.md) | 12 fase pengembangan + acceptance criteria + status |
 | [docs/issues.md](docs/issues.md) | Ambiguity, asumsi & dampaknya |
 
-> Dokumen tambahan (`architecture.md`, `database.md`, `sph-flow.md`, `import-excel.md`, `export-document.md`, `backup-restore.md`) dibuat pada fase implementasinya masing-masing.
+> Dokumen tambahan (`architecture.md`, `database.md`, `import-excel.md`, `export-document.md`, `backup-restore.md`) dibuat pada fase implementasinya masing-masing. Alur SPH end-to-end: [docs/sph-flow.md](docs/sph-flow.md).
 
 ## Menjalankan (setelah Phase 1)
 

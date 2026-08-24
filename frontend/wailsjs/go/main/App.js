@@ -6,24 +6,80 @@ export function CreateCategory(arg1) {
   return window['go']['main']['App']['CreateCategory'](arg1);
 }
 
+export function CreateCustomer(arg1) {
+  return window['go']['main']['App']['CreateCustomer'](arg1);
+}
+
+export function CreateSph(arg1) {
+  return window['go']['main']['App']['CreateSph'](arg1);
+}
+
+export function CreateSphRevision(arg1) {
+  return window['go']['main']['App']['CreateSphRevision'](arg1);
+}
+
 export function CreateSubItem(arg1) {
   return window['go']['main']['App']['CreateSubItem'](arg1);
+}
+
+export function CreateTemplate(arg1) {
+  return window['go']['main']['App']['CreateTemplate'](arg1);
+}
+
+export function CreateVessel(arg1) {
+  return window['go']['main']['App']['CreateVessel'](arg1);
 }
 
 export function CreateWorkItem(arg1) {
   return window['go']['main']['App']['CreateWorkItem'](arg1);
 }
 
+export function DashboardStats() {
+  return window['go']['main']['App']['DashboardStats']();
+}
+
 export function DeleteCategory(arg1) {
   return window['go']['main']['App']['DeleteCategory'](arg1);
+}
+
+export function DeleteCustomer(arg1) {
+  return window['go']['main']['App']['DeleteCustomer'](arg1);
+}
+
+export function DeleteSph(arg1) {
+  return window['go']['main']['App']['DeleteSph'](arg1);
 }
 
 export function DeleteSubItem(arg1) {
   return window['go']['main']['App']['DeleteSubItem'](arg1);
 }
 
+export function DeleteTemplate(arg1) {
+  return window['go']['main']['App']['DeleteTemplate'](arg1);
+}
+
+export function DeleteVessel(arg1) {
+  return window['go']['main']['App']['DeleteVessel'](arg1);
+}
+
 export function DeleteWorkItem(arg1) {
   return window['go']['main']['App']['DeleteWorkItem'](arg1);
+}
+
+export function DuplicateSph(arg1) {
+  return window['go']['main']['App']['DuplicateSph'](arg1);
+}
+
+export function DuplicateTemplate(arg1) {
+  return window['go']['main']['App']['DuplicateTemplate'](arg1);
+}
+
+export function GetSph(arg1) {
+  return window['go']['main']['App']['GetSph'](arg1);
+}
+
+export function GetTemplateDetail(arg1) {
+  return window['go']['main']['App']['GetTemplateDetail'](arg1);
 }
 
 export function GetWorkItemDetail(arg1) {
@@ -38,6 +94,18 @@ export function ListCategories(arg1, arg2) {
   return window['go']['main']['App']['ListCategories'](arg1, arg2);
 }
 
+export function ListCustomers(arg1, arg2) {
+  return window['go']['main']['App']['ListCustomers'](arg1, arg2);
+}
+
+export function ListSph(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ListSph'](arg1, arg2, arg3);
+}
+
+export function ListTemplates(arg1, arg2) {
+  return window['go']['main']['App']['ListTemplates'](arg1, arg2);
+}
+
 export function ListWorkItems(arg1, arg2, arg3) {
   return window['go']['main']['App']['ListWorkItems'](arg1, arg2, arg3);
 }
@@ -50,6 +118,10 @@ export function ReorderSubItems(arg1, arg2) {
   return window['go']['main']['App']['ReorderSubItems'](arg1, arg2);
 }
 
+export function ReorderTemplates(arg1) {
+  return window['go']['main']['App']['ReorderTemplates'](arg1);
+}
+
 export function ReorderWorkItems(arg1, arg2) {
   return window['go']['main']['App']['ReorderWorkItems'](arg1, arg2);
 }
@@ -58,20 +130,60 @@ export function SetCategoryActive(arg1, arg2) {
   return window['go']['main']['App']['SetCategoryActive'](arg1, arg2);
 }
 
+export function SetCustomerActive(arg1, arg2) {
+  return window['go']['main']['App']['SetCustomerActive'](arg1, arg2);
+}
+
+export function SetSphStatus(arg1, arg2) {
+  return window['go']['main']['App']['SetSphStatus'](arg1, arg2);
+}
+
 export function SetSubItemActive(arg1, arg2) {
   return window['go']['main']['App']['SetSubItemActive'](arg1, arg2);
+}
+
+export function SetTemplateActive(arg1, arg2) {
+  return window['go']['main']['App']['SetTemplateActive'](arg1, arg2);
+}
+
+export function SetTemplateItems(arg1, arg2) {
+  return window['go']['main']['App']['SetTemplateItems'](arg1, arg2);
+}
+
+export function SetVesselActive(arg1, arg2) {
+  return window['go']['main']['App']['SetVesselActive'](arg1, arg2);
 }
 
 export function SetWorkItemActive(arg1, arg2) {
   return window['go']['main']['App']['SetWorkItemActive'](arg1, arg2);
 }
 
+export function Terbilang(arg1) {
+  return window['go']['main']['App']['Terbilang'](arg1);
+}
+
 export function UpdateCategory(arg1, arg2) {
   return window['go']['main']['App']['UpdateCategory'](arg1, arg2);
 }
 
+export function UpdateCustomer(arg1, arg2) {
+  return window['go']['main']['App']['UpdateCustomer'](arg1, arg2);
+}
+
+export function UpdateDraftSph(arg1, arg2) {
+  return window['go']['main']['App']['UpdateDraftSph'](arg1, arg2);
+}
+
 export function UpdateSubItem(arg1, arg2) {
   return window['go']['main']['App']['UpdateSubItem'](arg1, arg2);
+}
+
+export function UpdateTemplate(arg1, arg2) {
+  return window['go']['main']['App']['UpdateTemplate'](arg1, arg2);
+}
+
+export function UpdateVessel(arg1, arg2) {
+  return window['go']['main']['App']['UpdateVessel'](arg1, arg2);
 }
 
 export function UpdateWorkItem(arg1, arg2) {

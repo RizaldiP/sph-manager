@@ -6,15 +6,43 @@ import {main} from '../models';
 
 export function CreateCategory(arg1:models.Category):Promise<services.CategoryView>;
 
+export function CreateCustomer(arg1:models.Customer):Promise<services.CustomerView>;
+
+export function CreateSph(arg1:services.SphSaveInput):Promise<services.SphDocumentView>;
+
+export function CreateSphRevision(arg1:number):Promise<services.SphDocumentView>;
+
 export function CreateSubItem(arg1:models.WorkSubItem):Promise<models.WorkItem>;
+
+export function CreateTemplate(arg1:models.Template):Promise<services.TemplateView>;
+
+export function CreateVessel(arg1:models.Vessel):Promise<models.Customer>;
 
 export function CreateWorkItem(arg1:models.WorkItem):Promise<models.WorkItem>;
 
+export function DashboardStats():Promise<services.DashboardStats>;
+
 export function DeleteCategory(arg1:number):Promise<void>;
+
+export function DeleteCustomer(arg1:number):Promise<void>;
+
+export function DeleteSph(arg1:number):Promise<void>;
 
 export function DeleteSubItem(arg1:number):Promise<void>;
 
+export function DeleteTemplate(arg1:number):Promise<void>;
+
+export function DeleteVessel(arg1:number):Promise<void>;
+
 export function DeleteWorkItem(arg1:number):Promise<void>;
+
+export function DuplicateSph(arg1:number):Promise<services.SphDocumentView>;
+
+export function DuplicateTemplate(arg1:number):Promise<services.TemplateView>;
+
+export function GetSph(arg1:number):Promise<models.SphDocument>;
+
+export function GetTemplateDetail(arg1:number):Promise<models.Template>;
 
 export function GetWorkItemDetail(arg1:number):Promise<models.WorkItem>;
 
@@ -22,22 +50,50 @@ export function Health():Promise<main.HealthInfo>;
 
 export function ListCategories(arg1:boolean,arg2:string):Promise<Array<services.CategoryView>>;
 
+export function ListCustomers(arg1:boolean,arg2:string):Promise<Array<services.CustomerView>>;
+
+export function ListSph(arg1:string,arg2:string,arg3:number):Promise<Array<services.SphDocumentView>>;
+
+export function ListTemplates(arg1:boolean,arg2:string):Promise<Array<services.TemplateView>>;
+
 export function ListWorkItems(arg1:number,arg2:boolean,arg3:string):Promise<Array<services.WorkItemView>>;
 
 export function ReorderCategories(arg1:Array<number>):Promise<void>;
 
 export function ReorderSubItems(arg1:number,arg2:Array<number>):Promise<void>;
 
+export function ReorderTemplates(arg1:Array<number>):Promise<void>;
+
 export function ReorderWorkItems(arg1:number,arg2:Array<number>):Promise<void>;
 
 export function SetCategoryActive(arg1:number,arg2:boolean):Promise<void>;
 
+export function SetCustomerActive(arg1:number,arg2:boolean):Promise<void>;
+
+export function SetSphStatus(arg1:number,arg2:string):Promise<void>;
+
 export function SetSubItemActive(arg1:number,arg2:boolean):Promise<void>;
+
+export function SetTemplateActive(arg1:number,arg2:boolean):Promise<void>;
+
+export function SetTemplateItems(arg1:number,arg2:Array<services.TemplateItemInput>):Promise<models.Template>;
+
+export function SetVesselActive(arg1:number,arg2:boolean):Promise<void>;
 
 export function SetWorkItemActive(arg1:number,arg2:boolean):Promise<void>;
 
+export function Terbilang(arg1:number):Promise<string>;
+
 export function UpdateCategory(arg1:number,arg2:models.Category):Promise<services.CategoryView>;
 
+export function UpdateCustomer(arg1:number,arg2:models.Customer):Promise<models.Customer>;
+
+export function UpdateDraftSph(arg1:number,arg2:services.SphSaveInput):Promise<models.SphDocument>;
+
 export function UpdateSubItem(arg1:number,arg2:models.WorkSubItem):Promise<models.WorkItem>;
+
+export function UpdateTemplate(arg1:number,arg2:models.Template):Promise<services.TemplateView>;
+
+export function UpdateVessel(arg1:number,arg2:models.Vessel):Promise<models.Customer>;
 
 export function UpdateWorkItem(arg1:number,arg2:models.WorkItem):Promise<models.WorkItem>;

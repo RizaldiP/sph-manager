@@ -50,6 +50,14 @@ func (s *WorkItemService) Delete(id uint) error {
 	if n > 0 {
 		return NewConflictError("Pekerjaan tidak dapat dihapus karena masih memiliki %d sub-pekerjaan. Hapus sub-pekerjaannya terlebih dahulu.", n)
 	}
+	nT, err := s.tplItems.CountTemplatesUsingWorkItem(s.db, id)
+	if err != nil {
+		s.log.Error("gagal menghitung pemakaian pekerjaan di template", "id", id, "error", err)
+		return fmt.Errorf("gagal menghapus pekerjaan")
+	}
+	if nT > 0 {
+		return NewConflictError("Pekerjaan tidak dapat dihapus karena masih dipakai oleh %d template. Hapus pekerjaan tersebut dari templatenya terlebih dahulu.", nT)
+	}
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		if err := s.repo.SoftDelete(tx, id); err != nil {
 			return err

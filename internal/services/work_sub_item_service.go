@@ -77,6 +77,14 @@ func (s *WorkSubItemService) Create(sub *models.WorkSubItem) (*models.WorkItem, 
 	sub.IsActive = true
 
 	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// Kode otomatis bila tidak diisi manual (FR-U3: non-teknis).
+		if sub.Code == "" {
+			code, err := generateCode(tx, "work_sub_items", "SUB-")
+			if err != nil {
+				return err
+			}
+			sub.Code = code
+		}
 		if err := s.repo.Create(tx, sub); err != nil {
 			return err
 		}
@@ -103,7 +111,10 @@ func (s *WorkSubItemService) Update(id uint, in *models.WorkSubItem) (*models.Wo
 	if err := s.validate(in); err != nil {
 		return nil, err
 	}
-	existing.Code = in.Code
+	// Kode dikelola sistem; kosong berarti pertahankan kode yang sudah ada.
+	if in.Code != "" {
+		existing.Code = in.Code
+	}
 	existing.Name = in.Name
 	existing.Description = in.Description
 	existing.DifficultyWeight = in.DifficultyWeight

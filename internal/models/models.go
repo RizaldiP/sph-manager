@@ -99,6 +99,7 @@ type Template struct {
 	Name        string         `gorm:"size:200;notNull" json:"name"`
 	Description string         `gorm:"size:1000" json:"description"`
 	Notes       string         `gorm:"size:1000" json:"notes"`
+	Sequence    int            `gorm:"notNull;default:0;index" json:"sequence"`
 	IsActive    bool           `gorm:"notNull;default:true;index" json:"isActive"`
 	CreatedAt   time.Time      `json:"createdAt"`
 	UpdatedAt   time.Time      `json:"updatedAt"`

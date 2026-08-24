@@ -127,6 +127,14 @@ func (s *CategoryService) Create(c *models.Category) (*CategoryView, error) {
 	c.IsActive = true
 
 	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// Kode otomatis bila tidak diisi manual (FR-U3: non-teknis).
+		if c.Code == "" {
+			code, err := generateCode(tx, "categories", "KAT-")
+			if err != nil {
+				return err
+			}
+			c.Code = code
+		}
 		if err := s.repo.Create(tx, c); err != nil {
 			return err
 		}
@@ -156,7 +164,10 @@ func (s *CategoryService) Update(id uint, in *models.Category) (*CategoryView, e
 	if err := s.validate(in, id); err != nil {
 		return nil, err
 	}
-	existing.Code = in.Code
+	// Kode dikelola sistem; kosong berarti pertahankan kode yang sudah ada.
+	if in.Code != "" {
+		existing.Code = in.Code
+	}
 	existing.Name = in.Name
 	existing.Description = in.Description
 

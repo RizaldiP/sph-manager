@@ -31,20 +31,22 @@ type WorkItemView struct {
 
 // WorkItemService: CRUD master pekerjaan (FR-M2, FR-M8, BR-05, BR-13, BR-15).
 type WorkItemService struct {
-	db      *gorm.DB
-	log     *slog.Logger
-	repo    *repositories.WorkItemRepository
-	subRepo *repositories.WorkSubItemRepository
-	audit   *AuditWriter
+	db       *gorm.DB
+	log      *slog.Logger
+	repo     *repositories.WorkItemRepository
+	subRepo  *repositories.WorkSubItemRepository
+	tplItems *repositories.TemplateItemRepository
+	audit    *AuditWriter
 }
 
 func NewWorkItemService(db *gorm.DB, log *slog.Logger) *WorkItemService {
 	return &WorkItemService{
-		db:      db,
-		log:     log,
-		repo:    repositories.NewWorkItemRepository(),
-		subRepo: repositories.NewWorkSubItemRepository(),
-		audit:   NewAuditWriter(),
+		db:       db,
+		log:      log,
+		repo:     repositories.NewWorkItemRepository(),
+		subRepo:  repositories.NewWorkSubItemRepository(),
+		tplItems: repositories.NewTemplateItemRepository(),
+		audit:    NewAuditWriter(),
 	}
 }
 
@@ -159,6 +161,14 @@ func (s *WorkItemService) Create(w *models.WorkItem) (*models.WorkItem, error) {
 	w.IsActive = true
 
 	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// Kode otomatis bila tidak diisi manual (FR-U3: non-teknis).
+		if w.Code == "" {
+			code, err := generateCode(tx, "work_items", "PEK-")
+			if err != nil {
+				return err
+			}
+			w.Code = code
+		}
 		if err := s.repo.Create(tx, w); err != nil {
 			return err
 		}
@@ -185,7 +195,10 @@ func (s *WorkItemService) Update(id uint, in *models.WorkItem) (*models.WorkItem
 		return nil, err
 	}
 	existing.CategoryID = in.CategoryID
-	existing.Code = in.Code
+	// Kode dikelola sistem; kosong berarti pertahankan kode yang sudah ada.
+	if in.Code != "" {
+		existing.Code = in.Code
+	}
 	existing.Name = in.Name
 	existing.Description = in.Description
 	existing.DefaultUnit = in.DefaultUnit

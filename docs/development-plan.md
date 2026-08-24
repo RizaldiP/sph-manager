@@ -9,9 +9,9 @@
 | 0 | Analisis & Dokumentasi | ✅ Selesai |
 | 1 | Foundation (Wails + Go + Vue + SQLite) | ✅ Selesai |
 | 2 | Database (migration + model) | ✅ Selesai |
-| 3 | Master Pekerjaan | ⬜ Belum |
-| 4 | Template | ⬜ Belum |
-| 5 | SPH Builder | ⬜ Belum |
+| 3 | Master Pekerjaan | ✅ Selesai |
+| 4 | Template | ✅ Selesai |
+| 5 | SPH Builder (+ CRUD Customer & Kapal) | ✅ Selesai |
 | 6 | Pembobotan & Rounding | ⬜ Belum |
 | 7 | Kombinasi Multi Pekerjaan | ⬜ Belum |
 | 8 | Import Excel | ⬜ Belum |
@@ -58,21 +58,30 @@
 
 **Acceptance:** CRUD + reorder tersimpan ✓; test unit + integrasi hijau ✓.
 
-## PHASE 4 — Template
+## PHASE 4 — Template ✅
 
 **Scope:** CRUD template + template_items; duplicate; reorder; aktif/nonaktif; pakai template saat membuat SPH.
 
-**Test:** buat template "Repair PLC" berisi 8 sub langkah; duplikat; nonaktifkan.
+**Hasil:** repository + service template (validasi, error ramah BR-15, audit BR-13, transaksi BR-16); 9 binding method (`app_template.go`): list/detail (isi terurut + data pekerjaan lengkap: kategori & sub)/create/update/set-items/duplicate/set-active/delete/reorder; kolom `sequence` baru di `templates` (AutoMigrate idempotent); halaman **Template** (search server-side, toggle nonaktif, drag-and-drop urutan, editor isi template dengan pemilih pekerjaan per kategori + urutan drag + catatan per baris, duplikat sekali klik); quick action Dashboard "Tambah Template" aktif. **Kode master kini auto-generate sistem** (`KAT-/PEK-/SUB-/TPL-` + nomor berurutan; input kode dinonaktifkan di semua form; update tanpa kode mempertahankan kode lama). Perbaikan integritas: index unik parsial mengecualikan kode kosong (drop+recreate idempotent), hapus pekerjaan ditolak bila masih dipakai template hidup.
 
-**Acceptance:** reuse template berfungsi; test hijau.
+**Test:** `go test ./internal/...` hijau — skenario acceptance: template "Repair PLC" berisi 8 langkah → duplikat (nama bersuffix, isi & urutan sama, kode baru) → nonaktifkan; validasi SetItems (duplikat/hantu/kosong/catatan >500); regresi dua entitas tanpa kode hidup berdampingan; guard hapus pekerjaan terpakai template; reorder penuh wajib. `vue-tsc --noEmit` bersih; `wails build` sukses → `SPHManager.exe`.
 
-## PHASE 5 — SPH Builder
+**Acceptance:** reuse template berfungsi (detail siap dikonsumsi SPH builder Phase 5) ✓; test hijau ✓.
+
+## PHASE 5 — SPH Builder ✅
 
 **Scope:** wizard 8 langkah (Info → Pilih Pkerjaan → Susun Main Point → Sub Point → Costing → Validasi → Preview → Simpan/Generate); snapshot penuh saat simpan; edit dalam SPH; duplicate; revision; daftar SPH; dashboard.
 
 **Test:** satu SPH lengkap end-to-end di UI.
 
 **Acceptance:** SPH tersimpan sebagai snapshot; validasi & transaksi sesuai BR-06/BR-16. Dokumentasi `docs/sph-flow.md`.
+
+**Hasil:**
+- Backend: `sph_repository.go` (list/detail/penomoran/revisi/statistik), `customer_repository.go` (FR-M5/M6 + guard pemakaian SPH), `sph_service.go` (snapshot BR-01, validasi BR-06, lifecycle BR-08, duplicate BR-09, revision BR-10, terbilang BR-11, dashboard FR-U5), `customer_service.go`, `terbilang.go`, `sph_number.go` (format via settings `sph_number_format`, default `SPH/GEI/{ROMAN}/{YYYY}/{SEQ}`, urutan per periode).
+- Binding baru: ListSph, GetSph, CreateSph, UpdateDraftSph, DeleteSph, SetSphStatus, DuplicateSph, CreateSphRevision, DashboardStats, Terbilang, ListCustomers, CreateCustomer, UpdateCustomer, SetCustomerActive, DeleteCustomer, CreateVessel, UpdateVessel, SetVesselActive, DeleteVessel.
+- Frontend: wizard 8 langkah (`BuatSphPage.vue`, sumber Master/Template/SPH Lama/Manual), daftar 3 mode (`SphListPage.vue`: Semua/Draft/Final), detail + aksi status & revisi (`SphDetailPage.vue`), Master Data Customer & Kapal (`DataPartnerPage.vue`), statistik + 5 SPH terbaru di Dashboard.
+- Test hijau: terbilang, snapshot vs perubahan master, penomoran berurutan, transisi ilegal, finalisasi + finalized_at, lock edit non-draft, duplikat nomor baru/revision rev+1 + histori, guard hapus draft/customer/kapal, scope daftar, statistik.
+- Penyesuaian pasca-ulasan: harga sub point **di-roll-up** ke Jumlah main point-nya (jasa & material terpisah) sehingga ikut dalam Subtotal/Grand Total; sub point tampil sebagai baris tabel sejajar kolom Qty/Sat/Jasa/Mat./Jumlah di detail & preview.
 
 ## PHASE 6 — Pembobotan & Rounding
 

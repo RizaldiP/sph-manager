@@ -102,7 +102,6 @@ const sections: NavSection[] = [
     title: 'Master Data',
     items: [
       { label: 'Customer', to: '/data/customer', icon: icons.database },
-      { label: 'Kapal', to: '/data/kapal', icon: icons.database },
       { label: 'Material', to: '/data/material', icon: icons.database }
     ]
   },

@@ -239,6 +239,479 @@ export namespace models {
 		    return a;
 		}
 	}
+	export class Vessel {
+	    id: number;
+	    customerId: number;
+	    code: string;
+	    name: string;
+	    vesselNumber: string;
+	    vesselType: string;
+	    notes: string;
+	    isActive: boolean;
+	    // Go type: time
+	    createdAt: any;
+	    // Go type: time
+	    updatedAt: any;
+	    deletedAt?: gorm.DeletedAt;
+	    customer?: Customer;
+	
+	    static createFrom(source: any = {}) {
+	        return new Vessel(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.customerId = source["customerId"];
+	        this.code = source["code"];
+	        this.name = source["name"];
+	        this.vesselNumber = source["vesselNumber"];
+	        this.vesselType = source["vesselType"];
+	        this.notes = source["notes"];
+	        this.isActive = source["isActive"];
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	        this.updatedAt = this.convertValues(source["updatedAt"], null);
+	        this.deletedAt = this.convertValues(source["deletedAt"], gorm.DeletedAt);
+	        this.customer = this.convertValues(source["customer"], Customer);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Customer {
+	    id: number;
+	    code: string;
+	    name: string;
+	    address: string;
+	    phone: string;
+	    email: string;
+	    picName: string;
+	    picPosition: string;
+	    notes: string;
+	    isActive: boolean;
+	    // Go type: time
+	    createdAt: any;
+	    // Go type: time
+	    updatedAt: any;
+	    deletedAt?: gorm.DeletedAt;
+	    vessels?: Vessel[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Customer(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.code = source["code"];
+	        this.name = source["name"];
+	        this.address = source["address"];
+	        this.phone = source["phone"];
+	        this.email = source["email"];
+	        this.picName = source["picName"];
+	        this.picPosition = source["picPosition"];
+	        this.notes = source["notes"];
+	        this.isActive = source["isActive"];
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	        this.updatedAt = this.convertValues(source["updatedAt"], null);
+	        this.deletedAt = this.convertValues(source["deletedAt"], gorm.DeletedAt);
+	        this.vessels = this.convertValues(source["vessels"], Vessel);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SphRevision {
+	    id: number;
+	    sphDocumentId: number;
+	    fromDocumentId?: number;
+	    revisionNumber: number;
+	    note: string;
+	    // Go type: time
+	    createdAt: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new SphRevision(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.sphDocumentId = source["sphDocumentId"];
+	        this.fromDocumentId = source["fromDocumentId"];
+	        this.revisionNumber = source["revisionNumber"];
+	        this.note = source["note"];
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SphSubItem {
+	    id: number;
+	    sphItemId: number;
+	    sequence: number;
+	    nameSnapshot: string;
+	    descriptionSnapshot: string;
+	    quantity: number;
+	    unit: string;
+	    weight: number;
+	    allocatedValue: number;
+	    serviceUnitPrice: number;
+	    materialUnitPrice: number;
+	    serviceTotal: number;
+	    materialTotal: number;
+	    total: number;
+	    notes: string;
+	    // Go type: time
+	    createdAt: any;
+	    // Go type: time
+	    updatedAt: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new SphSubItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.sphItemId = source["sphItemId"];
+	        this.sequence = source["sequence"];
+	        this.nameSnapshot = source["nameSnapshot"];
+	        this.descriptionSnapshot = source["descriptionSnapshot"];
+	        this.quantity = source["quantity"];
+	        this.unit = source["unit"];
+	        this.weight = source["weight"];
+	        this.allocatedValue = source["allocatedValue"];
+	        this.serviceUnitPrice = source["serviceUnitPrice"];
+	        this.materialUnitPrice = source["materialUnitPrice"];
+	        this.serviceTotal = source["serviceTotal"];
+	        this.materialTotal = source["materialTotal"];
+	        this.total = source["total"];
+	        this.notes = source["notes"];
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	        this.updatedAt = this.convertValues(source["updatedAt"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SphItem {
+	    id: number;
+	    sphDocumentId: number;
+	    sequence: number;
+	    workItemId?: number;
+	    nameSnapshot: string;
+	    descriptionSnapshot: string;
+	    quantity: number;
+	    unit: string;
+	    serviceUnitPrice: number;
+	    materialUnitPrice: number;
+	    serviceTotal: number;
+	    materialTotal: number;
+	    total: number;
+	    pricingMode: string;
+	    notes: string;
+	    // Go type: time
+	    createdAt: any;
+	    // Go type: time
+	    updatedAt: any;
+	    workItem?: WorkItem;
+	    subItems?: SphSubItem[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SphItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.sphDocumentId = source["sphDocumentId"];
+	        this.sequence = source["sequence"];
+	        this.workItemId = source["workItemId"];
+	        this.nameSnapshot = source["nameSnapshot"];
+	        this.descriptionSnapshot = source["descriptionSnapshot"];
+	        this.quantity = source["quantity"];
+	        this.unit = source["unit"];
+	        this.serviceUnitPrice = source["serviceUnitPrice"];
+	        this.materialUnitPrice = source["materialUnitPrice"];
+	        this.serviceTotal = source["serviceTotal"];
+	        this.materialTotal = source["materialTotal"];
+	        this.total = source["total"];
+	        this.pricingMode = source["pricingMode"];
+	        this.notes = source["notes"];
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	        this.updatedAt = this.convertValues(source["updatedAt"], null);
+	        this.workItem = this.convertValues(source["workItem"], WorkItem);
+	        this.subItems = this.convertValues(source["subItems"], SphSubItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SphDocument {
+	    id: number;
+	    documentNumber: string;
+	    revision: number;
+	    // Go type: time
+	    date: any;
+	    customerId: number;
+	    vesselId?: number;
+	    projectName: string;
+	    subject: string;
+	    reference: string;
+	    location: string;
+	    // Go type: time
+	    validUntil?: any;
+	    picName: string;
+	    status: string;
+	    subtotalService: number;
+	    subtotalMaterial: number;
+	    grandTotal: number;
+	    terbilang: string;
+	    notes: string;
+	    // Go type: time
+	    finalizedAt?: any;
+	    // Go type: time
+	    createdAt: any;
+	    // Go type: time
+	    updatedAt: any;
+	    deletedAt?: gorm.DeletedAt;
+	    customer?: Customer;
+	    vessel?: Vessel;
+	    items?: SphItem[];
+	    revisions?: SphRevision[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SphDocument(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.documentNumber = source["documentNumber"];
+	        this.revision = source["revision"];
+	        this.date = this.convertValues(source["date"], null);
+	        this.customerId = source["customerId"];
+	        this.vesselId = source["vesselId"];
+	        this.projectName = source["projectName"];
+	        this.subject = source["subject"];
+	        this.reference = source["reference"];
+	        this.location = source["location"];
+	        this.validUntil = this.convertValues(source["validUntil"], null);
+	        this.picName = source["picName"];
+	        this.status = source["status"];
+	        this.subtotalService = source["subtotalService"];
+	        this.subtotalMaterial = source["subtotalMaterial"];
+	        this.grandTotal = source["grandTotal"];
+	        this.terbilang = source["terbilang"];
+	        this.notes = source["notes"];
+	        this.finalizedAt = this.convertValues(source["finalizedAt"], null);
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	        this.updatedAt = this.convertValues(source["updatedAt"], null);
+	        this.deletedAt = this.convertValues(source["deletedAt"], gorm.DeletedAt);
+	        this.customer = this.convertValues(source["customer"], Customer);
+	        this.vessel = this.convertValues(source["vessel"], Vessel);
+	        this.items = this.convertValues(source["items"], SphItem);
+	        this.revisions = this.convertValues(source["revisions"], SphRevision);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
+	export class TemplateItem {
+	    id: number;
+	    templateId: number;
+	    sequence: number;
+	    workItemId: number;
+	    notes: string;
+	    // Go type: time
+	    createdAt: any;
+	    // Go type: time
+	    updatedAt: any;
+	    workItem?: WorkItem;
+	
+	    static createFrom(source: any = {}) {
+	        return new TemplateItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.templateId = source["templateId"];
+	        this.sequence = source["sequence"];
+	        this.workItemId = source["workItemId"];
+	        this.notes = source["notes"];
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	        this.updatedAt = this.convertValues(source["updatedAt"], null);
+	        this.workItem = this.convertValues(source["workItem"], WorkItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Template {
+	    id: number;
+	    code: string;
+	    name: string;
+	    description: string;
+	    notes: string;
+	    sequence: number;
+	    isActive: boolean;
+	    // Go type: time
+	    createdAt: any;
+	    // Go type: time
+	    updatedAt: any;
+	    deletedAt?: gorm.DeletedAt;
+	    items?: TemplateItem[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Template(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.code = source["code"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.notes = source["notes"];
+	        this.sequence = source["sequence"];
+	        this.isActive = source["isActive"];
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	        this.updatedAt = this.convertValues(source["updatedAt"], null);
+	        this.deletedAt = this.convertValues(source["deletedAt"], gorm.DeletedAt);
+	        this.items = this.convertValues(source["items"], TemplateItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
 	
 
 }
@@ -273,6 +746,351 @@ export namespace services {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	export class VesselView {
+	    id: number;
+	    customerId: number;
+	    code: string;
+	    name: string;
+	    vesselNumber: string;
+	    vesselType: string;
+	    notes: string;
+	    isActive: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new VesselView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.customerId = source["customerId"];
+	        this.code = source["code"];
+	        this.name = source["name"];
+	        this.vesselNumber = source["vesselNumber"];
+	        this.vesselType = source["vesselType"];
+	        this.notes = source["notes"];
+	        this.isActive = source["isActive"];
+	    }
+	}
+	export class CustomerView {
+	    id: number;
+	    code: string;
+	    name: string;
+	    address: string;
+	    phone: string;
+	    email: string;
+	    picName: string;
+	    picPosition: string;
+	    notes: string;
+	    isActive: boolean;
+	    vessels: VesselView[];
+	    createdAt: string;
+	    updatedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomerView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.code = source["code"];
+	        this.name = source["name"];
+	        this.address = source["address"];
+	        this.phone = source["phone"];
+	        this.email = source["email"];
+	        this.picName = source["picName"];
+	        this.picPosition = source["picPosition"];
+	        this.notes = source["notes"];
+	        this.isActive = source["isActive"];
+	        this.vessels = this.convertValues(source["vessels"], VesselView);
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SphDocumentView {
+	    id: number;
+	    documentNumber: string;
+	    revision: number;
+	    date: string;
+	    customerId: number;
+	    customerName: string;
+	    vesselId?: number;
+	    vesselName: string;
+	    projectName: string;
+	    subject: string;
+	    status: string;
+	    itemCount: number;
+	    grandTotal: number;
+	    terbilang: string;
+	    finalizedAt?: string;
+	    createdAt: string;
+	    updatedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SphDocumentView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.documentNumber = source["documentNumber"];
+	        this.revision = source["revision"];
+	        this.date = source["date"];
+	        this.customerId = source["customerId"];
+	        this.customerName = source["customerName"];
+	        this.vesselId = source["vesselId"];
+	        this.vesselName = source["vesselName"];
+	        this.projectName = source["projectName"];
+	        this.subject = source["subject"];
+	        this.status = source["status"];
+	        this.itemCount = source["itemCount"];
+	        this.grandTotal = source["grandTotal"];
+	        this.terbilang = source["terbilang"];
+	        this.finalizedAt = source["finalizedAt"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+	export class DashboardStats {
+	    totalSph: number;
+	    draftCount: number;
+	    finalCount: number;
+	    acceptedCount: number;
+	    monthValue: number;
+	    recent: SphDocumentView[];
+	
+	    static createFrom(source: any = {}) {
+	        return new DashboardStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.totalSph = source["totalSph"];
+	        this.draftCount = source["draftCount"];
+	        this.finalCount = source["finalCount"];
+	        this.acceptedCount = source["acceptedCount"];
+	        this.monthValue = source["monthValue"];
+	        this.recent = this.convertValues(source["recent"], SphDocumentView);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class SphHeaderInput {
+	    date: string;
+	    customerId: number;
+	    vesselId?: number;
+	    projectName: string;
+	    subject: string;
+	    reference: string;
+	    location: string;
+	    validUntil: string;
+	    picName: string;
+	    notes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SphHeaderInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.date = source["date"];
+	        this.customerId = source["customerId"];
+	        this.vesselId = source["vesselId"];
+	        this.projectName = source["projectName"];
+	        this.subject = source["subject"];
+	        this.reference = source["reference"];
+	        this.location = source["location"];
+	        this.validUntil = source["validUntil"];
+	        this.picName = source["picName"];
+	        this.notes = source["notes"];
+	    }
+	}
+	export class SphSubItemInput {
+	    name: string;
+	    description: string;
+	    quantity: number;
+	    unit: string;
+	    serviceUnitPrice: number;
+	    materialUnitPrice: number;
+	    notes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SphSubItemInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.quantity = source["quantity"];
+	        this.unit = source["unit"];
+	        this.serviceUnitPrice = source["serviceUnitPrice"];
+	        this.materialUnitPrice = source["materialUnitPrice"];
+	        this.notes = source["notes"];
+	    }
+	}
+	export class SphItemInput {
+	    workItemId?: number;
+	    name: string;
+	    description: string;
+	    quantity: number;
+	    unit: string;
+	    serviceUnitPrice: number;
+	    materialUnitPrice: number;
+	    pricingMode: string;
+	    notes: string;
+	    subItems: SphSubItemInput[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SphItemInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.workItemId = source["workItemId"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.quantity = source["quantity"];
+	        this.unit = source["unit"];
+	        this.serviceUnitPrice = source["serviceUnitPrice"];
+	        this.materialUnitPrice = source["materialUnitPrice"];
+	        this.pricingMode = source["pricingMode"];
+	        this.notes = source["notes"];
+	        this.subItems = this.convertValues(source["subItems"], SphSubItemInput);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SphSaveInput {
+	    header: SphHeaderInput;
+	    items: SphItemInput[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SphSaveInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.header = this.convertValues(source["header"], SphHeaderInput);
+	        this.items = this.convertValues(source["items"], SphItemInput);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class TemplateItemInput {
+	    workItemId: number;
+	    notes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TemplateItemInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.workItemId = source["workItemId"];
+	        this.notes = source["notes"];
+	    }
+	}
+	export class TemplateView {
+	    id: number;
+	    code: string;
+	    name: string;
+	    description: string;
+	    notes: string;
+	    sequence: number;
+	    isActive: boolean;
+	    itemCount: number;
+	    createdAt: string;
+	    updatedAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TemplateView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.code = source["code"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.notes = source["notes"];
+	        this.sequence = source["sequence"];
+	        this.isActive = source["isActive"];
+	        this.itemCount = source["itemCount"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+	
 	export class WorkItemView {
 	    id: number;
 	    categoryId: number;

@@ -116,14 +116,15 @@
     <AppModal v-model="formOpen" :title="editing ? 'Edit Kategori' : 'Tambah Kategori'">
       <form class="space-y-3.5" @submit.prevent="submitForm">
         <div>
-          <label class="mb-1 block text-[13px] font-medium text-slate-600">Kode <span class="font-normal text-slate-400">(opsional)</span></label>
+          <label class="mb-1 block text-[13px] font-medium text-slate-600">Kode</label>
           <input
             v-model="form.code"
             type="text"
-            maxlength="50"
-            placeholder="misal EL"
-            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none transition-colors focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+            disabled
+            placeholder="(otomatis)"
+            class="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] text-slate-400 outline-none"
           />
+          <p class="mt-1 text-xs text-slate-400">Kode dibuat otomatis oleh sistem.</p>
         </div>
         <div>
           <label class="mb-1 block text-[13px] font-medium text-slate-600">Nama <span class="text-red-500">*</span></label>

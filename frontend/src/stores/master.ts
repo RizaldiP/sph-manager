@@ -21,14 +21,7 @@ import {
   ReorderSubItems
 } from '../../wailsjs/go/main/App'
 import type { CategoryView, WorkItemView, WorkItemDetail } from '../types/master'
-
-// Buang field audit (timestamp) dari payload sebelum dikirim ke Go.
-// Binding Wails mem-parse argumen ke struct Go yang punya time.Time;
-// string kosong/format tampilan akan gagal parse — timestamp biarlah server (GORM) yang mengisi.
-function stripAudit<T>(o: T): T {
-  const { createdAt, updatedAt, deletedAt, ...rest } = o as Record<string, unknown>
-  return rest as T
-}
+import { stripAudit } from '../utils/payload'
 
 // Store domain Master Pekerjaan (kategori + pekerjaan + sub-pekerjaan).
 // Mutasi melempar error apa adanya agar halaman bisa menampilkannya di tempat yang sesuai;

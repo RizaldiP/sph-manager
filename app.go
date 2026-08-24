@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const appVersion = "0.2.0"
+const appVersion = "0.4.0"
 
 type HealthInfo struct {
 	Status       string `json:"status"`
@@ -29,6 +29,9 @@ type App struct {
 	categories *services.CategoryService
 	workItems  *services.WorkItemService
 	subItems   *services.WorkSubItemService
+	templates  *services.TemplateService
+	sph        *services.SphService
+	customers  *services.CustomerService
 }
 
 func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
@@ -39,6 +42,9 @@ func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
 		categories: services.NewCategoryService(db, lg),
 		workItems:  services.NewWorkItemService(db, lg),
 		subItems:   services.NewWorkSubItemService(db, lg),
+		templates:  services.NewTemplateService(db, lg),
+		sph:        services.NewSphService(db, lg),
+		customers:  services.NewCustomerService(db, lg),
 	}
 }
 

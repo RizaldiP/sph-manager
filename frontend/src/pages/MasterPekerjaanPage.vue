@@ -229,8 +229,8 @@
           </select>
         </div>
         <div>
-          <label class="mb-1 block text-[13px] font-medium text-slate-600">Kode <span class="font-normal text-slate-400">(opsional)</span></label>
-          <input v-model="wiForm.code" type="text" maxlength="50" placeholder="misal EL-001" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
+          <label class="mb-1 block text-[13px] font-medium text-slate-600">Kode</label>
+          <input v-model="wiForm.code" type="text" disabled placeholder="(otomatis)" class="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] text-slate-400 outline-none" />
         </div>
         <div>
           <label class="mb-1 block text-[13px] font-medium text-slate-600">Nama <span class="text-red-500">*</span></label>
@@ -281,8 +281,8 @@
         </div>
         <div class="grid grid-cols-2 gap-x-4">
           <div>
-            <label class="mb-1 block text-[13px] font-medium text-slate-600">Kode <span class="font-normal text-slate-400">(opsional)</span></label>
-            <input v-model="subForm.code" type="text" maxlength="50" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
+            <label class="mb-1 block text-[13px] font-medium text-slate-600">Kode</label>
+            <input v-model="subForm.code" type="text" disabled placeholder="(otomatis)" class="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[13px] text-slate-400 outline-none" />
           </div>
           <div>
             <label class="mb-1 block text-[13px] font-medium text-slate-600">Bobot Kesulitan (%)</label>

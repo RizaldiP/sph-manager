@@ -4,6 +4,11 @@ import DashboardPage from '../pages/DashboardPage.vue'
 import PlaceholderPage from '../pages/PlaceholderPage.vue'
 import MasterPekerjaanPage from '../pages/MasterPekerjaanPage.vue'
 import KategoriPage from '../pages/KategoriPage.vue'
+import TemplatePage from '../pages/TemplatePage.vue'
+import DataPartnerPage from '../pages/DataPartnerPage.vue'
+import SphListPage from '../pages/SphListPage.vue'
+import BuatSphPage from '../pages/BuatSphPage.vue'
+import SphDetailPage from '../pages/SphDetailPage.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -18,16 +23,17 @@ const router = createRouter({
           component: DashboardPage,
           meta: { title: 'Dashboard', breadcrumb: ['Dashboard'] }
         },
-        { path: 'sph', name: 'sph-list', component: PlaceholderPage, meta: { title: 'Semua SPH', breadcrumb: ['SPH', 'Semua SPH'], phase: 'Phase 5' } },
-        { path: 'sph/draft', name: 'sph-draft', component: PlaceholderPage, meta: { title: 'Draft SPH', breadcrumb: ['SPH', 'Draft'], phase: 'Phase 5' } },
-        { path: 'sph/final', name: 'sph-final', component: PlaceholderPage, meta: { title: 'SPH Final', breadcrumb: ['SPH', 'Final'], phase: 'Phase 5' } },
-        { path: 'sph/baru', name: 'sph-baru', component: PlaceholderPage, meta: { title: 'Buat SPH', breadcrumb: ['SPH', 'Buat SPH'], phase: 'Phase 5' } },
+        { path: 'sph', name: 'sph-list', component: SphListPage, meta: { title: 'Semua SPH', breadcrumb: ['SPH', 'Semua SPH'] } },
+        { path: 'sph/draft', name: 'sph-draft', component: SphListPage, meta: { title: 'Draft SPH', breadcrumb: ['SPH', 'Draft'] } },
+        { path: 'sph/final', name: 'sph-final', component: SphListPage, meta: { title: 'SPH Final', breadcrumb: ['SPH', 'Final'] } },
+        { path: 'sph/baru', name: 'sph-baru', component: BuatSphPage, meta: { title: 'Buat SPH', breadcrumb: ['SPH', 'Buat SPH'] } },
+        { path: 'sph/:id(\\d+)', name: 'sph-detail', component: SphDetailPage, meta: { title: 'Detail SPH', breadcrumb: ['SPH', 'Detail'] } },
+        { path: 'sph/:id(\\d+)/edit', name: 'sph-edit', component: BuatSphPage, meta: { title: 'Edit Draft SPH', breadcrumb: ['SPH', 'Edit Draft'] } },
         { path: 'pekerjaan', name: 'pekerjaan', component: MasterPekerjaanPage, meta: { title: 'Master Pekerjaan', breadcrumb: ['Pekerjaan', 'Master Pekerjaan'] } },
         { path: 'pekerjaan/kategori', name: 'kategori', component: KategoriPage, meta: { title: 'Kategori', breadcrumb: ['Pekerjaan', 'Kategori'] } },
-        { path: 'pekerjaan/template', name: 'template', component: PlaceholderPage, meta: { title: 'Template', breadcrumb: ['Pekerjaan', 'Template'], phase: 'Phase 4' } },
-        { path: 'data/customer', name: 'customer', component: PlaceholderPage, meta: { title: 'Customer', breadcrumb: ['Master Data', 'Customer'], phase: 'Phase 3' } },
-        { path: 'data/kapal', name: 'kapal', component: PlaceholderPage, meta: { title: 'Kapal', breadcrumb: ['Master Data', 'Kapal'], phase: 'Phase 3' } },
-        { path: 'data/material', name: 'material', component: PlaceholderPage, meta: { title: 'Material', breadcrumb: ['Master Data', 'Material'], phase: 'Phase 3' } },
+        { path: 'pekerjaan/template', name: 'template', component: TemplatePage, meta: { title: 'Template', breadcrumb: ['Pekerjaan', 'Template'] } },
+        { path: 'data/customer', name: 'customer', component: DataPartnerPage, meta: { title: 'Customer & Kapal', breadcrumb: ['Master Data', 'Customer'] } },
+        { path: 'data/material', name: 'material', component: PlaceholderPage, meta: { title: 'Material', breadcrumb: ['Master Data', 'Material'], phase: 'Phase 6+' } },
         { path: 'impor-ekspor', name: 'impor-ekspor', component: PlaceholderPage, meta: { title: 'Import / Export', breadcrumb: ['Import / Export'], phase: 'Phase 8 & 9' } },
         { path: 'backup', name: 'backup', component: PlaceholderPage, meta: { title: 'Backup', breadcrumb: ['Backup'], phase: 'Phase 10' } },
         { path: 'pengaturan', name: 'pengaturan', component: PlaceholderPage, meta: { title: 'Pengaturan', breadcrumb: ['Pengaturan'], phase: 'Phase 7' } }
