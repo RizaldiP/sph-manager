@@ -47,6 +47,8 @@ export interface SphSubItemRow {
   unit: string
   serviceUnitPrice: number
   materialUnitPrice: number
+  weight: number
+  allocatedValue: number
   serviceTotal: number
   materialTotal: number
   total: number
@@ -121,6 +123,7 @@ export type SphSubItemInput = {
   unit: string
   serviceUnitPrice: number
   materialUnitPrice: number
+  weight: number
   notes: string
 }
 

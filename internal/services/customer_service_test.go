@@ -64,10 +64,10 @@ func TestCustomerCRUDAndGuards(t *testing.T) {
 	// SPH memakai kapal → hapus kapal ditolak; hapus customer juga ditolak karena kapal masih ada.
 	doc := &models.SphDocument{
 		DocumentNumber: "SPH/GEI/I/2026/001",
-		Date:            time.Now(),
-		CustomerID:      c1.ID,
-		VesselID:        &v1.Vessels[0].ID,
-		Status:          models.StatusDraft,
+		Date:           time.Now(),
+		CustomerID:     c1.ID,
+		VesselID:       &v1.Vessels[0].ID,
+		Status:         models.StatusDraft,
 	}
 	if err := db.Create(doc).Error; err != nil {
 		t.Fatalf("seed sph gagal: %v", err)
@@ -78,7 +78,7 @@ func TestCustomerCRUDAndGuards(t *testing.T) {
 		t.Errorf("harus ConflictError, dapat: %v", err)
 	}
 
-	 // Setelah dokumen SPH dihapus (hard), kapal boleh dihapus; customer tetap terhalang kapal lain jika ada.
+	// Setelah dokumen SPH dihapus (hard), kapal boleh dihapus; customer tetap terhalang kapal lain jika ada.
 	if err := db.Unscoped().Delete(doc).Error; err != nil {
 		t.Fatalf("bersih-bersih gagal: %v", err)
 	}

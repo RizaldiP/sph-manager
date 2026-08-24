@@ -51,6 +51,7 @@ type SphSubItemInput struct {
 	Unit              string  `json:"unit"`
 	ServiceUnitPrice  int64   `json:"serviceUnitPrice"`
 	MaterialUnitPrice int64   `json:"materialUnitPrice"`
+	Weight            int     `json:"weight"` // % bobot (mode PEMBOBOTAN)
 	Notes             string  `json:"notes"`
 }
 
@@ -262,8 +263,7 @@ func buildItems(inputs []SphItemInput) ([]models.SphItem, int64, int64, error) {
 		}
 		mode := models.PricingModeDirect
 		if strings.TrimSpace(in.PricingMode) == models.PricingModeWeight {
-			// Mode PEMBOBOTAN baru tersedia di Phase 6.
-			return nil, 0, 0, NewValidationError("Mode pembobotan akan tersedia pada fase berikutnya.")
+			mode = models.PricingModeWeight
 		}
 		svcTot := lineTotal(in.Quantity, in.ServiceUnitPrice)
 		matTot := lineTotal(in.Quantity, in.MaterialUnitPrice)
@@ -276,12 +276,23 @@ func buildItems(inputs []SphItemInput) ([]models.SphItem, int64, int64, error) {
 			Unit:                trim(in.Unit),
 			ServiceUnitPrice:    in.ServiceUnitPrice,
 			MaterialUnitPrice:   in.MaterialUnitPrice,
-			ServiceTotal:        svcTot,
-			MaterialTotal:       matTot,
-			Total:               svcTot + matTot,
 			PricingMode:         mode,
 			Notes:               trim(in.Notes),
 		}
+
+		if mode == models.PricingModeWeight {
+			subs, err := allocateWeightedSubs(in.SubItems, svcTot, matTot)
+			if err != nil {
+				return nil, 0, 0, err
+			}
+			item.SubItems = subs
+			item.ServiceTotal = svcTot
+			item.MaterialTotal = matTot
+			item.Total = svcTot + matTot
+			items = append(items, item)
+			continue
+		}
+
 		for j := range in.SubItems {
 			sub := &in.SubItems[j]
 			if sub.Quantity <= 0 {
@@ -458,8 +469,34 @@ func (s *SphService) validateForFinalization(d *models.SphDocument) error {
 		if it.ServiceUnitPrice < 0 || it.MaterialUnitPrice < 0 {
 			return NewValidationError("Harga \"%s\" tidak boleh negatif.", it.NameSnapshot)
 		}
-		expectSvc := lineTotal(it.Quantity, it.ServiceUnitPrice)
-		expectMat := lineTotal(it.Quantity, it.MaterialUnitPrice)
+		mainSvc := lineTotal(it.Quantity, it.ServiceUnitPrice)
+		mainMat := lineTotal(it.Quantity, it.MaterialUnitPrice)
+		if it.PricingMode == models.PricingModeWeight {
+			ws := make([]int, len(it.SubItems))
+			for j := range it.SubItems {
+				ws[j] = it.SubItems[j].Weight
+			}
+			sumW := weightSum(ws)
+			if sumW != 100 {
+				return NewValidationError("Total bobot \"%s\" = %d%%, harus tepat 100%% (selisih %+d%%). Perbaiki bobot sebelum finalisasi.", it.NameSnapshot, sumW, 100-sumW)
+			}
+			expSvc := allocateLargestRemainder(mainSvc, ws)
+			expMat := allocateLargestRemainder(mainMat, ws)
+			for j := range it.SubItems {
+				sb := it.SubItems[j]
+				if sb.ServiceTotal != expSvc[j] || sb.MaterialTotal != expMat[j] ||
+					sb.Total != expSvc[j]+expMat[j] || sb.AllocatedValue != expSvc[j]+expMat[j] {
+					return NewValidationError("Alokasi bobot \"%s\" tidak konsisten. Muat ulang dokumen lalu coba lagi.", it.NameSnapshot)
+				}
+			}
+			if it.ServiceTotal != mainSvc || it.MaterialTotal != mainMat || it.Total != mainSvc+mainMat {
+				return NewValidationError("Perhitungan nilai \"%s\" tidak konsisten. Muat ulang dokumen lalu coba lagi.", it.NameSnapshot)
+			}
+			grand += it.Total
+			continue
+		}
+		expectSvc := mainSvc
+		expectMat := mainMat
 		for _, sb := range it.SubItems {
 			expectSvc += lineTotal(sb.Quantity, sb.ServiceUnitPrice)
 			expectMat += lineTotal(sb.Quantity, sb.MaterialUnitPrice)

@@ -84,8 +84,12 @@
                 <tr v-for="sub in it.subItems ?? []" :key="`${it.id}-${sub.id}`" class="border-b border-slate-50 align-top text-[12px] text-slate-500">
                   <td class="py-1.5 pr-2"></td>
                   <td class="max-w-[320px] py-1.5 pl-8 pr-2">
-                    <p>— {{ sub.nameSnapshot }}</p>
+                    <p>
+                      — {{ sub.nameSnapshot }}
+                      <span v-if="it.pricingMode === 'PEMBOBOTAN'" class="ml-0.5 rounded bg-brand-50 px-1 text-[10px] font-semibold text-brand-700">{{ sub.weight }}%</span>
+                    </p>
                     <p v-if="sub.descriptionSnapshot" class="text-slate-400">{{ sub.descriptionSnapshot }}</p>
+                    <p v-if="it.pricingMode === 'PEMBOBOTAN'" class="mt-0.5 text-[11px] italic text-slate-400">alokasi dari bobot {{ sub.weight }}%</p>
                   </td>
                   <td class="px-2 py-1.5 text-right tabular-nums">{{ formatQty(sub.quantity) }}</td>
                   <td class="px-2 py-1.5 text-center">{{ sub.unit }}</td>

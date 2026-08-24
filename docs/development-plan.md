@@ -12,7 +12,7 @@
 | 3 | Master Pekerjaan | ✅ Selesai |
 | 4 | Template | ✅ Selesai |
 | 5 | SPH Builder (+ CRUD Customer & Kapal) | ✅ Selesai |
-| 6 | Pembobotan & Rounding | ⬜ Belum |
+| 6 | Pembobotan & Rounding | ✅ Selesai |
 | 7 | Kombinasi Multi Pekerjaan | ⬜ Belum |
 | 8 | Import Excel | ⬜ Belum |
 | 9 | Export (Excel + PDF) | ⬜ Belum |
@@ -83,13 +83,21 @@
 - Test hijau: terbilang, snapshot vs perubahan master, penomoran berurutan, transisi ilegal, finalisasi + finalized_at, lock edit non-draft, duplikat nomor baru/revision rev+1 + histori, guard hapus draft/customer/kapal, scope daftar, statistik.
 - Penyesuaian pasca-ulasan: harga sub point **di-roll-up** ke Jumlah main point-nya (jasa & material terpisah) sehingga ikut dalam Subtotal/Grand Total; sub point tampil sebagai baris tabel sejajar kolom Qty/Sat/Jasa/Mat./Jumlah di detail & preview.
 
-## PHASE 6 — Pembobotan & Rounding
+## PHASE 6 — Pembobotan & Rounding ✅
 
 **Scope:** mode PEMBOBOTAN per main point; input weight; alokasi nilai sub point; rounding largest remainder (BR-04); warning selisih; larang finalisasi jika ≠ 100%.
 
 **Test:** `10 + 15 + 20 + 25 + 30 = 100`; kasus <100 dan >100; kasus pembulatan (mis. 3 × 33,33%).
 
 **Acceptance:** Σ sub = main point tepat; unit test hijau.
+
+**Hasil:**
+- Desain terkunci (keputusan user): satu **bobot gabungan %** per sub point; bobot mengalokasikan pool jasa dan pool material secara terpisah, masing-masing dengan largest remainder sehingga Σ alokasi = pool tepat.
+- Backend `internal/services/pembobotan.go`: `allocateLargestRemainder` (aritmetika integer, dasar floor, sisa ke pecahan terbesar, tie-break urutan baris) + `allocateWeightedSubs` (validasi ≥1 sub, bobot 1–100, qty>0; set `weight`/`allocated_value`/total per sub; harga satuan sub dinolkan).
+- `buildItems` menerima PEMBOBOTAN (tidak lagi ditolak); draft **boleh disimpan dengan Σ≠100** (alokasi proporsional thd Σ aktual), tapi finalisasi REVIEW/FINAL ditolak backend sampai Σ=100 — pesan memuat persentase & selisih. Verifikasi ulang alokasi tersimpan saat finalisasi (deteksi data diubah manual).
+- Frontend wizard: dropdown "Mode Harga" per main point (langkah 3); langkah 4 menampilkan input Bobot % (+pratinjau nilai alokasi) untuk mode pembobotan dengan badge Σ bobot live (hijau saat 100%, amber saat selisih); prefill bobot dari master `difficulty_weight`; preview langkah 7 menampilkan badge % dan jumlah hasil alokasi; langkah 6 memisahkan checks blokir vs warning pembobotan non-blokir.
+- Detail SPH: badge % pada baris sub mode pembobotan.
+- Test hijau: tabel alokasi (kasus BR-04, tie-break, 10/15/20/25/30), end-to-end simpan+finalisasi, penolakan Σ<100/>100, validasi bobot, deteksi tamper `allocated_value`.
 
 ## PHASE 7 — Kombinasi Multi Pekerjaan
 

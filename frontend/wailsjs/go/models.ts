@@ -948,6 +948,7 @@ export namespace services {
 	    unit: string;
 	    serviceUnitPrice: number;
 	    materialUnitPrice: number;
+	    weight: number;
 	    notes: string;
 	
 	    static createFrom(source: any = {}) {
@@ -962,6 +963,7 @@ export namespace services {
 	        this.unit = source["unit"];
 	        this.serviceUnitPrice = source["serviceUnitPrice"];
 	        this.materialUnitPrice = source["materialUnitPrice"];
+	        this.weight = source["weight"];
 	        this.notes = source["notes"];
 	    }
 	}

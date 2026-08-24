@@ -198,13 +198,20 @@
               <button type="button" class="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50" @click="removeItem(idx)">Hapus</button>
             </div>
             <div class="grid grid-cols-1 gap-2.5 md:grid-cols-12">
-              <div class="md:col-span-4">
+              <div class="md:col-span-3">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Nama</label>
                 <input v-model="it.name" type="text" maxlength="300" class="row-input" />
               </div>
-              <div class="md:col-span-3">
+              <div class="md:col-span-2">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Deskripsi</label>
                 <input v-model="it.description" type="text" maxlength="500" class="row-input" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="mb-1 block text-xs font-medium text-slate-500">Mode Harga</label>
+                <select v-model="it.pricingMode" class="row-input">
+                  <option value="HARGA_LANGSUNG">Harga Langsung</option>
+                  <option value="PEMBOBOTAN">Pembobotan</option>
+                </select>
               </div>
               <div class="md:col-span-1">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Qty</label>
@@ -222,9 +229,13 @@
                 <label class="mb-1 block text-xs font-medium text-slate-500">Mat.</label>
                 <input v-model.number="it.materialUnitPrice" type="number" min="0" class="row-input" />
               </div>
-              <div class="md:col-span-1 flex flex-col justify-end">
-                <span class="whitespace-nowrap text-right text-[13px] font-semibold tabular-nums text-slate-700">{{ formatRupiah(rowTotal(it)) }}</span>
-              </div>
+            </div>
+            <div class="mt-1 flex items-center justify-between gap-2">
+              <span v-if="it.pricingMode === 'PEMBOBOTAN'" class="text-xs font-medium text-brand-700">
+                Pembobotan — nilai {{ formatRupiah(rowTotal(it)) }} dibagi ke sub point via bobot (langkah 4).
+              </span>
+              <span v-else></span>
+              <span class="whitespace-nowrap text-right text-[13px] font-semibold tabular-nums text-slate-700">{{ formatRupiah(rowTotal(it)) }}</span>
             </div>
             <div v-if="it.subItems.length" class="mt-2 border-t border-slate-100 pt-2">
               <p class="text-xs text-slate-400">{{ it.subItems.length }} sub point ikut dalam baris ini (atur di langkah 4).</p>
@@ -236,7 +247,9 @@
       <!-- ===== Langkah 4: Sub Point ===== -->
       <section v-show="step === 4">
         <h2 class="mb-1 text-[15px] font-semibold text-slate-800">Sub Point</h2>
-        <p class="mb-4 text-[13px] text-slate-500">Rincian pekerjaan di bawah tiap main point. Nilai sub bersifat informatif pada mode harga langsung.</p>
+        <p class="mb-4 text-[13px] text-slate-500">
+          Mode Harga Langsung: nilai sub di-roll-up ke induknya. Mode Pembobotan: nilai induk dibagikan ke sub sesuai bobot %.
+        </p>
 
         <div v-if="!items.length" class="rounded-lg border border-dashed border-slate-300 p-8 text-center text-[13px] text-slate-400">Belum ada main point.</div>
 
@@ -251,11 +264,27 @@
               @click="activeItemIdx = idx"
             >
               {{ idx + 1 }}. {{ it.name || '(tanpa nama)' }}
+              <span v-if="isWeighted(it)" class="ml-1 font-semibold">Σ{{ weightSumOf(it) }}%</span>
             </button>
           </div>
 
           <div v-if="activeItem" class="space-y-2.5">
-            <div v-for="(sub, sIdx) in activeItem.subItems" :key="sIdx" class="grid grid-cols-1 items-end gap-2.5 rounded-lg border border-slate-200 p-3 md:grid-cols-12">
+            <div
+              v-if="isWeighted(activeItem)"
+              class="flex flex-wrap items-center gap-x-2 rounded-lg border px-3 py-2 text-[13px]"
+              :class="weightSumOf(activeItem) === 100 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'"
+            >
+              <span>Σ bobot: <strong>{{ weightSumOf(activeItem) }}%</strong></span>
+              <span v-if="weightSumOf(activeItem) !== 100">
+                — selisih {{ selisihLabel(weightSumOf(activeItem)) }} dari 100%. Draft tetap bisa disimpan, tapi finalisasi ditolak sampai tepat 100%.
+              </span>
+            </div>
+
+            <div
+              v-for="(sub, sIdx) in activeItem.subItems"
+              :key="sIdx"
+              class="grid grid-cols-1 items-end gap-2.5 rounded-lg border border-slate-200 p-3 md:grid-cols-12"
+            >
               <div class="md:col-span-4">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Nama Sub {{ sIdx + 1 }}</label>
                 <input v-model="sub.name" type="text" maxlength="300" class="row-input" />
@@ -272,14 +301,26 @@
                 <label class="mb-1 block text-xs font-medium text-slate-500">Satuan</label>
                 <input v-model="sub.unit" type="text" maxlength="30" class="row-input" />
               </div>
-              <div class="md:col-span-1">
-                <label class="mb-1 block text-xs font-medium text-slate-500">Jasa</label>
-                <input v-model.number="sub.serviceUnitPrice" type="number" min="0" class="row-input" />
-              </div>
-              <div class="md:col-span-2 flex items-center justify-between gap-2">
-                <input v-model.number="sub.materialUnitPrice" type="number" min="0" title="Harga material" class="row-input" />
-                <button type="button" class="shrink-0 rounded px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" @click="activeItem.subItems.splice(sIdx, 1)">✕</button>
-              </div>
+              <template v-if="isWeighted(activeItem)">
+                <div class="md:col-span-2">
+                  <label class="mb-1 block text-xs font-medium text-brand-700">Bobot %</label>
+                  <input v-model.number="sub.weight" type="number" min="0" max="100" class="row-input" />
+                  <p class="mt-0.5 text-[11px] tabular-nums text-slate-400">≈ {{ formatRupiah(subJumlah(activeItem, sIdx)) }}</p>
+                </div>
+                <div class="flex items-end justify-end md:col-span-1">
+                  <button type="button" class="rounded px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" @click="activeItem.subItems.splice(sIdx, 1)">✕</button>
+                </div>
+              </template>
+              <template v-else>
+                <div class="md:col-span-1">
+                  <label class="mb-1 block text-xs font-medium text-slate-500">Jasa</label>
+                  <input v-model.number="sub.serviceUnitPrice" type="number" min="0" class="row-input" />
+                </div>
+                <div class="md:col-span-2 flex items-center justify-between gap-2">
+                  <input v-model.number="sub.materialUnitPrice" type="number" min="0" title="Harga material" class="row-input" />
+                  <button type="button" class="shrink-0 rounded px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" @click="activeItem.subItems.splice(sIdx, 1)">✕</button>
+                </div>
+              </template>
             </div>
             <button type="button" class="rounded-lg border border-brand-200 bg-brand-50 px-3.5 py-2 text-[13px] font-medium text-brand-700 transition-colors hover:bg-brand-100" @click="addSub(activeItem)">
               + Sub Point
@@ -342,6 +383,16 @@
             <span>{{ chk.label }}</span>
           </li>
         </ul>
+
+        <template v-if="warnings.length">
+          <h3 class="mb-2 mt-5 text-[13px] font-semibold uppercase tracking-wide text-slate-400">Peringatan Pembobotan (tidak menghalangi simpan draft)</h3>
+          <ul class="space-y-2">
+            <li v-for="wrn in warnings" :key="wrn.label" class="flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-[13px]" :class="wrn.ok ? 'border-emerald-200 bg-emerald-50/60 text-emerald-800' : 'border-amber-200 bg-amber-50/60 text-amber-700'">
+              <span>{{ wrn.ok ? '✓' : '!' }}</span>
+              <span>{{ wrn.label }}</span>
+            </li>
+          </ul>
+        </template>
       </section>
 
       <!-- ===== Langkah 7: Preview ===== -->
@@ -393,14 +444,17 @@
                 <tr v-for="(sub, sIdx) in it.subItems" :key="`${it.uid}-${sIdx}`" class="align-top text-[12px] text-slate-500">
                   <td class="py-1 pr-2"></td>
                   <td class="py-1 pl-8 pr-2">
-                    <p>— {{ sub.name }}</p>
+                    <p>
+                      — {{ sub.name }}
+                      <span v-if="isWeighted(it)" class="ml-0.5 rounded bg-brand-50 px-1 text-[10px] font-semibold text-brand-700">{{ sub.weight }}%</span>
+                    </p>
                     <p v-if="sub.description" class="text-slate-400">{{ sub.description }}</p>
                   </td>
                   <td class="px-2 py-1 text-right tabular-nums">{{ formatQty(sub.quantity) }}</td>
                   <td class="px-2 py-1 text-center">{{ sub.unit }}</td>
-                  <td class="whitespace-nowrap px-2 py-1 text-right tabular-nums">{{ formatRupiah(sub.serviceUnitPrice) }}</td>
-                  <td class="whitespace-nowrap px-2 py-1 text-right tabular-nums">{{ formatRupiah(sub.materialUnitPrice) }}</td>
-                  <td class="py-1 pl-2 text-right tabular-nums">{{ formatRupiah(subLineTotal(sub)) }}</td>
+                  <td class="whitespace-nowrap px-2 py-1 text-right tabular-nums">{{ isWeighted(it) ? '—' : formatRupiah(sub.serviceUnitPrice) }}</td>
+                  <td class="whitespace-nowrap px-2 py-1 text-right tabular-nums">{{ isWeighted(it) ? '—' : formatRupiah(sub.materialUnitPrice) }}</td>
+                  <td class="py-1 pl-2 text-right tabular-nums">{{ formatRupiah(subJumlah(it, sIdx)) }}</td>
                 </tr>
               </template>
             </tbody>
@@ -591,13 +645,69 @@ const filteredWorkItems = computed<WorkItemView[]>(() => {
   )
 })
 
+// ===== pembobotan (BR-02..BR-04) =====
+function isWeighted(it: SphItemInput): boolean {
+  return it.pricingMode === 'PEMBOBOTAN'
+}
+
+function weightSumOf(it: SphItemInput): number {
+  return it.subItems.reduce((acc, s) => acc + (s.weight || 0), 0)
+}
+
+function selisihLabel(sum: number): string {
+  const diff = 100 - sum
+  return `${diff > 0 ? '+' : ''}${diff}%`
+}
+
+// Mirror Go allocateLargestRemainder: dasar floor(pool×w/Σw), sisa ke pecahan
+// terbesar, tie-break urutan baris. Σ hasil selalu tepat = pool.
+function allocateLargestRemainder(pool: number, weights: number[]): number[] {
+  const out = new Array<number>(weights.length).fill(0)
+  const sumW = weights.reduce((a, b) => a + b, 0)
+  if (!weights.length || sumW <= 0 || pool === 0) return out
+  const bases = weights.map((w) => Math.floor((pool * w) / sumW))
+  const order = weights
+    .map((w, i) => ({ frac: (pool * w) % sumW, i }))
+    .sort((a, b) => b.frac - a.frac || a.i - b.i)
+  let leftover = pool - bases.reduce((a, b) => a + b, 0)
+  for (const o of order) {
+    if (leftover <= 0) break
+    out[o.i]++
+    leftover--
+  }
+  return bases.map((b, i) => b + out[i])
+}
+
+function weightedShares(it: SphItemInput): { svc: number[]; mat: number[] } {
+  const weights = it.subItems.map((s) => s.weight || 0)
+  return {
+    svc: allocateLargestRemainder(Math.round((it.quantity || 0) * (it.serviceUnitPrice || 0)), weights),
+    mat: allocateLargestRemainder(Math.round((it.quantity || 0) * (it.materialUnitPrice || 0)), weights)
+  }
+}
+
+// Jumlah sebuah sub point: hasil alokasi (pembobotan) atau qty×harga (langsung).
+function subJumlah(it: SphItemInput, sIdx: number): number {
+  const sub = it.subItems[sIdx]
+  if (!sub) return 0
+  if (isWeighted(it)) {
+    const shares = weightedShares(it)
+    return (shares.svc[sIdx] || 0) + (shares.mat[sIdx] || 0)
+  }
+  return subLineTotal(sub)
+}
+
 function rowService(it: SphItemInput): number {
-  let total = Math.round((it.quantity || 0) * (it.serviceUnitPrice || 0))
+  const main = Math.round((it.quantity || 0) * (it.serviceUnitPrice || 0))
+  if (isWeighted(it)) return main
+  let total = main
   for (const s of it.subItems) total += Math.round((s.quantity || 0) * (s.serviceUnitPrice || 0))
   return total
 }
 function rowMaterial(it: SphItemInput): number {
-  let total = Math.round((it.quantity || 0) * (it.materialUnitPrice || 0))
+  const main = Math.round((it.quantity || 0) * (it.materialUnitPrice || 0))
+  if (isWeighted(it)) return main
+  let total = main
   for (const s of it.subItems) total += Math.round((s.quantity || 0) * (s.materialUnitPrice || 0))
   return total
 }
@@ -647,6 +757,24 @@ const canAdvance = computed(() => {
 })
 const allChecksOk = computed(() => checks.value.every((c) => c.ok))
 
+// Warning non-blokir (BR-03): draft boleh disimpan dengan Σ≠100,
+// tapi finalisasi akan ditolak backend sampai Σ bobot tepat 100%.
+const warnings = computed(() =>
+  items.value
+    .filter(isWeighted)
+    .map((it) => {
+      const sum = weightSumOf(it)
+      const label = it.name.trim() || '(tanpa nama)'
+      return {
+        ok: sum === 100,
+        label:
+          sum === 100
+            ? `Σ bobot "${label}" = 100%.`
+            : `Σ bobot "${label}" = ${sum}%, selisih ${selisihLabel(sum)} dari 100%. Finalisasi akan ditolak sampai tepat 100%.`
+      }
+    })
+)
+
 const numberPreview = computed(
   () => `SPH/GEI/${romanMonth(header.date)}/${header.date.slice(0, 4)}/XXX`
 )
@@ -682,6 +810,7 @@ async function addFromWorkItem(wi: WorkItemView) {
           unit: s.defaultUnit,
           serviceUnitPrice: s.defaultServicePrice,
           materialUnitPrice: s.defaultMaterialPrice,
+          weight: s.difficultyWeight || 0,
           notes: ''
         }))
     })
@@ -759,6 +888,7 @@ async function applyOldDoc(doc: SphDocumentView) {
         unit: s.unit,
         serviceUnitPrice: s.serviceUnitPrice,
         materialUnitPrice: s.materialUnitPrice,
+        weight: s.weight ?? 0,
         notes: s.notes
       }))
     }))
@@ -786,7 +916,7 @@ function addManual() {
 const activeItem = computed(() => items.value[activeItemIdx.value] ?? null)
 
 function addSub(parent: WizardRow & SphItemInput) {
-  parent.subItems.push({ name: '', description: '', quantity: 1, unit: 'giat', serviceUnitPrice: 0, materialUnitPrice: 0, notes: '' })
+  parent.subItems.push({ name: '', description: '', quantity: 1, unit: 'giat', serviceUnitPrice: 0, materialUnitPrice: 0, weight: 0, notes: '' })
 }
 
 function removeItem(idx: number) {
@@ -879,6 +1009,7 @@ onMounted(async () => {
           unit: s.unit,
           serviceUnitPrice: s.serviceUnitPrice,
           materialUnitPrice: s.materialUnitPrice,
+          weight: s.weight ?? 0,
           notes: s.notes
         }))
       }))

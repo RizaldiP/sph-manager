@@ -99,8 +99,25 @@ daftar, detail, dashboard, dan preview wizard.
 `DashboardStats`: Total SPH, jumlah draft (DRAFT+REVIEW), final (FINAL+SENT),
 disetujui (ACCEPTED), nilai grand total bulan berjalan, dan 5 dokumen terbaru.
 
-## 9. Batasan Phase 5
+## 9. Pembobotan (BR-02/03/04, Phase 6)
 
-- Mode harga **PEMBOBOTAN** sengaja ditolak backend sampai Phase 6.
+Main point bisa memakai mode harga **PEMBOBOTAN**: nilai totalnya (qty ×
+harga jasa/material) dibagikan ke sub point berdasarkan **satu bobot
+gabungan %** per sub. Pool jasa dan pool material dialokasikan terpisah,
+keduanya dengan metode **largest remainder** (dasar floor, sisa ke pecahan
+terbesar, tie-break urutan baris) sehingga Σ alokasi = nilai main point
+**tepat** tanpa selisih pembulatan.
+
+- Bobot valid 1–100; wajib ada ≥1 sub point; harga satuan sub tidak dipakai
+  (snapshot menyimpan hasil alokasi di `allocated_value` + total per komponen).
+- Draft boleh disimpan dengan Σ bobot ≠ 100% — alokasi proporsional terhadap
+  Σ aktual sehingga angka tetap pas.
+- Finalisasi (REVIEW/FINAL) ditolak sampai Σ bobot tepat 100%; backend juga
+  memverifikasi ulang alokasi tersimpan untuk mendeteksi perubahan manual.
+- Wizard: prefill bobot dari master `difficulty_weight`; badge Σ live;
+  warning non-blokir di langkah 6; badge % di preview dan detail.
+
+## 10. Batasan Saat Ini
+
 - Material master (FR-M7) belum tersedia; harga material diisi manual.
 - Export PDF/print menyusul di fase export.
