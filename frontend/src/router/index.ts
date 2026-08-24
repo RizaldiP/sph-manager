@@ -6,6 +6,7 @@ import MasterPekerjaanPage from '../pages/MasterPekerjaanPage.vue'
 import KategoriPage from '../pages/KategoriPage.vue'
 import TemplatePage from '../pages/TemplatePage.vue'
 import DataPartnerPage from '../pages/DataPartnerPage.vue'
+import MaterialPage from '../pages/MaterialPage.vue'
 import SphListPage from '../pages/SphListPage.vue'
 import BuatSphPage from '../pages/BuatSphPage.vue'
 import SphDetailPage from '../pages/SphDetailPage.vue'
@@ -33,7 +34,7 @@ const router = createRouter({
         { path: 'pekerjaan/kategori', name: 'kategori', component: KategoriPage, meta: { title: 'Kategori', breadcrumb: ['Pekerjaan', 'Kategori'] } },
         { path: 'pekerjaan/template', name: 'template', component: TemplatePage, meta: { title: 'Template', breadcrumb: ['Pekerjaan', 'Template'] } },
         { path: 'data/customer', name: 'customer', component: DataPartnerPage, meta: { title: 'Customer & Kapal', breadcrumb: ['Master Data', 'Customer'] } },
-        { path: 'data/material', name: 'material', component: PlaceholderPage, meta: { title: 'Material', breadcrumb: ['Master Data', 'Material'], phase: 'Phase 6+' } },
+        { path: 'data/material', name: 'material', component: MaterialPage, meta: { title: 'Material', breadcrumb: ['Master Data', 'Material'] } },
         { path: 'impor-ekspor', name: 'impor-ekspor', component: PlaceholderPage, meta: { title: 'Import / Export', breadcrumb: ['Import / Export'], phase: 'Phase 8 & 9' } },
         { path: 'backup', name: 'backup', component: PlaceholderPage, meta: { title: 'Backup', breadcrumb: ['Backup'], phase: 'Phase 10' } },
         { path: 'pengaturan', name: 'pengaturan', component: PlaceholderPage, meta: { title: 'Pengaturan', breadcrumb: ['Pengaturan'], phase: 'Phase 7' } }

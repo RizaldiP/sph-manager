@@ -8,6 +8,8 @@ export function CreateCategory(arg1:models.Category):Promise<services.CategoryVi
 
 export function CreateCustomer(arg1:models.Customer):Promise<services.CustomerView>;
 
+export function CreateMaterial(arg1:models.Material):Promise<models.Material>;
+
 export function CreateSph(arg1:services.SphSaveInput):Promise<services.SphDocumentView>;
 
 export function CreateSphRevision(arg1:number):Promise<services.SphDocumentView>;
@@ -25,6 +27,8 @@ export function DashboardStats():Promise<services.DashboardStats>;
 export function DeleteCategory(arg1:number):Promise<void>;
 
 export function DeleteCustomer(arg1:number):Promise<void>;
+
+export function DeleteMaterial(arg1:number):Promise<void>;
 
 export function DeleteSph(arg1:number):Promise<void>;
 
@@ -52,6 +56,8 @@ export function ListCategories(arg1:boolean,arg2:string):Promise<Array<services.
 
 export function ListCustomers(arg1:boolean,arg2:string):Promise<Array<services.CustomerView>>;
 
+export function ListMaterials(arg1:boolean,arg2:string):Promise<Array<models.Material>>;
+
 export function ListSph(arg1:string,arg2:string,arg3:number):Promise<Array<services.SphDocumentView>>;
 
 export function ListTemplates(arg1:boolean,arg2:string):Promise<Array<services.TemplateView>>;
@@ -69,6 +75,8 @@ export function ReorderWorkItems(arg1:number,arg2:Array<number>):Promise<void>;
 export function SetCategoryActive(arg1:number,arg2:boolean):Promise<void>;
 
 export function SetCustomerActive(arg1:number,arg2:boolean):Promise<void>;
+
+export function SetMaterialActive(arg1:number,arg2:boolean):Promise<void>;
 
 export function SetSphStatus(arg1:number,arg2:string):Promise<void>;
 
@@ -89,6 +97,8 @@ export function UpdateCategory(arg1:number,arg2:models.Category):Promise<service
 export function UpdateCustomer(arg1:number,arg2:models.Customer):Promise<models.Customer>;
 
 export function UpdateDraftSph(arg1:number,arg2:services.SphSaveInput):Promise<models.SphDocument>;
+
+export function UpdateMaterial(arg1:number,arg2:models.Material):Promise<models.Material>;
 
 export function UpdateSubItem(arg1:number,arg2:models.WorkSubItem):Promise<models.WorkItem>;
 

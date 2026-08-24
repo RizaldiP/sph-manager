@@ -115,3 +115,29 @@ export function emptySubItem(workItemId = 0): WorkSubItem {
     isActive: true
   }
 }
+
+export interface MaterialView {
+  id: number
+  code: string
+  name: string
+  description: string
+  unit: string
+  defaultPrice: number
+  supplier: string
+  notes: string
+  isActive: boolean
+}
+
+export function emptyMaterial(): MaterialView {
+  return {
+    id: 0,
+    code: '',
+    name: '',
+    description: '',
+    unit: '',
+    defaultPrice: 0,
+    supplier: '',
+    notes: '',
+    isActive: true
+  }
+}

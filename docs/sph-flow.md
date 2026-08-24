@@ -126,5 +126,6 @@ terbesar, tie-break urutan baris) sehingga Σ alokasi = nilai main point
 
 ## 10. Batasan Saat Ini
 
-- Material master (FR-M7) belum tersedia; harga material diisi manual.
+- Master material tersedia (FR-M7) untuk referensi harga, tetapi wizard SPH
+  belum mengaitkan baris ke material master — harga material diisi manual.
 - Export PDF/print menyusul di fase export.

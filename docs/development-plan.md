@@ -98,6 +98,7 @@
 - Frontend wizard: dropdown "Mode Harga" per main point (langkah 3); langkah 4 menampilkan input Bobot % (+pratinjau nilai alokasi) untuk mode pembobotan dengan badge Σ bobot live (hijau saat 100%, amber saat selisih); prefill bobot dari master `difficulty_weight`; preview langkah 7 menampilkan badge % dan jumlah hasil alokasi; langkah 6 memisahkan checks blokir vs warning pembobotan non-blokir.
 - Detail SPH: badge % pada baris sub mode pembobotan.
 - Test hijau: tabel alokasi (kasus BR-04, tie-break, 10/15/20/25/30), end-to-end simpan+finalisasi, penolakan Σ<100/>100, validasi bobot, deteksi tamper `allocated_value`.
+- Pasca-ulasan (FR-M7 dipercepat): master **Material** diaktifkan — repository/service/binding CRUD (`ListMaterials/CreateMaterial/UpdateMaterial/SetMaterialActive/DeleteMaterial`), kode auto-generate sistem `MAT-xxx`, search nama/kode/supplier, soft delete, audit log; halaman **Material** menggantikan placeholder `/data/material` (search debounced, toggle nonaktif, modal form tanpa input kode, konfirmasi hapus). Harga material di wizard SPH tetap manual.
 
 ## PHASE 7 — Kombinasi Multi Pekerjaan ✅
 

@@ -10,6 +10,10 @@ export function CreateCustomer(arg1) {
   return window['go']['main']['App']['CreateCustomer'](arg1);
 }
 
+export function CreateMaterial(arg1) {
+  return window['go']['main']['App']['CreateMaterial'](arg1);
+}
+
 export function CreateSph(arg1) {
   return window['go']['main']['App']['CreateSph'](arg1);
 }
@@ -44,6 +48,10 @@ export function DeleteCategory(arg1) {
 
 export function DeleteCustomer(arg1) {
   return window['go']['main']['App']['DeleteCustomer'](arg1);
+}
+
+export function DeleteMaterial(arg1) {
+  return window['go']['main']['App']['DeleteMaterial'](arg1);
 }
 
 export function DeleteSph(arg1) {
@@ -98,6 +106,10 @@ export function ListCustomers(arg1, arg2) {
   return window['go']['main']['App']['ListCustomers'](arg1, arg2);
 }
 
+export function ListMaterials(arg1, arg2) {
+  return window['go']['main']['App']['ListMaterials'](arg1, arg2);
+}
+
 export function ListSph(arg1, arg2, arg3) {
   return window['go']['main']['App']['ListSph'](arg1, arg2, arg3);
 }
@@ -132,6 +144,10 @@ export function SetCategoryActive(arg1, arg2) {
 
 export function SetCustomerActive(arg1, arg2) {
   return window['go']['main']['App']['SetCustomerActive'](arg1, arg2);
+}
+
+export function SetMaterialActive(arg1, arg2) {
+  return window['go']['main']['App']['SetMaterialActive'](arg1, arg2);
 }
 
 export function SetSphStatus(arg1, arg2) {
@@ -172,6 +188,10 @@ export function UpdateCustomer(arg1, arg2) {
 
 export function UpdateDraftSph(arg1, arg2) {
   return window['go']['main']['App']['UpdateDraftSph'](arg1, arg2);
+}
+
+export function UpdateMaterial(arg1, arg2) {
+  return window['go']['main']['App']['UpdateMaterial'](arg1, arg2);
 }
 
 export function UpdateSubItem(arg1, arg2) {
