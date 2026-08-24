@@ -58,6 +58,13 @@ Saat simpan, sistem menyalin seluruh nilai ke tabel `sph_items` /
 - Grand total dihitung ulang server-side saat setiap kali draft disimpan;
   finalisasi memverifikasi konsistensi baris (termasuk roll-up sub point) vs
   total (BR-06).
+- **Urutan tersimpan:** `sequence` main point = urutan baris wizard (1..N),
+  `sequence` sub point = urutan di dalam induknya (1..M). Detail & preview
+  mengurutkan berdasarkan kolom ini; duplicate/revisi menyalin sequence apa
+  adanya; update draft me-renumber sesuai urutan baru (Phase 7).
+- **Penggabungan sumber (Phase 7):** wizard menerima kombinasi master +
+  template + SPH lama + manual dalam satu dokumen. SPH lama dan template
+  bersifat merge — baris pekerjaan yang sudah ada dilewati, bukan menimpa.
 
 ## 5. Siklus Hidup Status (BR-08)
 

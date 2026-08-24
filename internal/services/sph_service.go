@@ -269,6 +269,7 @@ func buildItems(inputs []SphItemInput) ([]models.SphItem, int64, int64, error) {
 		matTot := lineTotal(in.Quantity, in.MaterialUnitPrice)
 
 		item := models.SphItem{
+			Sequence:            i + 1,
 			WorkItemID:          in.WorkItemID,
 			NameSnapshot:        name,
 			DescriptionSnapshot: trim(in.Description),
@@ -284,6 +285,9 @@ func buildItems(inputs []SphItemInput) ([]models.SphItem, int64, int64, error) {
 			subs, err := allocateWeightedSubs(in.SubItems, svcTot, matTot)
 			if err != nil {
 				return nil, 0, 0, err
+			}
+			for j := range subs {
+				subs[j].Sequence = j + 1
 			}
 			item.SubItems = subs
 			item.ServiceTotal = svcTot
@@ -306,6 +310,7 @@ func buildItems(inputs []SphItemInput) ([]models.SphItem, int64, int64, error) {
 			svcTot += ssvc
 			matTot += smat
 			item.SubItems = append(item.SubItems, models.SphSubItem{
+				Sequence:            j + 1,
 				NameSnapshot:        trim(sub.Name),
 				DescriptionSnapshot: trim(sub.Description),
 				Quantity:            sub.Quantity,

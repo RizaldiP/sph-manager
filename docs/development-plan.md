@@ -13,7 +13,7 @@
 | 4 | Template | ✅ Selesai |
 | 5 | SPH Builder (+ CRUD Customer & Kapal) | ✅ Selesai |
 | 6 | Pembobotan & Rounding | ✅ Selesai |
-| 7 | Kombinasi Multi Pekerjaan | ⬜ Belum |
+| 7 | Kombinasi Multi Pekerjaan | ✅ Selesai |
 | 8 | Import Excel | ⬜ Belum |
 | 9 | Export (Excel + PDF) | ⬜ Belum |
 | 10 | Backup & Restore | ⬜ Belum |
@@ -99,13 +99,19 @@
 - Detail SPH: badge % pada baris sub mode pembobotan.
 - Test hijau: tabel alokasi (kasus BR-04, tie-break, 10/15/20/25/30), end-to-end simpan+finalisasi, penolakan Σ<100/>100, validasi bobot, deteksi tamper `allocated_value`.
 
-## PHASE 7 — Kombinasi Multi Pekerjaan
+## PHASE 7 — Kombinasi Multi Pekerjaan ✅
 
 **Scope:** pilih banyak pekerjaan → satu SPH; drag-and-drop urutan final; penggabungan dari master + template + SPH lama.
 
 **Test:** Repair AMS + Repair PLC + Repair Sensor + Testing + Calibration → 1 SPH berurut 1–5.
 
 **Acceptance:** urutan tersimpan; snapshot benar.
+
+**Hasil:**
+- Perbaikan: kolom `sph_items.sequence`/`sph_sub_items.sequence` kini terisi oleh `buildItems` (sebelumnya selalu 0 padahal detail mengurutkan `sequence asc`). Update draft me-renumber otomatis via ReplaceItems; duplicate/revisi menyalin sequence (`cloneItems`).
+- Wizard langkah 3: drag-and-drop urutan main point (HTML5 DnD, handle di header kartu, reuse `useDragSort` yang digeneralisasi dengan parameter `keyOf` agar kompatibel halaman master/template); tombol ↑↓ tetap tersedia.
+- Penggabungan sumber: **SPH lama kini merge** (append baris unik per `workItemId`, tidak lagi menimpa pilihan existing), template juga merge; umpan balik "N baris digabungkan, M dilewati" di langkah 2; label tombol "+ Gabungkan".
+- Test hijau (`kombinasi_test.go`): 5 pekerjaan tersimpan berurut seq 1–5 + sub 1..M, reorder update draft → sequence ter-renumber, duplicate mempertahankan urutan & sequence.
 
 ## PHASE 8 — Import Excel
 

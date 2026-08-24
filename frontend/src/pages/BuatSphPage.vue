@@ -161,7 +161,7 @@
                 <p class="truncate text-xs text-slate-400">{{ doc.customerName }} · {{ doc.projectName || 'tanpa proyek' }} · {{ doc.itemCount }} pekerjaan</p>
               </div>
               <button type="button" class="shrink-0 rounded-md bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brand-700" @click="applyOldDoc(doc)">
-                Salin Isi
+                + Gabungkan
               </button>
             </li>
             <li v-if="!oldDocs.length" class="px-4 py-6 text-center text-[13px] italic text-slate-400">Belum ada dokumen SPH lain.</li>
@@ -177,6 +177,7 @@
         </div>
 
         <p v-if="items.length" class="mt-3 text-[13px] text-emerald-700">{{ items.length }} baris pekerjaan siap disusun di langkah berikutnya.</p>
+        <p v-if="sourceHint" class="mt-1 text-[13px] text-slate-500">{{ sourceHint }}</p>
       </section>
 
       <!-- ===== Langkah 3: Susun Main Point ===== -->
@@ -189,8 +190,17 @@
         </div>
 
         <div class="space-y-3">
-          <div v-for="(it, idx) in items" :key="it.uid" class="rounded-lg border border-slate-200 p-3">
-            <div class="mb-2 flex items-center gap-2">
+          <div v-for="(it, idx) in items" :key="it.uid" class="rounded-lg border p-3 transition-colors" :class="draggingRow === it.uid ? 'border-brand-300 bg-brand-50/40' : 'border-slate-200'">
+            <div
+              class="mb-2 flex items-center gap-2"
+              :class="{ 'cursor-grab': items.length > 1 }"
+              :draggable="items.length > 1"
+              @dragstart="startRowDrag(it.uid)"
+              @dragenter.prevent="enterRowDrag(it.uid)"
+              @dragover.prevent
+              @dragend="endRowDrag"
+            >
+              <span v-if="items.length > 1" class="select-none text-slate-300" title="Seret untuk mengurutkan">&#8942;&#8942;</span>
               <span class="flex h-6 w-6 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700">{{ idx + 1 }}</span>
               <span class="flex-1 truncate text-[13px] font-medium text-slate-700">{{ it.name || '(belum diberi nama)' }}</span>
               <button type="button" :disabled="idx === 0" class="rounded px-1.5 py-1 text-xs text-slate-500 hover:bg-slate-100 disabled:opacity-30" @click="moveItem(idx, -1)">↑</button>
@@ -540,6 +550,7 @@ import type { CustomerView, VesselView } from '../types/partner'
 import type { WorkItemView } from '../types/master'
 import type { TemplateView } from '../types/template'
 import type { SphDocumentView, SphHeaderInput, SphItemInput, SphSubItemInput } from '../types/sph'
+import { useDragSort } from '../composables/useDragSort'
 
 const route = useRoute()
 const router = useRouter()
@@ -614,6 +625,7 @@ const sources = [
 const masterCatId = ref(0)
 const masterSearch = ref('')
 const oldDocs = ref<SphDocumentView[]>([])
+const sourceHint = ref('')
 const activeItemIdx = ref(0)
 
 // ===== turunan =====
@@ -840,6 +852,8 @@ async function applyTemplate(tpl: TemplateView) {
   pageError.value = ''
   try {
     const detail = await templateStore.getTemplateDetail(tpl.id)
+    let added = 0
+    let skipped = 0
     for (const row of detail.items ?? []) {
       if (!row.workItem) continue
       const fake: WorkItemView = {
@@ -859,39 +873,63 @@ async function applyTemplate(tpl: TemplateView) {
         createdAt: '',
         updatedAt: ''
       }
-      if (!items.value.some((it) => it.workItemId === fake.id)) await addFromWorkItem(fake)
+      if (!items.value.some((it) => it.workItemId === fake.id)) {
+        await addFromWorkItem(fake)
+        added++
+      } else {
+        skipped++
+      }
     }
+    sourceHint.value =
+      added > 0
+        ? `${added} pekerjaan digabungkan${skipped ? `, ${skipped} dilewati karena sudah ada` : ''}.`
+        : 'Semua pekerjaan template ini sudah ada di daftar.'
   } catch (e) {
     pageError.value = errorMessage(e)
   }
 }
 
+// Penggabungan (Phase 7): baris dari SPH lama ditambahkan ke pilihan yang
+// sudah ada, bukan menimpa. Duplikat pekerjaan master dilewati.
 async function applyOldDoc(doc: SphDocumentView) {
   pageError.value = ''
   try {
     const detail = await sphStore.getDetail(doc.id)
-    items.value = (detail.items ?? []).map((row) => ({
-      uid: nextUid(),
-      workItemId: row.workItemId ?? undefined,
-      name: row.nameSnapshot,
-      description: row.descriptionSnapshot,
-      quantity: row.quantity,
-      unit: row.unit,
-      serviceUnitPrice: row.serviceUnitPrice,
-      materialUnitPrice: row.materialUnitPrice,
-      pricingMode: row.pricingMode || 'HARGA_LANGSUNG',
-      notes: row.notes,
-      subItems: (row.subItems ?? []).map((s): SphSubItemInput => ({
-        name: s.nameSnapshot,
-        description: s.descriptionSnapshot,
-        quantity: s.quantity,
-        unit: s.unit,
-        serviceUnitPrice: s.serviceUnitPrice,
-        materialUnitPrice: s.materialUnitPrice,
-        weight: s.weight ?? 0,
-        notes: s.notes
-      }))
-    }))
+    let added = 0
+    let skipped = 0
+    for (const row of detail.items ?? []) {
+      if (row.workItemId && items.value.some((it) => it.workItemId === row.workItemId)) {
+        skipped++
+        continue
+      }
+      items.value.push({
+        uid: nextUid(),
+        workItemId: row.workItemId ?? undefined,
+        name: row.nameSnapshot,
+        description: row.descriptionSnapshot,
+        quantity: row.quantity,
+        unit: row.unit,
+        serviceUnitPrice: row.serviceUnitPrice,
+        materialUnitPrice: row.materialUnitPrice,
+        pricingMode: row.pricingMode || 'HARGA_LANGSUNG',
+        notes: row.notes,
+        subItems: (row.subItems ?? []).map((s): SphSubItemInput => ({
+          name: s.nameSnapshot,
+          description: s.descriptionSnapshot,
+          quantity: s.quantity,
+          unit: s.unit,
+          serviceUnitPrice: s.serviceUnitPrice,
+          materialUnitPrice: s.materialUnitPrice,
+          weight: s.weight ?? 0,
+          notes: s.notes
+        }))
+      })
+      added++
+    }
+    sourceHint.value =
+      added > 0
+        ? `${added} baris digabungkan${skipped ? `, ${skipped} dilewati karena sudah ada` : ''}.`
+        : 'Semua pekerjaan dokumen ini sudah ada di daftar.'
   } catch (e) {
     pageError.value = errorMessage(e)
   }
@@ -930,6 +968,13 @@ function moveItem(idx: number, dir: -1 | 1) {
   const [row] = items.value.splice(idx, 1)
   items.value.splice(target, 0, row)
 }
+
+// Drag-and-drop urutan main point (Phase 7): urutan array = urutan tersimpan.
+const { draggingId: draggingRow, startDrag: startRowDrag, enterDrag: enterRowDrag, endDrag: endRowDrag } = useDragSort(
+  items,
+  () => {},
+  (r) => r.uid
+)
 
 function goTo(n: number) {
   if (n < 1 || n > steps.length || savedView.value) return
