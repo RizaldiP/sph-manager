@@ -34,9 +34,12 @@ type App struct {
 	customers  *services.CustomerService
 	materials  *services.MaterialService
 	settings   *services.SettingsService
+	export     *services.ExportService
 }
 
 func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
+	settingsSvc := services.NewSettingsService(db, lg)
+	sphSvc := services.NewSphService(db, lg)
 	return &App{
 		cfg:        cfg,
 		db:         db,
@@ -45,10 +48,11 @@ func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
 		workItems:  services.NewWorkItemService(db, lg),
 		subItems:   services.NewWorkSubItemService(db, lg),
 		templates:  services.NewTemplateService(db, lg),
-		sph:        services.NewSphService(db, lg),
+		sph:        sphSvc,
 		customers:  services.NewCustomerService(db, lg),
 		materials:  services.NewMaterialService(db, lg),
-		settings:   services.NewSettingsService(db, lg),
+		settings:   settingsSvc,
+		export:     services.NewExportService(sphSvc, settingsSvc, lg),
 	}
 }
 

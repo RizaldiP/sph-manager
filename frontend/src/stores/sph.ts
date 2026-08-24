@@ -9,7 +9,10 @@ import {
   DeleteSph,
   SetSphStatus,
   DuplicateSph,
-  CreateSphRevision
+  CreateSphRevision,
+  ExportSphExcel,
+  ExportSphPdf,
+  OpenExportFolder
 } from '../../wailsjs/go/main/App'
 import type {
   DashboardStats,
@@ -78,6 +81,20 @@ export const useSphStore = defineStore('sph', () => {
     return doc
   }
 
+  // ===== export (Phase 9) =====
+  // Balik path final untuk banner sukses; string kosong = pengguna batal.
+  function exportExcel(id: number) {
+    return ExportSphExcel(id) as unknown as Promise<string>
+  }
+
+  function exportPdf(id: number, orientation: 'landscape' | 'portrait') {
+    return ExportSphPdf(id, orientation) as unknown as Promise<string>
+  }
+
+  function openExportFolder(path: string) {
+    OpenExportFolder(path)
+  }
+
   // ===== dashboard =====
   const stats = ref<DashboardStats | null>(null)
   const statsLoading = ref(false)
@@ -108,6 +125,9 @@ export const useSphStore = defineStore('sph', () => {
     setStatus,
     duplicate,
     createRevision,
+    exportExcel,
+    exportPdf,
+    openExportFolder,
     stats,
     statsLoading,
     statsError,

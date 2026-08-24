@@ -13,6 +13,22 @@
           <button type="button" :disabled="busyAction !== ''" class="rounded-lg border border-slate-200 px-3.5 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60" @click="doDuplicate">
             Duplikat
           </button>
+          <div class="relative">
+            <button
+              type="button"
+              :disabled="busyAction !== ''"
+              class="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3.5 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+              @click.stop="exportMenuOpen = !exportMenuOpen"
+            >
+              Export
+              <svg class="h-3.5 w-3.5 transition-transform" :class="exportMenuOpen ? 'rotate-180' : ''" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.23 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+            </button>
+            <div v-if="exportMenuOpen" class="absolute right-0 z-20 mt-1.5 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+              <button type="button" class="block w-full px-3.5 py-2 text-left text-[13px] text-slate-700 hover:bg-brand-50" @click="runExport('excel')">Excel (.xlsx)</button>
+              <button type="button" class="block w-full px-3.5 py-2 text-left text-[13px] text-slate-700 hover:bg-brand-50" @click="runExport('pdf-landscape')">PDF Landscape</button>
+              <button type="button" class="block w-full px-3.5 py-2 text-left text-[13px] text-slate-700 hover:bg-brand-50" @click="runExport('pdf-portrait')">PDF Portrait</button>
+            </div>
+          </div>
           <button
             v-if="['FINAL', 'SENT', 'REJECTED'].includes(doc.status)"
             type="button"
@@ -26,6 +42,10 @@
       </PageHeader>
 
       <p v-if="actionError" class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-[13px] text-red-700">{{ actionError }}</p>
+      <div v-if="exportedPath" class="mb-4 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[13px] text-emerald-800">
+        <span class="min-w-0 truncate">Dokumen tersimpan: {{ exportedPath }}</span>
+        <button type="button" class="shrink-0 font-semibold underline-offset-2 hover:underline" @click="store.openExportFolder(exportedPath)">Buka Folder</button>
+      </div>
 
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <!-- Dokumen -->
@@ -178,7 +198,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
@@ -334,5 +354,44 @@ async function doRevision() {
   }
 }
 
-onMounted(reload)
+// ===== export dokumen (Phase 9) =====
+const exportMenuOpen = ref(false)
+const exportedPath = ref('')
+
+function closeExportMenu() {
+  exportMenuOpen.value = false
+}
+
+type ExportKind = 'excel' | 'pdf-landscape' | 'pdf-portrait'
+
+async function runExport(kind: ExportKind) {
+  exportMenuOpen.value = false
+  if (!doc.value) return
+  busyAction.value = 'EXPORT'
+  actionError.value = ''
+  try {
+    let path = ''
+    if (kind === 'excel') {
+      path = await store.exportExcel(docId.value)
+    } else {
+      path = await store.exportPdf(docId.value, kind === 'pdf-landscape' ? 'landscape' : 'portrait')
+    }
+    if (path) {
+      exportedPath.value = path
+    }
+  } catch (e) {
+    actionError.value = errorMessage(e)
+  } finally {
+    busyAction.value = ''
+  }
+}
+
+onMounted(() => {
+  reload()
+  document.addEventListener('click', closeExportMenu)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeExportMenu)
+})
 </script>

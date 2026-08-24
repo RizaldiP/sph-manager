@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/glebarez/sqlite v1.11.0
+	github.com/go-pdf/fpdf v0.9.0
 	github.com/shakinm/xlsReader v0.9.12
 	github.com/wailsapp/wails/v2 v2.15.0
 	github.com/xuri/excelize/v2 v2.11.0

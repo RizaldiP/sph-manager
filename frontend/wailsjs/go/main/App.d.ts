@@ -51,6 +51,10 @@ export function DuplicateSph(arg1:number):Promise<services.SphDocumentView>;
 
 export function DuplicateTemplate(arg1:number):Promise<services.TemplateView>;
 
+export function ExportSphExcel(arg1:number):Promise<string>;
+
+export function ExportSphPdf(arg1:number,arg2:string):Promise<string>;
+
 export function GetSettings():Promise<services.SettingsView>;
 
 export function GetSph(arg1:number):Promise<models.SphDocument>;
@@ -76,6 +80,8 @@ export function ListTemplates(arg1:boolean,arg2:string):Promise<Array<services.T
 export function ListWorkItems(arg1:number,arg2:boolean,arg3:string):Promise<Array<services.WorkItemView>>;
 
 export function LogoDataUrl():Promise<string>;
+
+export function OpenExportFolder(arg1:string):Promise<void>;
 
 export function ParseImportRows(arg1:string,arg2:string,arg3:importers.ColumnMapping):Promise<Array<importers.PreviewRow>>;
 

@@ -94,6 +94,14 @@ export function DuplicateTemplate(arg1) {
   return window['go']['main']['App']['DuplicateTemplate'](arg1);
 }
 
+export function ExportSphExcel(arg1) {
+  return window['go']['main']['App']['ExportSphExcel'](arg1);
+}
+
+export function ExportSphPdf(arg1, arg2) {
+  return window['go']['main']['App']['ExportSphPdf'](arg1, arg2);
+}
+
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
@@ -144,6 +152,10 @@ export function ListWorkItems(arg1, arg2, arg3) {
 
 export function LogoDataUrl() {
   return window['go']['main']['App']['LogoDataUrl']();
+}
+
+export function OpenExportFolder(arg1) {
+  return window['go']['main']['App']['OpenExportFolder'](arg1);
 }
 
 export function ParseImportRows(arg1, arg2, arg3) {
