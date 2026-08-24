@@ -7,10 +7,11 @@ import (
 
 	"github.com/RizaldiP/sph-manager/internal/config"
 	"github.com/RizaldiP/sph-manager/internal/database"
+	"github.com/RizaldiP/sph-manager/internal/services"
 	"gorm.io/gorm"
 )
 
-const appVersion = "0.1.0"
+const appVersion = "0.2.0"
 
 type HealthInfo struct {
 	Status       string `json:"status"`
@@ -24,10 +25,21 @@ type App struct {
 	cfg *config.Config
 	db  *gorm.DB
 	log *slog.Logger
+
+	categories *services.CategoryService
+	workItems  *services.WorkItemService
+	subItems   *services.WorkSubItemService
 }
 
 func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
-	return &App{cfg: cfg, db: db, log: lg}
+	return &App{
+		cfg:        cfg,
+		db:         db,
+		log:        lg,
+		categories: services.NewCategoryService(db, lg),
+		workItems:  services.NewWorkItemService(db, lg),
+		subItems:   services.NewWorkSubItemService(db, lg),
+	}
 }
 
 func (a *App) startup(ctx context.Context) {

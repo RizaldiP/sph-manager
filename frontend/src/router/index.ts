@@ -2,6 +2,8 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import MainLayout from '../layouts/MainLayout.vue'
 import DashboardPage from '../pages/DashboardPage.vue'
 import PlaceholderPage from '../pages/PlaceholderPage.vue'
+import MasterPekerjaanPage from '../pages/MasterPekerjaanPage.vue'
+import KategoriPage from '../pages/KategoriPage.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -20,8 +22,8 @@ const router = createRouter({
         { path: 'sph/draft', name: 'sph-draft', component: PlaceholderPage, meta: { title: 'Draft SPH', breadcrumb: ['SPH', 'Draft'], phase: 'Phase 5' } },
         { path: 'sph/final', name: 'sph-final', component: PlaceholderPage, meta: { title: 'SPH Final', breadcrumb: ['SPH', 'Final'], phase: 'Phase 5' } },
         { path: 'sph/baru', name: 'sph-baru', component: PlaceholderPage, meta: { title: 'Buat SPH', breadcrumb: ['SPH', 'Buat SPH'], phase: 'Phase 5' } },
-        { path: 'pekerjaan', name: 'pekerjaan', component: PlaceholderPage, meta: { title: 'Master Pekerjaan', breadcrumb: ['Pekerjaan', 'Master Pekerjaan'], phase: 'Phase 3' } },
-        { path: 'pekerjaan/kategori', name: 'kategori', component: PlaceholderPage, meta: { title: 'Kategori', breadcrumb: ['Pekerjaan', 'Kategori'], phase: 'Phase 3' } },
+        { path: 'pekerjaan', name: 'pekerjaan', component: MasterPekerjaanPage, meta: { title: 'Master Pekerjaan', breadcrumb: ['Pekerjaan', 'Master Pekerjaan'] } },
+        { path: 'pekerjaan/kategori', name: 'kategori', component: KategoriPage, meta: { title: 'Kategori', breadcrumb: ['Pekerjaan', 'Kategori'] } },
         { path: 'pekerjaan/template', name: 'template', component: PlaceholderPage, meta: { title: 'Template', breadcrumb: ['Pekerjaan', 'Template'], phase: 'Phase 4' } },
         { path: 'data/customer', name: 'customer', component: PlaceholderPage, meta: { title: 'Customer', breadcrumb: ['Master Data', 'Customer'], phase: 'Phase 3' } },
         { path: 'data/kapal', name: 'kapal', component: PlaceholderPage, meta: { title: 'Kapal', breadcrumb: ['Master Data', 'Kapal'], phase: 'Phase 3' } },

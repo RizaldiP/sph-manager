@@ -6,7 +6,7 @@
 
 ## Status Proyek
 
-**PHASE 0 — ANALISIS: SELESAI** ✅ · Menunggu instruksi `LANJUT PHASE 1`.
+**PHASE 0–3: SELESAI** ✅ (Analisis → Foundation → Database → Master Pekerjaan) · Menunggu instruksi `LANJUT PHASE 4` (Template).
 
 Rencana lengkap: [docs/development-plan.md](docs/development-plan.md).
 

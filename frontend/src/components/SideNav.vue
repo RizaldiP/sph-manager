@@ -117,9 +117,10 @@ const sections: NavSection[] = [
 ]
 
 function isActive(to: string): boolean {
-  if (to === '/') {
-    return route.path === '/'
-  }
-  return route.path === to || route.path.startsWith(to + '/')
+  const matchLen = (p: string): number =>
+    route.path === p || route.path.startsWith(p + '/') ? p.length : 0
+  const myLen = matchLen(to)
+  if (myLen === 0) return false
+  return !sections.some((s) => s.items.some((i) => i.to !== to && matchLen(i.to) > myLen))
 }
 </script>

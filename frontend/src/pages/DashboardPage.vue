@@ -21,9 +21,10 @@
           <button
             v-for="action in actions"
             :key="action.label"
-            disabled
+            :disabled="!action.to"
             class="flex items-center gap-2.5 rounded-lg border px-3.5 py-3 text-left text-[13px] transition-colors disabled:cursor-not-allowed"
             :class="action.primary ? 'border-accent-200 bg-accent-50 text-accent-700' : 'border-slate-200 bg-white text-slate-600'"
+            @click="action.to && router.push(action.to)"
           >
             <span
               class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white"
@@ -80,11 +81,13 @@
 </template>
 
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { useAppStore } from '../stores/app'
 
 const store = useAppStore()
+const router = useRouter()
 
 interface Stat {
   label: string
@@ -102,11 +105,12 @@ interface QuickAction {
   label: string
   phase: string
   primary?: boolean
+  to?: string
 }
 
 const actions: QuickAction[] = [
   { label: 'Buat SPH', phase: '5', primary: true },
-  { label: 'Tambah Pekerjaan', phase: '3' },
+  { label: 'Tambah Pekerjaan', phase: '3', to: '/pekerjaan' },
   { label: 'Tambah Template', phase: '4' },
   { label: 'Import Excel', phase: '8' }
 ]

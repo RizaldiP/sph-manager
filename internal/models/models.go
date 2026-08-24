@@ -36,6 +36,7 @@ type Category struct {
 	Code        string         `gorm:"size:50;notNull;index" json:"code"`
 	Name        string         `gorm:"size:150;notNull" json:"name"`
 	Description string         `gorm:"size:500" json:"description"`
+	Sequence    int            `gorm:"notNull;default:0;index" json:"sequence"`
 	IsActive    bool           `gorm:"notNull;default:true;index" json:"isActive"`
 	CreatedAt   time.Time      `json:"createdAt"`
 	UpdatedAt   time.Time      `json:"updatedAt"`
@@ -57,6 +58,7 @@ type WorkItem struct {
 	DefaultServicePrice  int64          `gorm:"notNull;default:0" json:"defaultServicePrice"`
 	DefaultMaterialPrice int64          `gorm:"notNull;default:0" json:"defaultMaterialPrice"`
 	Notes                string         `gorm:"size:1000" json:"notes"`
+	Sequence             int            `gorm:"notNull;default:0;index" json:"sequence"`
 	IsActive             bool           `gorm:"notNull;default:true;index" json:"isActive"`
 	CreatedAt            time.Time      `json:"createdAt"`
 	UpdatedAt            time.Time      `json:"updatedAt"`

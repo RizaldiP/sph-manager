@@ -48,13 +48,15 @@
 
 **Acceptance:** migration idempotent, test integrasi DB hijau. Dokumentasi `docs/database.md`.
 
-## PHASE 3 — Master Pekerjaan
+## PHASE 3 — Master Pekerjaan ✅
 
 **Scope:** CRUD kategori, work item, sub work item; search; reorder (drag-and-drop); aktif/nonaktif; validasi; error handling ramah; halaman UI sesuai FR-U4.
 
-**Test:** buat `Electrical → Repair Control Panel → Inspection, Troubleshooting, Wiring Check, Component Replacement, Testing, Commissioning`; ubah urutan; nonaktifkan.
+**Hasil:** layer `internal/repositories` + `internal/services` (validasi, error ramah BR-15, audit log BR-13, transaksi BR-16); 18 binding method (`app_master.go`): kategori (list/create/update/set-active/delete/reorder), pekerjaan (+detail berisi sub), sub-pekerjaan; field `sequence` baru di `categories` & `work_items` untuk reorder; halaman **Kategori** & **Master Pekerjaan** (filter kategori + hitungan, search server-side, toggle nonaktif, drag-and-drop urutan native HTML5 via `useDragSort`, modal form, confirm dialog, empty state); store Pinia `master`; komponen `AppModal` & `ConfirmDialog`; quick action Dashboard "Tambah Pekerjaan" aktif.
 
-**Acceptance:** CRUD + reorder tersimpan; test unit + integrasi hijau.
+**Test:** `go test ./internal/...` hijau — 15 unit/integrasi termasuk skenario acceptance: `Electrical → Repair Control Panel → Inspection…Commissioning → ubah urutan → nonaktifkan`; hapus kategori/pekerjaan yang masih berisi anak ditolak dengan pesan ramah; reorder parsial ditolak; kode duplikat ditolak soft-delete-aware. `vue-tsc --noEmit` bersih; `wails build` sukses → `SPHManager.exe`.
+
+**Acceptance:** CRUD + reorder tersimpan ✓; test unit + integrasi hijau ✓.
 
 ## PHASE 4 — Template
 
