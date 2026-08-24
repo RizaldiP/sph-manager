@@ -236,7 +236,10 @@
                 <input v-model.number="it.serviceUnitPrice" type="number" min="0" class="row-input" />
               </div>
               <div class="md:col-span-1">
-                <label class="mb-1 block text-xs font-medium text-slate-500">Mat.</label>
+                <label class="mb-1 flex items-center justify-between text-xs font-medium text-slate-500">
+                  Mat.
+                  <button type="button" title="Pilih dari master material" class="rounded px-1 text-[11px] font-semibold leading-none text-brand-600 transition-colors hover:bg-brand-50" @click="openPick(idx)">⌕</button>
+                </label>
                 <input v-model.number="it.materialUnitPrice" type="number" min="0" class="row-input" />
               </div>
             </div>
@@ -328,6 +331,7 @@
                 </div>
                 <div class="md:col-span-2 flex items-center justify-between gap-2">
                   <input v-model.number="sub.materialUnitPrice" type="number" min="0" title="Harga material" class="row-input" />
+                  <button type="button" title="Pilih dari master material" class="shrink-0 rounded px-1.5 py-1.5 text-xs font-semibold text-brand-600 transition-colors hover:bg-brand-50" @click="openPick(activeItemIdx, sIdx)">⌕</button>
                   <button type="button" class="shrink-0 rounded px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" @click="activeItem.subItems.splice(sIdx, 1)">✕</button>
                 </div>
               </template>
@@ -533,6 +537,37 @@
         </div>
       </section>
     </div>
+
+    <!-- Pemilih material master (FR-M7) -->
+    <AppModal v-model="pickOpen" title="Pilih Material">
+      <div class="relative mb-3">
+        <svg class="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+        </svg>
+        <input
+          v-model="pickSearch"
+          type="search"
+          placeholder="Cari nama, kode, atau supplier…"
+          class="w-full rounded-lg border border-slate-200 py-2 pl-8 pr-3 text-[13px] outline-none transition-colors focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+        />
+      </div>
+      <ul class="max-h-[320px] divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200">
+        <li v-for="m in pickList" :key="m.id" class="flex items-center gap-3 px-4 py-2.5 text-[13px]">
+          <div class="min-w-0 flex-1">
+            <p class="truncate font-medium text-slate-700">{{ m.name }}</p>
+            <p class="truncate text-xs text-slate-400">
+              <span v-if="m.code" class="font-mono">{{ m.code }}</span><span v-if="m.code && m.supplier"> · </span>{{ m.supplier || '—' }}
+            </p>
+          </div>
+          <span class="shrink-0 text-xs text-slate-400">{{ m.unit }}</span>
+          <span class="whitespace-nowrap tabular-nums text-slate-600">{{ formatRupiah(m.defaultPrice) }}</span>
+          <button type="button" class="shrink-0 rounded-md bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brand-700" @click="applyPick(m)">Pilih</button>
+        </li>
+        <li v-if="!pickList.length" class="px-4 py-6 text-center text-[13px] italic text-slate-400">
+          Tidak ada material aktif yang cocok. Tambahkan lewat menu Master Data → Material.
+        </li>
+      </ul>
+    </AppModal>
   </div>
 </template>
 
@@ -540,14 +575,16 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
+import AppModal from '../components/AppModal.vue'
 import { usePartnerStore } from '../stores/partner'
 import { useMasterStore } from '../stores/master'
 import { useTemplateStore } from '../stores/template'
 import { useSphStore } from '../stores/sph'
+import { useMaterialStore } from '../stores/material'
 import { Terbilang } from '../../wailsjs/go/main/App'
 import { formatRupiah, formatQty, errorMessage } from '../utils/format'
 import type { CustomerView, VesselView } from '../types/partner'
-import type { WorkItemView } from '../types/master'
+import type { MaterialView, WorkItemView } from '../types/master'
 import type { TemplateView } from '../types/template'
 import type { SphDocumentView, SphHeaderInput, SphItemInput, SphSubItemInput } from '../types/sph'
 import { useDragSort } from '../composables/useDragSort'
@@ -558,6 +595,43 @@ const partnerStore = usePartnerStore()
 const masterStore = useMasterStore()
 const templateStore = useTemplateStore()
 const sphStore = useSphStore()
+const materialStore = useMaterialStore()
+
+// ===== pemilih material master (FR-M7) =====
+const pickOpen = ref(false)
+const pickSearch = ref('')
+const pickTarget = ref<{ itemIdx: number; subIdx?: number } | null>(null)
+const pickList = computed(() => {
+  const q = pickSearch.value.trim().toLowerCase()
+  return materialStore.materials.filter(
+    (m) =>
+      m.isActive &&
+      (!q ||
+        m.name.toLowerCase().includes(q) ||
+        m.code.toLowerCase().includes(q) ||
+        m.supplier.toLowerCase().includes(q))
+  )
+})
+
+async function openPick(itemIdx: number, subIdx?: number) {
+  pickTarget.value = { itemIdx, subIdx }
+  pickSearch.value = ''
+  pickOpen.value = true
+  await materialStore.load()
+}
+
+// Isi harga material baris target dari master; satuan ikut bila masih kosong.
+function applyPick(m: MaterialView) {
+  const t = pickTarget.value
+  if (!t) return
+  const it = items.value[t.itemIdx]
+  if (!it) return
+  const row = t.subIdx === undefined ? it : it.subItems[t.subIdx]
+  if (!row) return
+  row.materialUnitPrice = m.defaultPrice
+  if (!row.unit.trim()) row.unit = m.unit || ''
+  pickOpen.value = false
+}
 
 // ===== wizard state =====
 const steps = [

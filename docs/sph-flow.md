@@ -126,6 +126,9 @@ terbesar, tie-break urutan baris) sehingga Σ alokasi = nilai main point
 
 ## 10. Batasan Saat Ini
 
-- Master material tersedia (FR-M7) untuk referensi harga, tetapi wizard SPH
-  belum mengaitkan baris ke material master — harga material diisi manual.
+- Master material tersedia (FR-M7) dan bisa dipakai langsung dari wizard:
+  tombol ⌕ di kolom Mat. (main point langkah 3, sub point harga langsung
+  langkah 4) membuka pemilih material aktif — memilih mengisi harga material
+  baris (dan satuan bila masih kosong) sehingga ikut dihitung. Baris tetap
+  tidak tersimpan sebagai tautan ke master; nilai ter-snapshot apa adanya.
 - Export PDF/print menyusul di fase export.
