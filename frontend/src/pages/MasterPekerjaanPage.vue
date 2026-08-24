@@ -82,6 +82,37 @@
           <span v-if="canDragWi" class="ml-auto text-xs text-slate-400">Seret untuk mengatur urutan pekerjaan</span>
         </div>
 
+        <!-- Bar hapus massal pekerjaan -->
+        <div v-if="selectedWi.size" class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-[13px]">
+          <label class="flex cursor-pointer items-center gap-2 font-medium text-slate-700">
+            <input
+              type="checkbox"
+              class="h-4 w-4 rounded border-slate-300 accent-brand-600"
+              :checked="allWiSelected"
+              @change="toggleAllWi($event)"
+            />
+            Pilih semua
+          </label>
+          <span class="text-slate-600">{{ selectedWi.size }} dipilih</span>
+          <div class="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+              @click="selectedWi = new Set()"
+            >
+              Bersihkan
+            </button>
+            <button
+              type="button"
+              class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+              :disabled="deleting"
+              @click="askBulkDeleteWi"
+            >
+              Hapus Terpilih
+            </button>
+          </div>
+        </div>
+
         <div v-if="store.workItemsLoading" class="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-[13px] text-slate-400">Memuat…</div>
 
         <div v-else-if="!store.workItems.length" class="rounded-xl border border-slate-200 bg-white p-6">
@@ -104,6 +135,13 @@
             :class="[wi.isActive ? 'border-slate-200' : 'border-slate-200 opacity-55', draggingWi === wi.id ? 'shadow-lg ring-2 ring-brand-200' : '']"
           >
             <header class="flex items-center gap-3 px-4 py-3">
+              <input
+                type="checkbox"
+                class="h-4 w-4 shrink-0 rounded border-slate-300 accent-brand-600"
+                :checked="selectedWi.has(wi.id)"
+                @change="toggleSelectWi(wi.id, $event)"
+                @click.stop
+              />
               <span
                 v-if="canDragWi"
                 class="cursor-grab select-none text-slate-300"
@@ -154,6 +192,14 @@
               <table v-else-if="subRows.length" class="w-full text-left">
                 <thead>
                   <tr class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
+                    <th class="w-8 py-1.5 pl-2 font-medium">
+                      <input
+                        type="checkbox"
+                        class="h-3.5 w-3.5 rounded border-slate-300 accent-brand-600"
+                        :checked="allSubsSelected"
+                        @change="toggleAllSubs($event)"
+                      />
+                    </th>
                     <th class="w-10 py-1.5 pl-2 font-medium"></th>
                     <th class="px-2 py-1.5 font-medium">#</th>
                     <th class="px-2 py-1.5 font-medium">Nama</th>
@@ -176,6 +222,14 @@
                     @dragover.prevent
                     @dragend="endDragSub"
                   >
+                    <td class="py-2 pl-2">
+                      <input
+                        type="checkbox"
+                        class="h-3.5 w-3.5 rounded border-slate-300 accent-brand-600"
+                        :checked="selectedSubs.has(sub.id)"
+                        @change="toggleSelectSub(sub.id, $event)"
+                      />
+                    </td>
                     <td class="py-2 pl-2 text-slate-300">
                       <span v-if="canDragSubs" class="select-none">&#8942;&#8942;</span>
                       <span v-else>{{ sub.sequence || sIdx + 1 }}</span>
@@ -201,6 +255,28 @@
               </table>
 
               <p v-else class="py-2 text-[13px] text-slate-400">Belum ada sub-pekerjaan.</p>
+
+              <!-- Bar hapus massal sub-pekerjaan -->
+              <div v-if="selectedSubs.size" class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px]">
+                <span class="text-slate-600">{{ selectedSubs.size }} dipilih</span>
+                <div class="ml-auto flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                    @click="selectedSubs = new Set()"
+                  >
+                    Bersihkan
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+                    :disabled="deleting"
+                    @click="askBulkDeleteSubs"
+                  >
+                    Hapus Terpilih
+                  </button>
+                </div>
+              </div>
 
               <button
                 type="button"
@@ -345,10 +421,21 @@
       v-model="deleteWiOpen"
       title="Hapus Pekerjaan"
       :message="`Hapus pekerjaan '${deleteWiTarget?.name ?? ''}'?`"
-      detail="Data tidak akan tampil lagi di daftar utama namun tetap tersimpan."
+      detail="Seluruh sub-pekerjaannya ikut terhapus. Data tidak akan tampil lagi namun tetap tersimpan."
       confirm-label="Hapus"
       :busy="deleting"
       @confirm="confirmDeleteWi"
+    />
+
+    <!-- Konfirmasi hapus massal pekerjaan -->
+    <ConfirmDialog
+      v-model="bulkDeleteWiOpen"
+      title="Hapus Pekerjaan Terpilih"
+      :message="`Hapus ${selectedWi.size} pekerjaan beserta seluruh sub-pekerjaannya?`"
+      detail="Semua sub-pekerjaan di bawahnya ikut terhapus. Data tetap tersimpan dan tidak dapat dikembalikan dari aplikasi."
+      confirm-label="Hapus Semua"
+      :busy="deleting"
+      @confirm="confirmBulkDeleteWi"
     />
 
     <!-- Konfirmasi hapus sub-pekerjaan -->
@@ -360,6 +447,17 @@
       confirm-label="Hapus"
       :busy="deleting"
       @confirm="confirmDeleteSub"
+    />
+
+    <!-- Konfirmasi hapus massal sub-pekerjaan -->
+    <ConfirmDialog
+      v-model="bulkDeleteSubOpen"
+      title="Hapus Sub-Pekerjaan Terpilih"
+      :message="`Hapus ${selectedSubs.size} sub-pekerjaan?`"
+      detail="Data tidak akan tampil lagi namun tetap tersimpan."
+      confirm-label="Hapus Semua"
+      :busy="deleting"
+      @confirm="confirmBulkDeleteSubs"
     />
   </div>
 </template>
@@ -466,6 +564,66 @@ const { draggingId: draggingSub, startDrag: startDragSub, enterDrag: enterDragSu
     }
   })
 
+// ===== seleksi massal =====
+const selectedWi = ref(new Set<number>())
+const selectedSubs = ref(new Set<number>())
+
+function toggleSelectWi(id: number, ev: Event) {
+  const on = (ev.target as HTMLInputElement).checked
+  const next = new Set(selectedWi.value)
+  if (on) next.add(id)
+  else next.delete(id)
+  selectedWi.value = next
+}
+
+const allWiSelected = computed(
+  () => store.workItems.length > 0 && store.workItems.every((w) => selectedWi.value.has(w.id))
+)
+
+function toggleAllWi(ev: Event) {
+  const on = (ev.target as HTMLInputElement).checked
+  selectedWi.value = on ? new Set(store.workItems.map((w) => w.id)) : new Set()
+}
+
+// buang ID yang sudah tidak ada di daftar setiap kali data dimuat ulang
+watch(
+  () => store.workItems,
+  (list) => {
+    if (!selectedWi.value.size) return
+    const alive = new Set(list.map((w) => w.id))
+    const next = new Set([...selectedWi.value].filter((id) => alive.has(id)))
+    if (next.size !== selectedWi.value.size) selectedWi.value = next
+  }
+)
+
+watch(expandedId, () => {
+  selectedSubs.value = new Set()
+})
+
+const allSubsSelected = computed(
+  () => subRows.value.length > 0 && subRows.value.every((s) => selectedSubs.value.has(s.id))
+)
+
+function toggleSelectSub(id: number, ev: Event) {
+  const on = (ev.target as HTMLInputElement).checked
+  const next = new Set(selectedSubs.value)
+  if (on) next.add(id)
+  else next.delete(id)
+  selectedSubs.value = next
+}
+
+function toggleAllSubs(ev: Event) {
+  const on = (ev.target as HTMLInputElement).checked
+  selectedSubs.value = on ? new Set(subRows.value.map((s) => s.id)) : new Set()
+}
+
+watch(subRows, (rows) => {
+  if (!selectedSubs.value.size) return
+  const alive = new Set(rows.map((s) => s.id))
+  const next = new Set([...selectedSubs.value].filter((id) => alive.has(id)))
+  if (next.size !== selectedSubs.value.size) selectedSubs.value = next
+})
+
 // ===== form pekerjaan =====
 const wiFormOpen = ref(false)
 const editingWi = ref<WorkItemView | null>(null)
@@ -552,6 +710,33 @@ async function confirmDeleteWi() {
   } catch (e) {
     actionError.value = errorMessage(e)
     deleteWiOpen.value = false
+  } finally {
+    deleting.value = false
+  }
+}
+
+// ===== hapus massal pekerjaan =====
+const bulkDeleteWiOpen = ref(false)
+
+function askBulkDeleteWi() {
+  if (!selectedWi.value.size) return
+  actionError.value = ''
+  bulkDeleteWiOpen.value = true
+}
+
+async function confirmBulkDeleteWi() {
+  deleting.value = true
+  try {
+    const ids = [...selectedWi.value]
+    await store.deleteWorkItems(ids)
+    if (expandedId.value !== null && ids.includes(expandedId.value)) expandedId.value = null
+    selectedWi.value = new Set()
+    actionError.value = ''
+    bulkDeleteWiOpen.value = false
+    await Promise.all([store.loadWorkItems(), store.loadCategories()])
+  } catch (e) {
+    actionError.value = errorMessage(e)
+    bulkDeleteWiOpen.value = false
   } finally {
     deleting.value = false
   }
@@ -670,6 +855,33 @@ async function confirmDeleteSub() {
   } catch (e) {
     actionError.value = errorMessage(e)
     deleteSubOpen.value = false
+  } finally {
+    deleting.value = false
+  }
+}
+
+// ===== hapus massal sub-pekerjaan =====
+const bulkDeleteSubOpen = ref(false)
+
+function askBulkDeleteSubs() {
+  if (!selectedSubs.value.size) return
+  actionError.value = ''
+  bulkDeleteSubOpen.value = true
+}
+
+async function confirmBulkDeleteSubs() {
+  if (expandedId.value === null) return
+  deleting.value = true
+  try {
+    await store.deleteSubItems([...selectedSubs.value])
+    selectedSubs.value = new Set()
+    actionError.value = ''
+    bulkDeleteSubOpen.value = false
+    await loadDetail(expandedId.value)
+    await store.loadWorkItems()
+  } catch (e) {
+    actionError.value = errorMessage(e)
+    bulkDeleteSubOpen.value = false
   } finally {
     deleting.value = false
   }

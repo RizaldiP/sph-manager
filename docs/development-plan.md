@@ -54,7 +54,9 @@
 
 **Hasil:** layer `internal/repositories` + `internal/services` (validasi, error ramah BR-15, audit log BR-13, transaksi BR-16); 18 binding method (`app_master.go`): kategori (list/create/update/set-active/delete/reorder), pekerjaan (+detail berisi sub), sub-pekerjaan; field `sequence` baru di `categories` & `work_items` untuk reorder; halaman **Kategori** & **Master Pekerjaan** (filter kategori + hitungan, search server-side, toggle nonaktif, drag-and-drop urutan native HTML5 via `useDragSort`, modal form, confirm dialog, empty state); store Pinia `master`; komponen `AppModal` & `ConfirmDialog`; quick action Dashboard "Tambah Pekerjaan" aktif.
 
-**Test:** `go test ./internal/...` hijau — 15 unit/integrasi termasuk skenario acceptance: `Electrical → Repair Control Panel → Inspection…Commissioning → ubah urutan → nonaktifkan`; hapus kategori/pekerjaan yang masih berisi anak ditolak dengan pesan ramah; reorder parsial ditolak; kode duplikat ditolak soft-delete-aware. `vue-tsc --noEmit` bersih; `wails build` sukses → `SPHManager.exe`.
+**Test:** `go test ./internal/...` hijau — 15 unit/integrasi termasuk skenario acceptance: `Electrical → Repair Control Panel → Inspection…Commissioning → ubah urutan → nonaktifkan`; reorder parsial ditolak; kode duplikat ditolak soft-delete-aware. `vue-tsc --noEmit` bersih; `wails build` sukses → `SPHManager.exe`.
+
+**Pasca-ulasan (hapus massal):** hapus **tunggal maupun massal** pekerjaan kini **kaskade** — sub-pekerjaannya (aktif & nonaktif) ikut soft delete dalam satu transaksi (guard lama "masih memiliki N sub" dihapus); guard pemakaian template hidup tetap. Binding baru `DeleteWorkItems(ids)` & `DeleteSubItems(ids)` mengembalikan ringkasan `{items, subs}`; seluruh batch dibatalkan bila ada ID hilang/terpakai template. UI Master Pekerjaan: checkbox per kartu + bar "N dipilih · Hapus Terpilih · Bersihkan · pilih semua", kolom checkbox + select-all pada tabel sub dengan bar hapus massalnya sendiri; seleksi otomatis dibersihkan saat data dimuat ulang.
 
 **Acceptance:** CRUD + reorder tersimpan ✓; test unit + integrasi hijau ✓.
 

@@ -29,6 +29,12 @@ type WorkItemView struct {
 	UpdatedAt            string  `json:"updatedAt"`
 }
 
+// DeleteResult ringkasan hasil hapus massal pekerjaan / sub-pekerjaan.
+type DeleteResult struct {
+	Items int64 `json:"items"`
+	Subs  int64 `json:"subs"`
+}
+
 // WorkItemService: CRUD master pekerjaan (FR-M2, FR-M8, BR-05, BR-13, BR-15).
 type WorkItemService struct {
 	db       *gorm.DB

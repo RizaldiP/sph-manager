@@ -61,6 +61,12 @@ func (a *App) DeleteWorkItem(id uint) error {
 	return a.workItems.Delete(id)
 }
 
+// DeleteWorkItems menghapus banyak pekerjaan sekaligus beserta sub-pekerjaannya
+// dalam satu transaksi; seluruh batch dibatalkan bila ada yang bermasalah.
+func (a *App) DeleteWorkItems(ids []uint) (*services.DeleteResult, error) {
+	return a.workItems.DeleteMany(ids)
+}
+
 // ReorderWorkItems menyimpan urutan baru pekerjaan dalam satu kategori.
 func (a *App) ReorderWorkItems(categoryID uint, ids []uint) error {
 	if categoryID == 0 {
@@ -85,6 +91,11 @@ func (a *App) SetSubItemActive(id uint, active bool) error {
 
 func (a *App) DeleteSubItem(id uint) error {
 	return a.subItems.Delete(id)
+}
+
+// DeleteSubItems menghapus banyak sub-pekerjaan sekaligus dalam satu transaksi.
+func (a *App) DeleteSubItems(ids []uint) (*services.DeleteResult, error) {
+	return a.subItems.DeleteMany(ids)
 }
 
 // ReorderSubItems menyimpan urutan baru sub-pekerjaan dalam satu pekerjaan.

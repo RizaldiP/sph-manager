@@ -64,6 +64,12 @@ export interface WorkItemDetail {
   subItems?: WorkSubItem[]
 }
 
+// Hasil hapus massal (DeleteWorkItems / DeleteSubItems).
+export interface DeleteResult {
+  items: number
+  subs: number
+}
+
 export function emptyCategory(): CategoryView & { id: number } {
   return {
     id: 0,

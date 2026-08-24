@@ -333,11 +333,6 @@ func TestSubItemScenarioFromPlan(t *testing.T) {
 		t.Errorf("jumlah sub aktif salah: %d", activeCount)
 	}
 
-	// Hapus pekerjaan induk harus ditolak karena masih ada sub aktif.
-	if err := wiSvc.Delete(wi.ID); err == nil {
-		t.Fatal("hapus pekerjaan berisi sub aktif seharusnya ditolak")
-	}
-
 	// Validasi bobot kesulitan out-of-range.
 	if _, err := subSvc.Update(target.ID, &models.WorkSubItem{
 		WorkItemID: wi.ID, Name: target.Name, DifficultyWeight: 150,
@@ -367,5 +362,16 @@ func TestSubItemScenarioFromPlan(t *testing.T) {
 	}
 	if errors.Is(err, ErrNotFound) {
 		t.Fatal("tak terduga")
+	}
+
+	// Hapus pekerjaan induk kini kaskade: seluruh sub-pekerjaannya ikut terhapus.
+	if err := wiSvc.Delete(wi.ID); err != nil {
+		t.Fatalf("hapus pekerjaan dengan sub harus kaskade, gagal: %v", err)
+	}
+	var nItems, nSubs int64
+	db.Model(&models.WorkItem{}).Where("id = ?", wi.ID).Count(&nItems)
+	db.Model(&models.WorkSubItem{}).Where("work_item_id = ?", wi.ID).Count(&nSubs)
+	if nItems != 0 || nSubs != 0 {
+		t.Errorf("kaskade tidak lengkap: items=%d subs=%d", nItems, nSubs)
 	}
 }

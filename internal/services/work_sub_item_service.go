@@ -186,6 +186,45 @@ func (s *WorkSubItemService) Delete(id uint) error {
 	return nil
 }
 
+// DeleteMany menghapus banyak sub-pekerjaan sekaligus dalam satu transaksi;
+// seluruh batch dibatalkan bila ada ID yang sudah tidak tersedia.
+func (s *WorkSubItemService) DeleteMany(ids []uint) (*DeleteResult, error) {
+	uniq, err := uniqueIDs(ids)
+	if err != nil {
+		return nil, NewValidationError("Pilih minimal satu sub-pekerjaan untuk dihapus.")
+	}
+	subs := make([]*models.WorkSubItem, 0, len(uniq))
+	for _, id := range uniq {
+		sub, err := s.repo.GetByID(s.db, id)
+		if err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return nil, NewConflictError("Sebagian sub-pekerjaan sudah tidak tersedia (ID %d). Muat ulang halaman lalu coba lagi.", id)
+			}
+			s.log.Error("gagal mengambil sub-pekerjaan", "id", id, "error", err)
+			return nil, fmt.Errorf("gagal menghapus sub-pekerjaan")
+		}
+		subs = append(subs, sub)
+	}
+	res := &DeleteResult{}
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		for _, sub := range subs {
+			if err := s.repo.SoftDelete(tx, sub.ID); err != nil {
+				return err
+			}
+			if err := s.audit.Write(tx, "DELETE", "work_sub_item", sub.ID, fmt.Sprintf("Sub-pekerjaan \"%s\" dihapus", sub.Name)); err != nil {
+				return err
+			}
+			res.Subs++
+		}
+		return nil
+	})
+	if err != nil {
+		s.log.Error("gagal menghapus sub-pekerjaan massal", "jumlah", len(subs), "error", err)
+		return nil, fmt.Errorf("gagal menghapus sub-pekerjaan")
+	}
+	return res, nil
+}
+
 // ReorderInWorkItem menyimpan urutan baru sub-pekerjaan dalam satu pekerjaan.
 func (s *WorkSubItemService) ReorderInWorkItem(workItemID uint, ids []uint) error {
 	current, err := s.repo.IDsInWorkItem(s.db, workItemID)

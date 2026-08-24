@@ -51,3 +51,20 @@ func sameIDs(a, b []uint) bool {
 	}
 	return true
 }
+
+// uniqueIDs menghilangkan duplikat dan ID nol; error bila hasilnya kosong.
+func uniqueIDs(ids []uint) ([]uint, error) {
+	seen := make(map[uint]bool, len(ids))
+	out := make([]uint, 0, len(ids))
+	for _, id := range ids {
+		if id == 0 || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	if len(out) == 0 {
+		return nil, errors.New("daftar id kosong")
+	}
+	return out, nil
+}

@@ -1093,6 +1093,20 @@ export namespace services {
 		    return a;
 		}
 	}
+	export class DeleteResult {
+	    items: number;
+	    subs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeleteResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.items = source["items"];
+	        this.subs = source["subs"];
+	    }
+	}
 	export class ImportResult {
 	    itemsCreated: number;
 	    subsCreated: number;

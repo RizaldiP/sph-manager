@@ -37,11 +37,15 @@ export function DeleteSph(arg1:number):Promise<void>;
 
 export function DeleteSubItem(arg1:number):Promise<void>;
 
+export function DeleteSubItems(arg1:Array<number>):Promise<services.DeleteResult>;
+
 export function DeleteTemplate(arg1:number):Promise<void>;
 
 export function DeleteVessel(arg1:number):Promise<void>;
 
 export function DeleteWorkItem(arg1:number):Promise<void>;
+
+export function DeleteWorkItems(arg1:Array<number>):Promise<services.DeleteResult>;
 
 export function DuplicateSph(arg1:number):Promise<services.SphDocumentView>;
 

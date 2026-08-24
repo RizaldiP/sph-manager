@@ -13,14 +13,16 @@ import {
   UpdateWorkItem,
   SetWorkItemActive,
   DeleteWorkItem,
+  DeleteWorkItems,
   ReorderWorkItems,
   CreateSubItem,
   UpdateSubItem,
   SetSubItemActive,
   DeleteSubItem,
+  DeleteSubItems,
   ReorderSubItems
 } from '../../wailsjs/go/main/App'
-import type { CategoryView, WorkItemView, WorkItemDetail } from '../types/master'
+import type { CategoryView, WorkItemView, WorkItemDetail, DeleteResult } from '../types/master'
 import { stripAudit } from '../utils/payload'
 
 // Store domain Master Pekerjaan (kategori + pekerjaan + sub-pekerjaan).
@@ -116,6 +118,11 @@ export const useMasterStore = defineStore('master', () => {
     await loadWorkItems()
   }
 
+  // Hapus massal pekerjaan (kaskade sub-pekerjaannya) dalam satu transaksi.
+  function deleteWorkItems(ids: number[]) {
+    return DeleteWorkItems(ids) as unknown as Promise<DeleteResult>
+  }
+
   async function reorderWorkItems(ids: number[]) {
     if (wiCategoryId.value === 0) return
     await ReorderWorkItems(wiCategoryId.value, ids)
@@ -137,6 +144,11 @@ export const useMasterStore = defineStore('master', () => {
 
   function deleteSubItem(id: number) {
     return DeleteSubItem(id)
+  }
+
+  // Hapus massal sub-pekerjaan dalam satu transaksi.
+  function deleteSubItems(ids: number[]) {
+    return DeleteSubItems(ids) as unknown as Promise<DeleteResult>
   }
 
   function reorderSubItems(workItemId: number, ids: number[]) {
@@ -167,11 +179,13 @@ export const useMasterStore = defineStore('master', () => {
     updateWorkItem,
     setWorkItemActive,
     deleteWorkItem,
+    deleteWorkItems,
     reorderWorkItems,
     createSubItem,
     updateSubItem,
     setSubItemActive,
     deleteSubItem,
+    deleteSubItems,
     reorderSubItems
   }
 })

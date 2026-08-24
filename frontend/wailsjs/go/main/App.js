@@ -66,6 +66,10 @@ export function DeleteSubItem(arg1) {
   return window['go']['main']['App']['DeleteSubItem'](arg1);
 }
 
+export function DeleteSubItems(arg1) {
+  return window['go']['main']['App']['DeleteSubItems'](arg1);
+}
+
 export function DeleteTemplate(arg1) {
   return window['go']['main']['App']['DeleteTemplate'](arg1);
 }
@@ -76,6 +80,10 @@ export function DeleteVessel(arg1) {
 
 export function DeleteWorkItem(arg1) {
   return window['go']['main']['App']['DeleteWorkItem'](arg1);
+}
+
+export function DeleteWorkItems(arg1) {
+  return window['go']['main']['App']['DeleteWorkItems'](arg1);
 }
 
 export function DuplicateSph(arg1) {

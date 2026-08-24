@@ -42,6 +42,11 @@ func (r *WorkSubItemRepository) SoftDelete(db *gorm.DB, id uint) error {
 	return db.Delete(&models.WorkSubItem{}, id).Error
 }
 
+// SoftDeleteByWorkItem menghapus (soft) seluruh sub-pekerjaan milik satu pekerjaan.
+func (r *WorkSubItemRepository) SoftDeleteByWorkItem(db *gorm.DB, workItemID uint) error {
+	return db.Where("work_item_id = ?", workItemID).Delete(&models.WorkSubItem{}).Error
+}
+
 // CountByWorkItem menghitung sub-pekerjaan yang belum dihapus milik sebuah pekerjaan.
 func (r *WorkSubItemRepository) CountByWorkItem(db *gorm.DB, workItemID uint) (int64, error) {
 	var n int64
