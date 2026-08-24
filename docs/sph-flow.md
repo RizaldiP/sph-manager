@@ -41,7 +41,7 @@ masih Draft atau Review (BR-08).
 
 - Format default: `SPH/GEI/{ROMAN}/{YYYY}/{SEQ}` (contoh `SPH/GEI/VIII/2026/001`).
 - Placeholder yang didukung: `{YYYY}`, `{MM}`, `{MM_ROMAN}` (angka), `{ROMAN}` (bulan romawi), `{SEQ}`.
-- Format dapat diubah melalui settings key `sph_number_format` (UI Pengaturan menyusul).
+- Format dapat diubah melalui menu **Pengaturan** (settings key `sph_number_format`), lengkap dengan preview contoh nomor.
 - `{SEQ}` berurutan **per periode tahun-bulan** dari tanggal dokumen, bukan tanggal simpan.
 - Nomor digenerate di dalam transaksi penyimpanan; unik di seluruh dokumen hidup.
 

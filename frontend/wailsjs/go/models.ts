@@ -36,6 +36,121 @@ export namespace gorm {
 
 }
 
+export namespace importers {
+	
+	export class ColumnMapping {
+	    nameCol: number;
+	    nameSpan: number;
+	    qtyCol: number;
+	    unitCol: number;
+	    serviceCol: number;
+	    materialCol: number;
+	    unitPriceCol: number;
+	    unitPriceAs?: string;
+	    serviceTotal: boolean;
+	    materialTotal: boolean;
+	    headerRows: number;
+	    notes?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ColumnMapping(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.nameCol = source["nameCol"];
+	        this.nameSpan = source["nameSpan"];
+	        this.qtyCol = source["qtyCol"];
+	        this.unitCol = source["unitCol"];
+	        this.serviceCol = source["serviceCol"];
+	        this.materialCol = source["materialCol"];
+	        this.unitPriceCol = source["unitPriceCol"];
+	        this.unitPriceAs = source["unitPriceAs"];
+	        this.serviceTotal = source["serviceTotal"];
+	        this.materialTotal = source["materialTotal"];
+	        this.headerRows = source["headerRows"];
+	        this.notes = source["notes"];
+	    }
+	}
+	export class PreviewRow {
+	    rowIndex: number;
+	    suggested: string;
+	    level: string;
+	    marker: string;
+	    name: string;
+	    qty: number;
+	    unit: string;
+	    servicePrice: number;
+	    materialPrice: number;
+	    raw: string;
+	    errors?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PreviewRow(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rowIndex = source["rowIndex"];
+	        this.suggested = source["suggested"];
+	        this.level = source["level"];
+	        this.marker = source["marker"];
+	        this.name = source["name"];
+	        this.qty = source["qty"];
+	        this.unit = source["unit"];
+	        this.servicePrice = source["servicePrice"];
+	        this.materialPrice = source["materialPrice"];
+	        this.raw = source["raw"];
+	        this.errors = source["errors"];
+	    }
+	}
+	export class SheetPreview {
+	    grid: string[][];
+	    totalRows: number;
+	    totalCols: number;
+	    suggestedMapping: ColumnMapping;
+	    notes?: string[];
+	    mainCount: number;
+	    subCount: number;
+	    unknownCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SheetPreview(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.grid = source["grid"];
+	        this.totalRows = source["totalRows"];
+	        this.totalCols = source["totalCols"];
+	        this.suggestedMapping = this.convertValues(source["suggestedMapping"], ColumnMapping);
+	        this.notes = source["notes"];
+	        this.mainCount = source["mainCount"];
+	        this.subCount = source["subCount"];
+	        this.unknownCount = source["unknownCount"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace main {
 	
 	export class HealthInfo {
@@ -800,6 +915,20 @@ export namespace services {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	export class ConfirmRow {
+	    rowIndex: number;
+	    level: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConfirmRow(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rowIndex = source["rowIndex"];
+	        this.level = source["level"];
+	    }
+	}
 	export class VesselView {
 	    id: number;
 	    customerId: number;
@@ -963,6 +1092,72 @@ export namespace services {
 		    }
 		    return a;
 		}
+	}
+	export class ImportResult {
+	    itemsCreated: number;
+	    subsCreated: number;
+	    skipped: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.itemsCreated = source["itemsCreated"];
+	        this.subsCreated = source["subsCreated"];
+	        this.skipped = source["skipped"];
+	    }
+	}
+	export class SettingsInput {
+	    companyName: string;
+	    companyCity: string;
+	    companyAddress: string;
+	    sphNumberFormat: string;
+	    signerName: string;
+	    signerPosition: string;
+	    defaultNotes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SettingsInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.companyName = source["companyName"];
+	        this.companyCity = source["companyCity"];
+	        this.companyAddress = source["companyAddress"];
+	        this.sphNumberFormat = source["sphNumberFormat"];
+	        this.signerName = source["signerName"];
+	        this.signerPosition = source["signerPosition"];
+	        this.defaultNotes = source["defaultNotes"];
+	    }
+	}
+	export class SettingsView {
+	    companyName: string;
+	    companyCity: string;
+	    companyAddress: string;
+	    logoPath: string;
+	    sphNumberFormat: string;
+	    signerName: string;
+	    signerPosition: string;
+	    defaultNotes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SettingsView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.companyName = source["companyName"];
+	        this.companyCity = source["companyCity"];
+	        this.companyAddress = source["companyAddress"];
+	        this.logoPath = source["logoPath"];
+	        this.sphNumberFormat = source["sphNumberFormat"];
+	        this.signerName = source["signerName"];
+	        this.signerPosition = source["signerPosition"];
+	        this.defaultNotes = source["defaultNotes"];
+	    }
 	}
 	
 	export class SphHeaderInput {

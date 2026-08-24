@@ -253,8 +253,14 @@
           <input v-model.number="wiForm.defaultServicePrice" type="number" min="0" step="1" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
         </div>
         <div>
-          <label class="mb-1 block text-[13px] font-medium text-slate-600">Harga Material Default (Rp)</label>
+          <div class="mb-1 flex items-center justify-between gap-2">
+            <label class="text-[13px] font-medium text-slate-600">Harga Material Default (Rp)</label>
+            <button type="button" class="shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium text-brand-600 transition-colors hover:bg-brand-50" @click="openPick">⌕ Pilih Material</button>
+          </div>
           <input v-model.number="wiForm.defaultMaterialPrice" type="number" min="0" step="1" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
+          <p v-if="pickedWiMaterial" class="mt-1 truncate text-xs text-slate-400">
+            Dari: <span class="font-mono">{{ pickedWiMaterial.code }}</span> {{ pickedWiMaterial.name }} · {{ formatRupiah(pickedWiMaterial.defaultPrice) }}
+          </p>
         </div>
         <div class="col-span-2">
           <label class="mb-1 block text-[13px] font-medium text-slate-600">Catatan</label>
@@ -305,8 +311,14 @@
             <input v-model.number="subForm.defaultServicePrice" type="number" min="0" step="1" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
           </div>
           <div>
-            <label class="mb-1 block text-[13px] font-medium text-slate-600">Harga Material Default (Rp)</label>
+            <div class="mb-1 flex items-center justify-between gap-2">
+              <label class="text-[13px] font-medium text-slate-600">Harga Material Default (Rp)</label>
+              <button type="button" class="shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium text-brand-600 transition-colors hover:bg-brand-50" @click="openPick">⌕ Pilih Material</button>
+            </div>
             <input v-model.number="subForm.defaultMaterialPrice" type="number" min="0" step="1" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
+            <p v-if="pickedSubMaterial" class="mt-1 truncate text-xs text-slate-400">
+              Dari: <span class="font-mono">{{ pickedSubMaterial.code }}</span> {{ pickedSubMaterial.name }} · {{ formatRupiah(pickedSubMaterial.defaultPrice) }}
+            </p>
           </div>
         </div>
         <div>
@@ -324,6 +336,9 @@
         </div>
       </template>
     </AppModal>
+
+    <!-- Pemilih material master -->
+    <MaterialPickerModal v-model="pickOpen" @select="applyPick" />
 
     <!-- Konfirmasi hapus pekerjaan -->
     <ConfirmDialog
@@ -355,9 +370,10 @@ import PageHeader from '../components/PageHeader.vue'
 import EmptyState from '../components/EmptyState.vue'
 import AppModal from '../components/AppModal.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import MaterialPickerModal from '../components/MaterialPickerModal.vue'
 import { useMasterStore } from '../stores/master'
 import { errorMessage, formatRupiah, formatQty } from '../utils/format'
-import { emptySubItem, emptyWorkItem, type WorkItemDetail, type WorkItemView, type WorkSubItem } from '../types/master'
+import { emptySubItem, emptyWorkItem, type MaterialView, type WorkItemDetail, type WorkItemView, type WorkSubItem } from '../types/master'
 import { useDragSort } from '../composables/useDragSort'
 
 const store = useMasterStore()
@@ -459,6 +475,7 @@ const wiFormError = ref('')
 function openCreateWi() {
   editingWi.value = null
   wiForm.value = emptyWorkItem(store.wiCategoryId)
+  pickedWiMaterial.value = null
   wiFormError.value = ''
   wiFormOpen.value = true
 }
@@ -466,6 +483,7 @@ function openCreateWi() {
 function openEditWi(wi: WorkItemView) {
   editingWi.value = wi
   wiForm.value = { ...emptyWorkItem(), ...wi }
+  pickedWiMaterial.value = null
   wiFormError.value = ''
   wiFormOpen.value = true
 }
@@ -549,6 +567,7 @@ function openCreateSub() {
   if (expandedId.value === null) return
   editingSub.value = null
   subForm.value = emptySubItem(expandedId.value)
+  pickedSubMaterial.value = null
   subFormError.value = ''
   subFormOpen.value = true
 }
@@ -556,6 +575,7 @@ function openCreateSub() {
 function openEditSub(sub: WorkSubItem) {
   editingSub.value = sub
   subForm.value = { ...emptySubItem(), ...sub }
+  pickedSubMaterial.value = null
   subFormError.value = ''
   subFormOpen.value = true
 }
@@ -602,6 +622,30 @@ async function toggleSubActive(sub: WorkSubItem) {
     await loadDetail(sub.workItemId)
   } catch (e) {
     actionError.value = errorMessage(e)
+  }
+}
+
+// ===== pemilih material master =====
+const pickOpen = ref(false)
+const pickedWiMaterial = ref<MaterialView | null>(null)
+const pickedSubMaterial = ref<MaterialView | null>(null)
+
+function openPick() {
+  pickOpen.value = true
+}
+
+// Isi harga material default dari master material; satuan ikut jika masih kosong.
+// Untuk sub-pekerjaan: nama, satuan, dan harga langsung ditimpa dari material terpilih.
+function applyPick(m: MaterialView) {
+  if (wiFormOpen.value) {
+    wiForm.value.defaultMaterialPrice = Math.round(m.defaultPrice)
+    if (!wiForm.value.defaultUnit.trim()) wiForm.value.defaultUnit = m.unit || ''
+    pickedWiMaterial.value = m
+  } else if (subFormOpen.value) {
+    subForm.value.name = m.name
+    subForm.value.defaultUnit = m.unit || ''
+    subForm.value.defaultMaterialPrice = Math.round(m.defaultPrice)
+    pickedSubMaterial.value = m
   }
 }
 

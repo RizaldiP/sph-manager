@@ -33,6 +33,7 @@ type App struct {
 	sph        *services.SphService
 	customers  *services.CustomerService
 	materials  *services.MaterialService
+	settings   *services.SettingsService
 }
 
 func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
@@ -47,6 +48,7 @@ func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
 		sph:        services.NewSphService(db, lg),
 		customers:  services.NewCustomerService(db, lg),
 		materials:  services.NewMaterialService(db, lg),
+		settings:   services.NewSettingsService(db, lg),
 	}
 }
 

@@ -15,6 +15,7 @@ type Config struct {
 	ExportDir    string `json:"export_dir"`
 	LogDir       string `json:"log_dir"`
 	TemplateDir  string `json:"template_dir"`
+	AssetsDir    string `json:"assets_dir"`
 }
 
 func RootDir() (string, error) {
@@ -49,6 +50,7 @@ func Load() (*Config, error) {
 		cfg.ExportDir,
 		cfg.LogDir,
 		cfg.TemplateDir,
+		cfg.AssetsDir,
 	}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0755); err != nil {
@@ -68,6 +70,7 @@ func defaults(root string) *Config {
 		ExportDir:    filepath.Join(root, "exports"),
 		LogDir:       filepath.Join(root, "logs"),
 		TemplateDir:  filepath.Join(root, "templates"),
+		AssetsDir:    filepath.Join(root, "assets"),
 	}
 }
 

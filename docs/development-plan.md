@@ -107,20 +107,28 @@
 **Test:** Repair AMS + Repair PLC + Repair Sensor + Testing + Calibration → 1 SPH berurut 1–5.
 
 **Acceptance:** urutan tersimpan; snapshot benar.
-
 **Hasil:**
 - Perbaikan: kolom `sph_items.sequence`/`sph_sub_items.sequence` kini terisi oleh `buildItems` (sebelumnya selalu 0 padahal detail mengurutkan `sequence asc`). Update draft me-renumber otomatis via ReplaceItems; duplicate/revisi menyalin sequence (`cloneItems`).
 - Wizard langkah 3: drag-and-drop urutan main point (HTML5 DnD, handle di header kartu, reuse `useDragSort` yang digeneralisasi dengan parameter `keyOf` agar kompatibel halaman master/template); tombol ↑↓ tetap tersedia.
 - Penggabungan sumber: **SPH lama kini merge** (append baris unik per `workItemId`, tidak lagi menimpa pilihan existing), template juga merge; umpan balik "N baris digabungkan, M dilewati" di langkah 2; label tombol "+ Gabungkan".
 - Test hijau (`kombinasi_test.go`): 5 pekerjaan tersimpan berurut seq 1–5 + sub 1..M, reorder update draft → sequence ter-renumber, duplicate mempertahankan urutan & sequence.
+- Pasca-fase (melengkapi placeholder "Phase 7"): **halaman Pengaturan aktif** — service `settings_service.go` (get/update/preview nomor/logo, validasi `{SEQ}`, audit BR-13), binding `app_settings.go` (`GetSettings/UpdateSettings/PreviewSphNumber/PickLogo/ClearLogo/LogoDataUrl`; dialog file via Wails runtime, logo disalin ke `%AppData%\sph-manager\assets`), halaman `PengaturanPage.vue` (profil perusahaan, logo + pratinjau, format penomoran SPH dengan chips placeholder & contoh nomor live, penandatangan, catatan default); config field baru `assets_dir`. Test hijau: default & roundtrip, validasi format, preview, logo persist, audit log.
 
-## PHASE 8 — Import Excel
+## PHASE 8 — Import Excel ✅
 
 **Scope:** reader XLS/XLSX; pilih sheet; preview wajib; mapping kolom adjustable; deteksi hierarki fleksibel (angka/huruf/Romawi); validasi; import transaksional dengan progress.
 
 **Test:** import referensi `SPH_KRI_OWA.xls` (fixture test pakai file tiruan di `testdata/`); kasus valid, invalid, hierarchy, mapping.
 
 **Acceptance:** tidak ada import tanpa preview; rollback bekerja. Dokumentasi `docs/import-excel.md`.
+**Hasil:**
+- Package `internal/importers`: `reader.go` (xlsReader untuk .xls BIFF + excelize untuk .xlsx, grid dinormalkan persegi), `parser.go` (splitMarker romawi/huruf/angka dengan aturan delimiter ketat; state machine dua level dengan **aturan deret induk** — angka `lastMain+1` = induk baru, angka lain di blok sub diratakan jadi sub; baris tanpa penanda = unknown yang wajib diputuskan pengguna; konversi nilai total → harga satuan via qty; parser angka Indonesia/internasional), `preview.go` (SheetPreview ≤200×20 + saran mapping).
+- `SuggestMapping`: band header multi-baris (judul gabungan + sub-judul) dari kata kunci URAIAN/JML/SAT/JASA/MAT, skip baris indeks kolom; layout referensi SPH_KRI_OWA.xls (NO=1, URAIAN=2, JML=5, SAT=6, HARGA SATUAN=7, JASA=8, MAT=9, data mulai r10) terdeteksi otomatis.
+- `services/import_service.go`: ImportWorkItems satu transaksi — append ke kategori tujuan, sequence lanjut max+1, kode PEK-/SUB- auto, sub tanpa induk ditolak, audit BR-13 per entri, callback progress membatalkan → rollback penuh (BR-16); ValidateRows mengeblokir unknown belum diputuskan & baris bermasalah.
+- Binding `app_import.go` (PickImportFile/ListImportSheets/PreviewImportSheet/ParseImportRows/ValidateImportRows/RunWorkItemImport) + event progress Wails `import:progress`/`import:done`.
+- Halaman `ImportPage.vue` wizard 4 langkah menggantikan placeholder `/impor-ekspor`: file dialog → sheet & mapping editable (select kolom A..Z+, nameSpan, headerRows, mode nilai total, kategori tujuan) → pratinjau grid dengan penanda baris data & klasifikasi manual baris merah → ringkasan hasil; progress bar realtime.
+- Test hijau: parser Gaya A/B & splitMarker & angka Indonesia, reader XLSX fixture excelize runtime + integrasi opsional file referensi asli (skip bila absen), service happy path/rollback/blokir/sub-tanpa-induk. Fixture dibuat via excelize saat runtime (tanpa binary testdata); dokumentasi `docs/import-excel.md`.
+- Pasca-ulasan (harga tidak muncul): layout referensi ternyata mencampur konvensi — banyak baris menaruh harga di kolom **HARGA SATUAN** dengan JASA/MAT kosong. Ditambahkan `UnitPriceCol` + `UnitPriceAs` pada `ColumnMapping`: fallback bila JASA & MATERIAL keduanya kosong, arah Jasa/Material dipilih di wizard; `SuggestMapping` mengenali header dua baris HARGA/SATUAN via teks gabungan band-kolom (referensi: UnitPriceCol=7 tanpa menelan kolom SAT=6). Test file asli kini mengaserti harga baris terdeteksi (Sensor Oli = 2.200.000) sebagai regresi permanen.
 
 ## PHASE 9 — Export
 
