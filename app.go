@@ -3,15 +3,17 @@ package main
 import (
 	"context"
 	"log/slog"
+	"os"
 	"runtime"
 
+	"github.com/RizaldiP/sph-manager/internal/collaboration"
 	"github.com/RizaldiP/sph-manager/internal/config"
 	"github.com/RizaldiP/sph-manager/internal/database"
 	"github.com/RizaldiP/sph-manager/internal/services"
 	"gorm.io/gorm"
 )
 
-const appVersion = "0.4.0"
+const appVersion = "0.10.0"
 
 type HealthInfo struct {
 	Status       string `json:"status"`
@@ -35,11 +37,17 @@ type App struct {
 	materials  *services.MaterialService
 	settings   *services.SettingsService
 	export     *services.ExportService
+	collabMgr  *collaboration.Manager
 }
 
 func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
 	settingsSvc := services.NewSettingsService(db, lg)
 	sphSvc := services.NewSphService(db, lg)
+	collabOps := services.NewCollabOps(db, sphSvc, lg)
+	deviceName, _ := os.Hostname()
+	collabMgr := collaboration.NewManager(collaboration.Config{DeviceName: deviceName}, collabOps, sphSvc, lg)
+	// Dokumen yang dibuka dalam room kolaborasi terkunci dari jalur solo (guard BR-08/BR-16).
+	sphSvc.SetRoomGuard(collabMgr)
 	return &App{
 		cfg:        cfg,
 		db:         db,
@@ -53,15 +61,20 @@ func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
 		materials:  services.NewMaterialService(db, lg),
 		settings:   settingsSvc,
 		export:     services.NewExportService(sphSvc, settingsSvc, lg),
+		collabMgr:  collabMgr,
 	}
 }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.wireCollab()
 	a.log.Info("aplikasi dimulai", "versi", appVersion, "database", a.cfg.DatabasePath)
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	if a.collabMgr != nil {
+		a.collabMgr.Shutdown("Aplikasi ditutup.")
+	}
 	if a.db != nil {
 		if err := database.Close(a.db); err != nil {
 			a.log.Warn("gagal menutup database", "error", err)

@@ -275,6 +275,7 @@ type AuditLog struct {
 	Entity      string    `gorm:"size:60;notNull;index" json:"entity"`
 	EntityID    uint      `gorm:"notNull;index" json:"entityId"`
 	Description string    `gorm:"size:1000" json:"description"`
+	Actor       string    `gorm:"size:150;default:''" json:"actor,omitempty"`
 	CreatedAt   time.Time `gorm:"index" json:"createdAt"`
 }
 

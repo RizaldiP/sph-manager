@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"math"
 	"strings"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
@@ -89,12 +90,21 @@ type SphSaveInput struct {
 
 // ===== Service =====
 
+// RoomGuard dilaporkan oleh layer kolaborasi (Work Together): dokumen yang sedang
+// dibuka dalam Room aktif tidak boleh dimutasi dari jalur solo.
+type RoomGuard interface {
+	IsDocLocked(sphDocumentID uint) bool
+}
+
 // SphService: builder & lifecycle dokumen SPH (FR-S*, BR-01, BR-06..BR-11, BR-13, BR-15, BR-16).
 type SphService struct {
 	db    *gorm.DB
 	log   *slog.Logger
 	repo  *repositories.SphRepository
 	audit *AuditWriter
+
+	guardMu   sync.Mutex
+	roomGuard RoomGuard
 }
 
 func NewSphService(db *gorm.DB, log *slog.Logger) *SphService {
@@ -105,6 +115,22 @@ func NewSphService(db *gorm.DB, log *slog.Logger) *SphService {
 		audit: NewAuditWriter(),
 	}
 }
+
+// SetRoomGuard memasang hook kolaborasi (dipasang sekali saat wiring aplikasi).
+func (s *SphService) SetRoomGuard(g RoomGuard) {
+	s.guardMu.Lock()
+	s.roomGuard = g
+	s.guardMu.Unlock()
+}
+
+func (s *SphService) docLocked(id uint) bool {
+	s.guardMu.Lock()
+	g := s.roomGuard
+	s.guardMu.Unlock()
+	return g != nil && g.IsDocLocked(id)
+}
+
+const errDocLockedFmt = "Dokumen ini sedang dibuka dalam Room Work Together. Tutup Room terlebih dulu sebelum mengubahnya dari luar."
 
 func toSphViews(db *gorm.DB, docs []models.SphDocument) ([]SphDocumentView, error) {
 	out := make([]SphDocumentView, 0, len(docs))
@@ -394,8 +420,18 @@ func (s *SphService) Create(in SphSaveInput) (*SphDocumentView, error) {
 	return &views[0], nil
 }
 
-// UpdateDraft mengubah draft: header + snapshot item baru. Ditolak bila sudah FINAL ke atas (BR-08).
+// UpdateDraft mengubah draft: header + snapshot item baru. Ditolak bila sudah FINAL ke atas (BR-08)
+// atau bila dokumen sedang dibuka dalam Room kolaborasi.
 func (s *SphService) UpdateDraft(id uint, in SphSaveInput) (*models.SphDocument, error) {
+	if s.docLocked(id) {
+		return nil, NewConflictError(errDocLockedFmt)
+	}
+	return s.applyDraftUpdate(id, in, "")
+}
+
+// applyDraftUpdate inti pembaruan draft tanpa guard room — dipakai jalur solo maupun
+// operasi kolaborasi. Actor tidak kosong berarti perubahan dari kolaborator (audit BR-13).
+func (s *SphService) applyDraftUpdate(id uint, in SphSaveInput, actor string) (*models.SphDocument, error) {
 	existing, err := s.repo.GetByID(s.db, id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -438,8 +474,11 @@ func (s *SphService) UpdateDraft(id uint, in SphSaveInput) (*models.SphDocument,
 		if err := s.repo.ReplaceItems(tx, existing.ID, items); err != nil {
 			return err
 		}
-		return s.audit.Write(tx, "UPDATE", "sph_document", existing.ID,
-			fmt.Sprintf("SPH %s Rev %d diperbarui", existing.DocumentNumber, existing.Revision))
+		desc := fmt.Sprintf("SPH %s Rev %d diperbarui", existing.DocumentNumber, existing.Revision)
+		if actor != "" {
+			desc = fmt.Sprintf("SPH %s Rev %d diperbarui via kolaborasi oleh %s", existing.DocumentNumber, existing.Revision, actor)
+		}
+		return s.audit.WriteAs(tx, "UPDATE", "sph_document", existing.ID, desc, actor)
 	})
 	if err != nil {
 		if isFriendly(err) {
@@ -518,7 +557,11 @@ func (s *SphService) validateForFinalization(d *models.SphDocument) error {
 }
 
 // SetStatus menjalankan transisi status sesuai diagram BR-08; masuk REVIEW/FINAL divalidasi (BR-06).
+// Dokumen dalam Room kolaborasi tidak boleh berubah status dari luar room.
 func (s *SphService) SetStatus(id uint, target string) error {
+	if s.docLocked(id) {
+		return NewConflictError(errDocLockedFmt)
+	}
 	d, err := s.repo.GetByID(s.db, id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -583,6 +626,9 @@ func (s *SphService) SetStatus(id uint, target string) error {
 
 // Duplicate menyalin penuh dokumen sebagai draft baru dengan nomor baru (BR-09).
 func (s *SphService) Duplicate(id uint) (*SphDocumentView, error) {
+	if s.docLocked(id) {
+		return nil, NewConflictError(errDocLockedFmt)
+	}
 	src, err := s.repo.GetByID(s.db, id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -636,6 +682,9 @@ func (s *SphService) Duplicate(id uint) (*SphDocumentView, error) {
 
 // CreateRevision membuat revisi baru (BR-10): nomor sama, revision+1, salinan penuh, status DRAFT.
 func (s *SphService) CreateRevision(id uint) (*SphDocumentView, error) {
+	if s.docLocked(id) {
+		return nil, NewConflictError(errDocLockedFmt)
+	}
 	src, err := s.repo.GetByID(s.db, id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -706,6 +755,9 @@ func (s *SphService) CreateRevision(id uint) (*SphDocumentView, error) {
 
 // Delete menghapus draft (soft). Dokumen final ke atas tidak dapat dihapus.
 func (s *SphService) Delete(id uint) error {
+	if s.docLocked(id) {
+		return NewConflictError(errDocLockedFmt)
+	}
 	d, err := s.repo.GetByID(s.db, id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {

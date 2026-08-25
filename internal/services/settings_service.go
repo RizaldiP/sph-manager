@@ -3,6 +3,7 @@ package services
 import (
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,29 +22,45 @@ const (
 	keySignerName      = "signer_name"
 	keySignerPosition  = "signer_position"
 	keyDefaultNotes    = "default_notes"
+	keyCollabPort      = "collab_port"
+	keyCollabName      = "collab_display_name"
 )
+
+// DefaultCollabPort adalah port WebSocket Work Together bila tidak dikonfigurasi.
+const DefaultCollabPort = 48765
+
+// CollabDefaults: nilai awal untuk dialog kolaborasi (host/join room).
+type CollabDefaults struct {
+	DeviceName  string `json:"deviceName"`
+	Port        int    `json:"port"`
+	DisplayName string `json:"displayName"`
+}
 
 // SettingsView: potret seluruh pengaturan aplikasi (FR-U4, kebutuhan generator dokumen FR-IE5/6).
 type SettingsView struct {
-	CompanyName     string `json:"companyName"`
-	CompanyCity     string `json:"companyCity"`
-	CompanyAddress  string `json:"companyAddress"`
-	LogoPath        string `json:"logoPath"`
-	SphNumberFormat string `json:"sphNumberFormat"`
-	SignerName      string `json:"signerName"`
-	SignerPosition  string `json:"signerPosition"`
-	DefaultNotes    string `json:"defaultNotes"`
+	CompanyName       string `json:"companyName"`
+	CompanyCity       string `json:"companyCity"`
+	CompanyAddress    string `json:"companyAddress"`
+	LogoPath          string `json:"logoPath"`
+	SphNumberFormat   string `json:"sphNumberFormat"`
+	SignerName        string `json:"signerName"`
+	SignerPosition    string `json:"signerPosition"`
+	DefaultNotes      string `json:"defaultNotes"`
+	CollabPort        int    `json:"collabPort"`
+	CollabDisplayName string `json:"collabDisplayName"`
 }
 
 // SettingsInput: payload pembaruan dari UI.
 type SettingsInput struct {
-	CompanyName     string `json:"companyName"`
-	CompanyCity     string `json:"companyCity"`
-	CompanyAddress  string `json:"companyAddress"`
-	SphNumberFormat string `json:"sphNumberFormat"`
-	SignerName      string `json:"signerName"`
-	SignerPosition  string `json:"signerPosition"`
-	DefaultNotes    string `json:"defaultNotes"`
+	CompanyName       string `json:"companyName"`
+	CompanyCity       string `json:"companyCity"`
+	CompanyAddress    string `json:"companyAddress"`
+	SphNumberFormat   string `json:"sphNumberFormat"`
+	SignerName        string `json:"signerName"`
+	SignerPosition    string `json:"signerPosition"`
+	DefaultNotes      string `json:"defaultNotes"`
+	CollabPort        int    `json:"collabPort"`
+	CollabDisplayName string `json:"collabDisplayName"`
 }
 
 func defaultSettings() SettingsView {
@@ -53,6 +70,7 @@ func defaultSettings() SettingsView {
 		SphNumberFormat: defaultSphNumberFormat,
 		SignerName:      "Matawai",
 		SignerPosition:  "Direktur",
+		CollabPort:      DefaultCollabPort,
 	}
 }
 
@@ -94,17 +112,24 @@ func (s *SettingsService) Get() (*SettingsView, error) {
 	}
 	def := defaultSettings()
 	v := &SettingsView{
-		CompanyName:     pick(m, keyCompanyName, def.CompanyName),
-		CompanyCity:     pick(m, keyCompanyCity, def.CompanyCity),
-		CompanyAddress:  pick(m, keyCompanyAddress, ""),
-		LogoPath:        pick(m, keyLogoPath, ""),
-		SphNumberFormat: pick(m, keySphNumberFormat, def.SphNumberFormat),
-		SignerName:      pick(m, keySignerName, def.SignerName),
-		SignerPosition:  pick(m, keySignerPosition, def.SignerPosition),
-		DefaultNotes:    pick(m, keyDefaultNotes, ""),
+		CompanyName:       pick(m, keyCompanyName, def.CompanyName),
+		CompanyCity:       pick(m, keyCompanyCity, def.CompanyCity),
+		CompanyAddress:    pick(m, keyCompanyAddress, ""),
+		LogoPath:          pick(m, keyLogoPath, ""),
+		SphNumberFormat:   pick(m, keySphNumberFormat, def.SphNumberFormat),
+		SignerName:        pick(m, keySignerName, def.SignerName),
+		SignerPosition:    pick(m, keySignerPosition, def.SignerPosition),
+		DefaultNotes:      pick(m, keyDefaultNotes, ""),
+		CollabPort:        def.CollabPort,
+		CollabDisplayName: pick(m, keyCollabName, ""),
+	}
+	if p, err := strconv.Atoi(strings.TrimSpace(m[keyCollabPort])); err == nil && validCollabPort(p) {
+		v.CollabPort = p
 	}
 	return v, nil
 }
+
+func validCollabPort(p int) bool { return p >= 1024 && p <= 65535 }
 
 func (s *SettingsService) validate(in *SettingsInput) error {
 	if trim(in.CompanyName) == "" {
@@ -135,6 +160,12 @@ func (s *SettingsService) validate(in *SettingsInput) error {
 	if !strings.Contains(format, "{SEQ}") {
 		return NewValidationError("Format nomor SPH harus memuat placeholder {SEQ}.")
 	}
+	if in.CollabPort != 0 && !validCollabPort(in.CollabPort) {
+		return NewValidationError("Port kolaborasi harus di antara 1024 dan 65535.")
+	}
+	if len(trim(in.CollabDisplayName)) > 100 {
+		return NewValidationError("Nama tampilan kolaborasi maksimal 100 karakter.")
+	}
 	return nil
 }
 
@@ -143,6 +174,10 @@ func (s *SettingsService) Update(in *SettingsInput) (*SettingsView, error) {
 		return nil, err
 	}
 	err := s.db.Transaction(func(tx *gorm.DB) error {
+		port := in.CollabPort
+		if port == 0 {
+			port = DefaultCollabPort
+		}
 		pairs := []struct{ key, value string }{
 			{keyCompanyName, trim(in.CompanyName)},
 			{keyCompanyCity, trim(in.CompanyCity)},
@@ -151,6 +186,8 @@ func (s *SettingsService) Update(in *SettingsInput) (*SettingsView, error) {
 			{keySignerName, trim(in.SignerName)},
 			{keySignerPosition, trim(in.SignerPosition)},
 			{keyDefaultNotes, trim(in.DefaultNotes)},
+			{keyCollabPort, strconv.Itoa(port)},
+			{keyCollabName, trim(in.CollabDisplayName)},
 		}
 		for _, p := range pairs {
 			if err := repositories.SetSetting(tx, p.key, p.value); err != nil {
@@ -209,4 +246,26 @@ func (s *SettingsService) PreviewNumber(format string) (string, error) {
 		return "", NewValidationError("Format nomor SPH tidak valid.")
 	}
 	return prefix + fmt.Sprintf("%03d", 1), nil
+}
+
+// CollabPortOrDefault membaca port WebSocket Work Together dari settings
+// dengan fallback ke default bila tidak valid.
+func (s *SettingsService) CollabPortOrDefault() int {
+	v, err := repositories.SettingValue(s.db, keyCollabPort)
+	if err != nil {
+		return DefaultCollabPort
+	}
+	if p, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && validCollabPort(p) {
+		return p
+	}
+	return DefaultCollabPort
+}
+
+// CollabDisplayNameOrDefault mengembalikan nama tampilan tersimpan untuk kolaborasi.
+func (s *SettingsService) CollabDisplayNameOrDefault() string {
+	v, err := repositories.SettingValue(s.db, keyCollabName)
+	if err != nil || trim(v) == "" {
+		return ""
+	}
+	return v
 }

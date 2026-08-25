@@ -68,3 +68,13 @@ func uniqueIDs(ids []uint) ([]uint, error) {
 	}
 	return out, nil
 }
+
+// IsFriendly memeriksa apakah error adalah tipe yang layak tampil ke pengguna.
+func IsFriendly(err error) bool {
+	if err == nil {
+		return false
+	}
+	var ve *ValidationError
+	var ce *ConflictError
+	return errors.As(err, &ve) || errors.As(err, &ce)
+}
