@@ -17,7 +17,14 @@
         <span>Cari… (Ctrl+F)</span>
       </div>
       <span
-        v-if="store.health"
+        v-if="collabLive"
+        class="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700"
+      >
+        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        LIVE · {{ collabRoomName }} · {{ collabUserCount }}
+      </span>
+      <span
+        v-else-if="store.health"
         class="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700"
       >
         <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
@@ -38,9 +45,15 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '../stores/app'
+import { useCollaborationStore } from '../stores/collaboration'
 
 const route = useRoute()
 const store = useAppStore()
+const collabStore = useCollaborationStore()
+
+const collabLive = computed(() => collabStore.isLive)
+const collabRoomName = computed(() => collabStore.roomName)
+const collabUserCount = computed(() => collabStore.participantCount)
 
 const breadcrumb = computed<string[]>(() => {
   const crumbs = route.meta.breadcrumb as string[] | undefined

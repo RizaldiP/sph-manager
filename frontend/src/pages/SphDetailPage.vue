@@ -142,6 +142,7 @@
 
         <!-- Panel aksi & riwayat -->
         <aside class="space-y-4">
+          <CollabToolbar v-if="collabStore.isLive" />
           <div class="rounded-xl border border-slate-200 bg-white p-4">
             <h3 class="mb-3 text-[13px] font-semibold uppercase tracking-wide text-slate-400">Aksi Status</h3>
             <div class="space-y-2">
@@ -201,8 +202,10 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '../components/PageHeader.vue'
+import CollabToolbar from '../components/collaboration/CollabToolbar.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import { useSphStore } from '../stores/sph'
+import { useCollaborationStore } from '../stores/collaboration'
 import { errorMessage, formatQty, formatRupiah } from '../utils/format'
 import { statusLabelOf, statusToneOf, type SphDetail } from '../types/sph'
 import { h, type FunctionalComponent } from 'vue'
@@ -218,6 +221,7 @@ Info.props = ['label', 'value']
 const route = useRoute()
 const router = useRouter()
 const store = useSphStore()
+const collabStore = useCollaborationStore()
 
 const docId = computed(() => Number(route.params.id || 0))
 const doc = ref<SphDetail | null>(null)

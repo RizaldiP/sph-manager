@@ -7,6 +7,8 @@ export interface SettingsView {
   signerName: string
   signerPosition: string
   defaultNotes: string
+  collabPort: number
+  collabDisplayName: string
 }
 
 export const DEFAULT_SPH_FORMAT = 'SPH/GEI/{ROMAN}/{YYYY}/{SEQ}'
@@ -20,6 +22,8 @@ export function emptySettings(): SettingsView {
     sphNumberFormat: DEFAULT_SPH_FORMAT,
     signerName: '',
     signerPosition: '',
-    defaultNotes: ''
+    defaultNotes: '',
+    collabPort: 48765,
+    collabDisplayName: ''
   }
 }

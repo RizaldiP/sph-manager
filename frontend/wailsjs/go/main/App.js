@@ -6,8 +6,16 @@ export function ClearLogo() {
   return window['go']['main']['App']['ClearLogo']();
 }
 
+export function CloseCollabRoom() {
+  return window['go']['main']['App']['CloseCollabRoom']();
+}
+
 export function CreateCategory(arg1) {
   return window['go']['main']['App']['CreateCategory'](arg1);
+}
+
+export function CreateCollabRoom(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CreateCollabRoom'](arg1, arg2, arg3);
 }
 
 export function CreateCustomer(arg1) {
@@ -102,6 +110,14 @@ export function ExportSphPdf(arg1, arg2) {
   return window['go']['main']['App']['ExportSphPdf'](arg1, arg2);
 }
 
+export function GetCollabDefaults() {
+  return window['go']['main']['App']['GetCollabDefaults']();
+}
+
+export function GetCollabSession() {
+  return window['go']['main']['App']['GetCollabSession']();
+}
+
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
@@ -122,12 +138,24 @@ export function Health() {
   return window['go']['main']['App']['Health']();
 }
 
+export function JoinCollabRoom(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['JoinCollabRoom'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function LeaveCollabRoom() {
+  return window['go']['main']['App']['LeaveCollabRoom']();
+}
+
 export function ListCategories(arg1, arg2) {
   return window['go']['main']['App']['ListCategories'](arg1, arg2);
 }
 
 export function ListCustomers(arg1, arg2) {
   return window['go']['main']['App']['ListCustomers'](arg1, arg2);
+}
+
+export function ListDiscoveredRooms() {
+  return window['go']['main']['App']['ListDiscoveredRooms']();
 }
 
 export function ListImportSheets(arg1) {
@@ -198,6 +226,10 @@ export function RunWorkItemImport(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['RunWorkItemImport'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function SendCollabOp(arg1) {
+  return window['go']['main']['App']['SendCollabOp'](arg1);
+}
+
 export function SetCategoryActive(arg1, arg2) {
   return window['go']['main']['App']['SetCategoryActive'](arg1, arg2);
 }
@@ -232,6 +264,14 @@ export function SetVesselActive(arg1, arg2) {
 
 export function SetWorkItemActive(arg1, arg2) {
   return window['go']['main']['App']['SetWorkItemActive'](arg1, arg2);
+}
+
+export function StartDiscoveryListener() {
+  return window['go']['main']['App']['StartDiscoveryListener']();
+}
+
+export function StopDiscoveryListener() {
+  return window['go']['main']['App']['StopDiscoveryListener']();
 }
 
 export function Terbilang(arg1) {

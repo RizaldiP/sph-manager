@@ -160,16 +160,18 @@ func (m *Manager) HostRoom(docID uint, roomName, displayName string, port int) (
 	}
 
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if m.room != nil {
+		m.mu.Unlock()
 		return nil, services.NewConflictError("Aplikasi ini sudah menjadi host room \"%s\". Tutup room tersebut lebih dulu.", m.room.info.RoomName)
 	}
 	if m.client != nil {
+		m.mu.Unlock()
 		return nil, services.NewConflictError("Aplikasi ini sedang join ke room lain. Keluar dari room tersebut lebih dulu.")
 	}
 
 	srv, err := startWSServer(port, m.log, m.handleIncomingConn)
 	if err != nil {
+		m.mu.Unlock()
 		m.log.Error("gagal membuka port kolaborasi", "port", port, "error", err)
 		return nil, fmt.Errorf("gagal membuka port %d untuk room kolaborasi. "+
 			"Izinkan \"SPH Manager\" pada jaringan privat bila Windows menanyakan, "+
@@ -231,7 +233,14 @@ func (m *Manager) HostRoom(docID uint, roomName, displayName string, port int) (
 	}
 	r.managerRef = m
 	r.publishAnnounceLocked()
-	go r.presenceLoop()
+	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				r.log.Error("presenceLoop panic", "recover", rec)
+			}
+		}()
+		r.presenceLoop()
+	}()
 
 	m.room = r
 	snap := m.sessionLocked()
@@ -286,11 +295,12 @@ func (m *Manager) Join(hostIP string, port int, displayName, accessCode, roomCod
 	}
 
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	if m.room != nil {
+		m.mu.Unlock()
 		return services.NewConflictError("Aplikasi ini sedang menjadi host room. Tutup room tersebut lebih dulu.")
 	}
 	if m.client != nil {
+		m.mu.Unlock()
 		return services.NewConflictError("Sudah terhubung ke sebuah room. Keluar terlebih dulu bila ingin pindah.")
 	}
 
@@ -307,6 +317,7 @@ func (m *Manager) Join(hostIP string, port int, displayName, accessCode, roomCod
 		onClosed:    m.onClientClosed,
 	})
 	if err != nil {
+		m.mu.Unlock()
 		return fmt.Errorf("gagal menyiapkan koneksi: %w", err)
 	}
 
@@ -792,7 +803,14 @@ func (r *Room) publishAnnounceLocked() {
 // serveConn menangani satu koneksi client dari upgrade hingga tutup.
 func (r *Room) serveConn(ws *websocket.Conn) {
 	conn := newServerConn(ws)
-	go conn.writePump(r.log)
+	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				r.log.Error("writePump panic", "recover", rec)
+			}
+		}()
+		conn.writePump(r.log)
+	}()
 
 	ws.SetReadDeadline(time.Now().Add(r.cfg.JoinWait))
 	var first Envelope

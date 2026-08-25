@@ -192,7 +192,9 @@ async function submit() {
       sphNumberFormat: form.sphNumberFormat,
       signerName: form.signerName,
       signerPosition: form.signerPosition,
-      defaultNotes: form.defaultNotes
+      defaultNotes: form.defaultNotes,
+      collabPort: form.collabPort ?? 48765,
+      collabDisplayName: form.collabDisplayName ?? ''
     }
     const view = (await store.save(payload)) as unknown as SettingsView
     Object.assign(form, view)

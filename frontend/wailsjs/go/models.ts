@@ -1,3 +1,198 @@
+export namespace collaboration {
+	
+	export class DiscoveredRoom {
+	    roomId: string;
+	    roomName: string;
+	    documentNumber: string;
+	    projectName: string;
+	    hostName: string;
+	    port: number;
+	    users: number;
+	    // Go type: time
+	    lastSeen: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new DiscoveredRoom(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.roomId = source["roomId"];
+	        this.roomName = source["roomName"];
+	        this.documentNumber = source["documentNumber"];
+	        this.projectName = source["projectName"];
+	        this.hostName = source["hostName"];
+	        this.port = source["port"];
+	        this.users = source["users"];
+	        this.lastSeen = this.convertValues(source["lastSeen"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Participant {
+	    id: string;
+	    displayName: string;
+	    deviceName: string;
+	    role: string;
+	    // Go type: time
+	    joinedAt: any;
+	    // Go type: time
+	    lastSeen: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new Participant(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.displayName = source["displayName"];
+	        this.deviceName = source["deviceName"];
+	        this.role = source["role"];
+	        this.joinedAt = this.convertValues(source["joinedAt"], null);
+	        this.lastSeen = this.convertValues(source["lastSeen"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class RoomInfo {
+	    roomId: string;
+	    sphDocumentId: number;
+	    documentNumber: string;
+	    projectName: string;
+	    roomCode: string;
+	    roomName: string;
+	    accessCode?: string;
+	    hostName: string;
+	    hostDevice: string;
+	    port: number;
+	    status: string;
+	    version: number;
+	    participants?: Participant[];
+	    // Go type: time
+	    createdAt: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new RoomInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.roomId = source["roomId"];
+	        this.sphDocumentId = source["sphDocumentId"];
+	        this.documentNumber = source["documentNumber"];
+	        this.projectName = source["projectName"];
+	        this.roomCode = source["roomCode"];
+	        this.roomName = source["roomName"];
+	        this.accessCode = source["accessCode"];
+	        this.hostName = source["hostName"];
+	        this.hostDevice = source["hostDevice"];
+	        this.port = source["port"];
+	        this.status = source["status"];
+	        this.version = source["version"];
+	        this.participants = this.convertValues(source["participants"], Participant);
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class UISnapshot {
+	    mode: string;
+	    connection?: string;
+	    room?: RoomInfo;
+	    doc?: number[];
+	    participants?: Participant[];
+	    activities?: services.CollabActivity[];
+	    version?: number;
+	    error?: string;
+	    notice?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UISnapshot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.connection = source["connection"];
+	        this.room = this.convertValues(source["room"], RoomInfo);
+	        this.doc = source["doc"];
+	        this.participants = this.convertValues(source["participants"], Participant);
+	        this.activities = this.convertValues(source["activities"], services.CollabActivity);
+	        this.version = source["version"];
+	        this.error = source["error"];
+	        this.notice = source["notice"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace gorm {
 	
 	export class DeletedAt {
@@ -915,6 +1110,38 @@ export namespace services {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	export class CollabActivity {
+	    actor: string;
+	    action: string;
+	    summary: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CollabActivity(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.actor = source["actor"];
+	        this.action = source["action"];
+	        this.summary = source["summary"];
+	    }
+	}
+	export class CollabDefaults {
+	    deviceName: string;
+	    port: number;
+	    displayName: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CollabDefaults(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.deviceName = source["deviceName"];
+	        this.port = source["port"];
+	        this.displayName = source["displayName"];
+	    }
+	}
 	export class ConfirmRow {
 	    rowIndex: number;
 	    level: string;
@@ -1107,6 +1334,36 @@ export namespace services {
 	        this.subs = source["subs"];
 	    }
 	}
+	export class HeaderPatch {
+	    date: string;
+	    customerId: number;
+	    vesselId?: number;
+	    projectName: string;
+	    subject: string;
+	    reference: string;
+	    location: string;
+	    validUntil: string;
+	    picName: string;
+	    notes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HeaderPatch(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.date = source["date"];
+	        this.customerId = source["customerId"];
+	        this.vesselId = source["vesselId"];
+	        this.projectName = source["projectName"];
+	        this.subject = source["subject"];
+	        this.reference = source["reference"];
+	        this.location = source["location"];
+	        this.validUntil = source["validUntil"];
+	        this.picName = source["picName"];
+	        this.notes = source["notes"];
+	    }
+	}
 	export class ImportResult {
 	    itemsCreated: number;
 	    subsCreated: number;
@@ -1123,6 +1380,102 @@ export namespace services {
 	        this.skipped = source["skipped"];
 	    }
 	}
+	export class ItemFields {
+	    workItemId?: number;
+	    name: string;
+	    description: string;
+	    quantity: number;
+	    unit: string;
+	    serviceUnitPrice: number;
+	    materialUnitPrice: number;
+	    pricingMode: string;
+	    notes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ItemFields(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.workItemId = source["workItemId"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.quantity = source["quantity"];
+	        this.unit = source["unit"];
+	        this.serviceUnitPrice = source["serviceUnitPrice"];
+	        this.materialUnitPrice = source["materialUnitPrice"];
+	        this.pricingMode = source["pricingMode"];
+	        this.notes = source["notes"];
+	    }
+	}
+	export class SubItemFields {
+	    name: string;
+	    description: string;
+	    quantity: number;
+	    unit: string;
+	    weight: number;
+	    serviceUnitPrice: number;
+	    materialUnitPrice: number;
+	    notes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SubItemFields(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.quantity = source["quantity"];
+	        this.unit = source["unit"];
+	        this.weight = source["weight"];
+	        this.serviceUnitPrice = source["serviceUnitPrice"];
+	        this.materialUnitPrice = source["materialUnitPrice"];
+	        this.notes = source["notes"];
+	    }
+	}
+	export class OpPayload {
+	    type: string;
+	    itemId?: number;
+	    subItemId?: number;
+	    toIndex?: number;
+	    header?: HeaderPatch;
+	    item?: ItemFields;
+	    subItem?: SubItemFields;
+	
+	    static createFrom(source: any = {}) {
+	        return new OpPayload(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.itemId = source["itemId"];
+	        this.subItemId = source["subItemId"];
+	        this.toIndex = source["toIndex"];
+	        this.header = this.convertValues(source["header"], HeaderPatch);
+	        this.item = this.convertValues(source["item"], ItemFields);
+	        this.subItem = this.convertValues(source["subItem"], SubItemFields);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class SettingsInput {
 	    companyName: string;
 	    companyCity: string;
@@ -1131,6 +1484,8 @@ export namespace services {
 	    signerName: string;
 	    signerPosition: string;
 	    defaultNotes: string;
+	    collabPort: number;
+	    collabDisplayName: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new SettingsInput(source);
@@ -1145,6 +1500,8 @@ export namespace services {
 	        this.signerName = source["signerName"];
 	        this.signerPosition = source["signerPosition"];
 	        this.defaultNotes = source["defaultNotes"];
+	        this.collabPort = source["collabPort"];
+	        this.collabDisplayName = source["collabDisplayName"];
 	    }
 	}
 	export class SettingsView {
@@ -1156,6 +1513,8 @@ export namespace services {
 	    signerName: string;
 	    signerPosition: string;
 	    defaultNotes: string;
+	    collabPort: number;
+	    collabDisplayName: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new SettingsView(source);
@@ -1171,6 +1530,8 @@ export namespace services {
 	        this.signerName = source["signerName"];
 	        this.signerPosition = source["signerPosition"];
 	        this.defaultNotes = source["defaultNotes"];
+	        this.collabPort = source["collabPort"];
+	        this.collabDisplayName = source["collabDisplayName"];
 	    }
 	}
 	
@@ -1310,6 +1671,7 @@ export namespace services {
 		    return a;
 		}
 	}
+	
 	
 	export class TemplateItemInput {
 	    workItemId: number;

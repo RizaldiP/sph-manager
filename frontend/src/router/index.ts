@@ -12,6 +12,7 @@ import BuatSphPage from '../pages/BuatSphPage.vue'
 import SphDetailPage from '../pages/SphDetailPage.vue'
 import PengaturanPage from '../pages/PengaturanPage.vue'
 import ImportPage from '../pages/ImportPage.vue'
+import WorkTogetherPage from '../pages/WorkTogetherPage.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -39,6 +40,7 @@ const router = createRouter({
         { path: 'data/material', name: 'material', component: MaterialPage, meta: { title: 'Material', breadcrumb: ['Master Data', 'Material'] } },
         { path: 'impor-ekspor', name: 'impor-ekspor', component: ImportPage, meta: { title: 'Import / Export', breadcrumb: ['Import / Export'] } },
         { path: 'backup', name: 'backup', component: PlaceholderPage, meta: { title: 'Backup', breadcrumb: ['Backup'], phase: 'Phase 11' } },
+        { path: 'work-together', name: 'work-together', component: WorkTogetherPage, meta: { title: 'Work Together', breadcrumb: ['Work Together'] } },
         { path: 'pengaturan', name: 'pengaturan', component: PengaturanPage, meta: { title: 'Pengaturan', breadcrumb: ['Pengaturan'] } }
       ]
     }
