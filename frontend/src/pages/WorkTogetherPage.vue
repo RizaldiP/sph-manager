@@ -51,7 +51,7 @@
           <div class="min-w-0 flex-1">
             <p class="text-[13px] font-semibold text-slate-800">{{ r.roomName }}</p>
             <p class="text-xs text-slate-400">{{ r.documentNumber }} · {{ r.projectName }}</p>
-            <p class="text-xs text-slate-400">Host: {{ r.hostName }} · {{ r.users }} pengguna</p>
+            <p class="text-xs text-slate-400">Host: {{ r.hostName }} ({{ r.hostIP }}) · {{ r.users }} pengguna</p>
           </div>
           <button type="button" class="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-[13px] font-medium text-white transition-colors hover:bg-brand-700" @click="openJoin(r)">
             Join

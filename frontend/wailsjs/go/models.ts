@@ -5,6 +5,7 @@ export namespace collaboration {
 	    roomName: string;
 	    documentNumber: string;
 	    projectName: string;
+	    hostIP: string;
 	    hostName: string;
 	    port: number;
 	    users: number;
@@ -21,6 +22,7 @@ export namespace collaboration {
 	        this.roomName = source["roomName"];
 	        this.documentNumber = source["documentNumber"];
 	        this.projectName = source["projectName"];
+	        this.hostIP = source["hostIP"];
 	        this.hostName = source["hostName"];
 	        this.port = source["port"];
 	        this.users = source["users"];

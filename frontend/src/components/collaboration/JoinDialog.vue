@@ -61,7 +61,7 @@ async function doJoin() {
   pageError.value = ''
   try {
     await collabStore.joinRoom(
-      props.room.hostName,
+      props.room.hostIP,
       props.room.port,
       accessCode.value.trim(),
       props.room.roomId,

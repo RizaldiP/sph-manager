@@ -211,7 +211,7 @@ func (m *Manager) HostRoom(docID uint, roomName, displayName string, port int) (
 
 	var announcer *Announcer
 	if !m.cfg.DisableDiscovery {
-		announcer, err = startAnnouncer(DefaultDiscoveryPort, m.cfg.AnnounceInterval)
+		announcer, err = startAnnouncer(DefaultDiscoveryPort, m.cfg.AnnounceInterval, m.log)
 		if err != nil {
 			m.log.Warn("discovery UDP tidak aktif (join manual tetap bisa)", "error", err)
 			announcer = nil
@@ -427,13 +427,34 @@ func (m *Manager) StartDiscovery() error {
 	if m.listener != nil {
 		return nil
 	}
-	l, err := startListener(DefaultDiscoveryPort, m.cfg.DiscoverTTL, m.cfg.AnnounceInterval)
+	l, err := startListener(DefaultDiscoveryPort, m.cfg.DiscoverTTL, m.cfg.AnnounceInterval, m.log)
 	if err != nil {
 		m.log.Warn("listener discovery gagal", "error", err)
 		return fmt.Errorf("discovery LAN tidak dapat dijalankan (kemungkinan firewall atau port dipakai proses lain). Gunakan \"Join via IP\".")
 	}
+	l.onDead = m.onDiscoveryListenerDead
 	m.listener = l
 	return nil
+}
+
+// onDiscoveryListenerDead dipanggil saat readLoop listener mati karena error.
+// Mengosongkan referensi lama lalu restart setelah jeda singkat.
+func (m *Manager) onDiscoveryListenerDead() {
+	m.mu.Lock()
+	l := m.listener
+	m.listener = nil
+	m.mu.Unlock()
+
+	if l == nil {
+		return
+	}
+
+	m.log.Warn("discovery listener mati, mencoba restart dalam 1 detik...")
+	time.Sleep(time.Second)
+
+	if err := m.StartDiscovery(); err != nil {
+		m.log.Warn("restart discovery listener gagal", "error", err)
+	}
 }
 
 // StopDiscovery menghentikan listener lobby.

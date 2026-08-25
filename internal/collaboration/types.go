@@ -76,6 +76,7 @@ type DiscoveredRoom struct {
 	RoomName       string    `json:"roomName"`
 	DocumentNumber string    `json:"documentNumber"`
 	ProjectName    string    `json:"projectName"`
+	HostIP         string    `json:"hostIP"`
 	HostName       string    `json:"hostName"`
 	Port           int       `json:"port"`
 	Users          int       `json:"users"`

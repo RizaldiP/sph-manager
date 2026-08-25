@@ -2,6 +2,7 @@ package collaboration
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -27,24 +28,33 @@ type Announcer struct {
 	dests    []*net.UDPAddr
 	interval time.Duration
 	packet   atomic.Value // announcePacket
+	log      *slog.Logger
 	stopCh   chan struct{}
 	doneCh   chan struct{}
 	stopOnce sync.Once
 }
 
 // startAnnouncer menyiapkan socket broadcast; pengiriman berjalan pada goroutine.
-func startAnnouncer(port int, interval time.Duration) (*Announcer, error) {
+func startAnnouncer(port int, interval time.Duration, log *slog.Logger) (*Announcer, error) {
 	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{IP: net.IPv4(255, 255, 255, 255), Port: port})
 	if err != nil {
 		return nil, err
 	}
-	dests := []*net.UDPAddr{{IP: net.IPv4(255, 255, 255, 255), Port: port}}
-	addIfaceBroadcasts(dests, port)
+
+	// Set SO_BROADCAST agar Windows mengizinkan pengiriman ke alamat broadcast.
+	if sc, err := conn.SyscallConn(); err == nil {
+		_ = sc.Control(func(fd uintptr) {
+			setBroadcast(fd)
+		})
+	}
+
+	dests := addIfaceBroadcasts(port)
 
 	a := &Announcer{
 		conn:     conn,
 		dests:    dests,
 		interval: interval,
+		log:      log,
 		stopCh:   make(chan struct{}),
 		doneCh:   make(chan struct{}),
 	}
@@ -52,11 +62,13 @@ func startAnnouncer(port int, interval time.Duration) (*Announcer, error) {
 	return a, nil
 }
 
-// addIfaceBroadcasts menambahkan alamat directed broadcast tiap interface IPv4.
-func addIfaceBroadcasts(dests []*net.UDPAddr, port int) {
+// addIfaceBroadcasts mengembalikan daftar alamat broadcast: global 255.255.255.255
+// ditambah directed broadcast tiap interface IPv4 aktif.
+func addIfaceBroadcasts(port int) []*net.UDPAddr {
+	dests := []*net.UDPAddr{{IP: net.IPv4(255, 255, 255, 255), Port: port}}
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return
+		return dests
 	}
 	for _, iface := range ifaces {
 		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagBroadcast == 0 {
@@ -87,6 +99,7 @@ func addIfaceBroadcasts(dests []*net.UDPAddr, port int) {
 			}
 		}
 	}
+	return dests
 }
 
 func broadcastOf(ipnet *net.IPNet) net.IP {
@@ -116,10 +129,13 @@ func (a *Announcer) loop() {
 		}
 		b, err := json.Marshal(p)
 		if err != nil {
+			a.log.Warn("gagal marshal announce packet", "error", err)
 			return
 		}
 		for _, d := range a.dests {
-			_, _ = a.conn.WriteToUDP(b, d)
+			if _, wErr := a.conn.WriteToUDP(b, d); wErr != nil {
+				a.log.Warn("gagal broadcast discovery", "dest", d.IP.String(), "error", wErr)
+			}
 		}
 	}
 	sendOnce()
@@ -146,26 +162,31 @@ func (a *Announcer) Stop() {
 // Listener mendengarkan broadcast discovery dan memelihara daftar room hidup.
 type Listener struct {
 	conn     *net.UDPConn
+	log      *slog.Logger
 	mu       sync.Mutex
 	rooms    map[string]DiscoveredRoom
 	ttl      time.Duration
+	onDead   func() // dipanggil saat readLoop berhenti karena error
 	stopCh   chan struct{}
 	doneCh   chan struct{}
 	stopOnce sync.Once
+	pruneDone chan struct{}
 }
 
-func startListener(port int, ttl time.Duration, pruneInterval time.Duration) (*Listener, error) {
+func startListener(port int, ttl time.Duration, pruneInterval time.Duration, log *slog.Logger) (*Listener, error) {
 	addr := &net.UDPAddr{IP: net.IPv4zero, Port: port}
 	conn, err := net.ListenUDP("udp4", addr)
 	if err != nil {
 		return nil, err
 	}
 	l := &Listener{
-		conn:   conn,
-		rooms:  map[string]DiscoveredRoom{},
-		ttl:    ttl,
-		stopCh: make(chan struct{}),
-		doneCh: make(chan struct{}),
+		conn:      conn,
+		log:       log,
+		rooms:     map[string]DiscoveredRoom{},
+		ttl:       ttl,
+		stopCh:    make(chan struct{}),
+		doneCh:    make(chan struct{}),
+		pruneDone: make(chan struct{}),
 	}
 	go l.readLoop()
 	go l.pruneLoop(pruneInterval)
@@ -174,18 +195,25 @@ func startListener(port int, ttl time.Duration, pruneInterval time.Duration) (*L
 
 func (l *Listener) readLoop() {
 	defer close(l.doneCh)
+	deadCalled := false
+	defer func() {
+		if !deadCalled && l.onDead != nil {
+			go l.onDead()
+		}
+	}()
 	buf := make([]byte, 4096)
 	for {
-		n, _, err := l.conn.ReadFromUDP(buf)
+		n, addr, err := l.conn.ReadFromUDP(buf)
 		if err != nil {
 			select {
 			case <-l.stopCh:
+				deadCalled = true
 				return
 			default:
-				// error sementara → lanjut
 				if ne, ok := err.(net.Error); ok && ne.Timeout() {
 					continue
 				}
+				l.log.Warn("discovery listener readLoop berhenti", "error", err)
 				return
 			}
 		}
@@ -193,12 +221,17 @@ func (l *Listener) readLoop() {
 		if json.Unmarshal(buf[:n], &p) != nil || p.RoomID == "" || p.WSPort <= 0 {
 			continue
 		}
+		hostIP := ""
+		if addr != nil {
+			hostIP = addr.IP.String()
+		}
 		l.mu.Lock()
 		l.rooms[p.RoomID] = DiscoveredRoom{
 			RoomID:         p.RoomID,
 			RoomName:       p.RoomName,
 			DocumentNumber: p.DocumentNumber,
 			ProjectName:    p.ProjectName,
+			HostIP:         hostIP,
 			HostName:       p.HostName,
 			Port:           p.WSPort,
 			Users:          p.Users,
@@ -209,6 +242,7 @@ func (l *Listener) readLoop() {
 }
 
 func (l *Listener) pruneLoop(interval time.Duration) {
+	defer close(l.pruneDone)
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -245,5 +279,6 @@ func (l *Listener) Stop() {
 		close(l.stopCh)
 		_ = l.conn.Close()
 		<-l.doneCh
+		<-l.pruneDone
 	})
 }
