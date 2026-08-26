@@ -116,20 +116,25 @@
     <div v-if="snap.notice" class="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[13px] text-blue-700">{{ snap.notice }}</div>
 
     <!-- Turn Assignment Panel (Host only) -->
-    <div v-if="store.isHost && live && otherParticipants.length" class="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+    <div v-if="store.isHost && live" class="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
       <h4 class="mb-2 text-[13px] font-semibold text-slate-700">Atur Hak Edit</h4>
-      <div v-for="p in otherParticipants" :key="p.id" class="mb-2 last:mb-0">
-        <p class="mb-1 text-[12px] font-medium text-slate-600">{{ p.displayName }}</p>
-        <div class="flex flex-wrap gap-1.5">
-          <label v-for="sec in allSections" :key="sec.id" class="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600 transition-colors hover:bg-slate-50">
-            <input type="checkbox" :checked="isAssigned(p.id, sec.id)" class="h-3 w-3 rounded border-slate-300 text-brand-600 focus:ring-brand-500" @change="toggleAssignment(p.id, sec.id, $event)" />
-            {{ sec.label }}
-          </label>
-        </div>
+      <div v-if="!otherParticipants.length" class="text-[12px] italic text-slate-400">
+        Menunggu client terhubung...
       </div>
-      <button type="button" class="mt-2 w-full rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-[12px] font-medium text-brand-700 transition-colors hover:bg-brand-100" @click="applyAssignments">
-        Terapkan
-      </button>
+      <template v-else>
+        <div v-for="p in otherParticipants" :key="p.id" class="mb-2 last:mb-0">
+          <p class="mb-1 text-[12px] font-medium text-slate-600">{{ p.displayName }}</p>
+          <div class="flex flex-wrap gap-1.5">
+            <label v-for="sec in allSections" :key="sec.id" class="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600 transition-colors hover:bg-slate-50">
+              <input type="checkbox" :checked="isAssigned(p.id, sec.id)" class="h-3 w-3 rounded border-slate-300 text-brand-600 focus:ring-brand-500" @change="toggleAssignment(p.id, sec.id, $event)" />
+              {{ sec.label }}
+            </label>
+          </div>
+        </div>
+        <button type="button" class="mt-2 w-full rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-[12px] font-medium text-brand-700 transition-colors hover:bg-brand-100" @click="applyAssignments">
+          Terapkan
+        </button>
+      </template>
     </div>
 
     <!-- Client: Active edit controls -->
