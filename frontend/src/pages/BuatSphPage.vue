@@ -16,6 +16,17 @@
       </template>
     </PageHeader>
 
+    <!-- Firewall warning (host only) -->
+    <div v-if="collabStore.snapshot.room?.firewallWarning" class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
+      <strong>⚠ Firewall:</strong> {{ collabStore.snapshot.room.firewallWarning }}
+      <br>Jalankan aplikasi <strong>sebagai Administrator</strong> agar port WebSocket (TCP 48765) terbuka untuk koneksi client.
+    </div>
+
+    <!-- Collaboration toolbar (host: Atur Hak Edit, client: Edit controls) -->
+    <div v-if="isCollabMode" class="mb-4 rounded-xl border border-slate-200 bg-white">
+      <CollabToolbar />
+    </div>
+
     <!-- Stepper -->
     <ol class="mb-5 flex flex-wrap gap-x-2 gap-y-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-[12px]">
       <li v-for="st in steps" :key="st.n" class="flex items-center gap-2">
@@ -585,6 +596,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 import PageHeader from '../components/PageHeader.vue'
 import AppModal from '../components/AppModal.vue'
+import CollabToolbar from '../components/collaboration/CollabToolbar.vue'
 import { usePartnerStore } from '../stores/partner'
 import { useMasterStore } from '../stores/master'
 import { useTemplateStore } from '../stores/template'

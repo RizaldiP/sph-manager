@@ -64,7 +64,7 @@ async function doJoin() {
       props.room.hostIP,
       props.room.port,
       accessCode.value.trim(),
-      props.room.roomId,
+      '',
       displayName.value.trim()
     )
     emit('update:modelValue', false)

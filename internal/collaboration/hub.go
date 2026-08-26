@@ -1428,10 +1428,11 @@ func (m *Manager) RequestEdit(sectionID string) error {
 				break
 			}
 		}
-		if hostID != "" {
-			r.handleRequestEdit(r.byID[hostID], sectionID)
-		}
+		hostPart := r.byID[hostID]
 		r.mu.Unlock()
+		if hostPart != nil {
+			r.handleRequestEdit(hostPart, sectionID)
+		}
 		return nil
 	}
 	if c != nil {
@@ -1453,10 +1454,11 @@ func (m *Manager) ReleaseEdit(sectionID string) error {
 				break
 			}
 		}
-		if hostID != "" {
-			r.handleReleaseEdit(r.byID[hostID], sectionID)
-		}
+		hostPart := r.byID[hostID]
 		r.mu.Unlock()
+		if hostPart != nil {
+			r.handleReleaseEdit(hostPart, sectionID)
+		}
 		return nil
 	}
 	if c != nil {
@@ -1470,7 +1472,11 @@ func (m *Manager) SyncPush(input *services.SphSaveInput) error {
 	r, c := m.room, m.client
 	m.mu.Unlock()
 	if r != nil {
-		doc, err := m.sph.ApplySave(r.docID, input, r.info.HostName)
+		r.mu.Lock()
+		docID := r.docID
+		hostName := r.info.HostName
+		r.mu.Unlock()
+		doc, err := m.sph.ApplySave(docID, input, hostName)
 		if err != nil {
 			return err
 		}
