@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"math/big"
+	"net"
 	"strings"
 
 	"github.com/RizaldiP/sph-manager/internal/models"
@@ -69,6 +70,41 @@ func statusLabelID(status string) string {
 	default:
 		return status
 	}
+}
+
+// localIPs mengembalikan daftar IPv4 address aktif pada mesin ini
+// (kecuali loopback 127.x dan link-local 169.254.x).
+func localIPs() []string {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil
+	}
+	var ips []string
+	seen := map[string]bool{}
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, addr := range addrs {
+			ipnet, ok := addr.(*net.IPNet)
+			if !ok || ipnet.IP.To4() == nil {
+				continue
+			}
+			ip4 := ipnet.IP.To4().String()
+			if strings.HasPrefix(ip4, "127.") || strings.HasPrefix(ip4, "169.254.") {
+				continue
+			}
+			if !seen[ip4] {
+				seen[ip4] = true
+				ips = append(ips, ip4)
+			}
+		}
+	}
+	return ips
 }
 
 func cloneParticipants(src []Participant) []Participant {

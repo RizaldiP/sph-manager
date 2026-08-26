@@ -56,6 +56,7 @@ type RoomInfo struct {
 	AccessCode     string        `json:"accessCode,omitempty"`
 	HostName       string        `json:"hostName"`
 	HostDevice     string        `json:"hostDevice"`
+	HostIPs        []string      `json:"hostIPs,omitempty"`
 	Port           int           `json:"port"`
 	Status         string        `json:"status"`
 	Version        uint64        `json:"version"`

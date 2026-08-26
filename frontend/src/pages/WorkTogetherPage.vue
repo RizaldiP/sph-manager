@@ -99,21 +99,21 @@ function openJoin(room: DiscoveredRoom) {
 function afterCreate() {
   const docId = collabStore.sphDocumentId
   if (docId) {
-    router.push(`/sph/${docId}`)
+    router.push(`/sph/${docId}/edit`)
   }
 }
 
 function afterJoin() {
   const docId = collabStore.sphDocumentId
   if (docId) {
-    router.push(`/sph/${docId}`)
+    router.push(`/sph/${docId}/edit`)
   }
 }
 
 function goToDoc() {
   const docId = collabStore.sphDocumentId
   if (docId) {
-    router.push(`/sph/${docId}`)
+    router.push(`/sph/${docId}/edit`)
   }
 }
 

@@ -46,6 +46,7 @@ type DashboardStats struct {
 }
 
 type SphSubItemInput struct {
+	ID                uint    `json:"id,omitempty"`
 	Name              string  `json:"name"`
 	Description       string  `json:"description"`
 	Quantity          float64 `json:"quantity"`
@@ -57,6 +58,7 @@ type SphSubItemInput struct {
 }
 
 type SphItemInput struct {
+	ID                uint              `json:"id,omitempty"`
 	WorkItemID        *uint             `json:"workItemId,omitempty"`
 	Name              string            `json:"name"`
 	Description       string            `json:"description"`

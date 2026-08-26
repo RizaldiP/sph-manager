@@ -29,7 +29,14 @@ func (a *App) GetCollabDefaults() services.CollabDefaults {
 
 // CreateCollabRoom membuat room host untuk draft SPH (§10.21).
 func (a *App) CreateCollabRoom(sphDocumentID uint, roomName, displayName string) (*collaboration.RoomInfo, error) {
-	return a.collabMgr.HostRoom(sphDocumentID, roomName, displayName, a.settings.CollabPortOrDefault())
+	a.log.Info("CreateCollabRoom dipanggil", "docID", sphDocumentID, "roomName", roomName)
+	info, err := a.collabMgr.HostRoom(sphDocumentID, roomName, displayName, a.settings.CollabPortOrDefault())
+	if err != nil {
+		a.log.Warn("CreateCollabRoom gagal", "error", err)
+	} else {
+		a.log.Info("CreateCollabRoom berhasil", "roomID", info.RoomID, "port", info.Port, "hostIPs", info.HostIPs)
+	}
+	return info, err
 }
 
 // CloseCollabRoom menutup room yang sedang di-host (§10.27).
@@ -50,7 +57,14 @@ func (a *App) JoinCollabRoom(hostIP string, port int, accessCode, roomCode, disp
 	if strings.TrimSpace(displayName) == "" {
 		displayName = a.settings.CollabDisplayNameOrDefault()
 	}
-	return a.collabMgr.Join(hostIP, port, displayName, accessCode, roomCode)
+	a.log.Info("JoinCollabRoom dipanggil", "hostIP", hostIP, "port", port)
+	err := a.collabMgr.Join(hostIP, port, displayName, accessCode, roomCode)
+	if err != nil {
+		a.log.Warn("JoinCollabRoom gagal", "error", err, "hostIP", hostIP, "port", port)
+	} else {
+		a.log.Info("JoinCollabRoom berhasil", "hostIP", hostIP, "port", port)
+	}
+	return err
 }
 
 // LeaveCollabRoom keluar dari room yang sedang diikuti.

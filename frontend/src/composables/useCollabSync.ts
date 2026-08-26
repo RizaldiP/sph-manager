@@ -1,26 +1,9 @@
-import { onMounted, onUnmounted } from 'vue'
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 import { useCollaborationStore } from '../stores/collaboration'
-import { useSphStore } from '../stores/sph'
 import { OpType } from '../types/collaboration'
-import type { OpPayload, HeaderPatch, ItemFields, SubItemFields, SphSaveInput } from '../types/collaboration'
+import type { OpPayload, HeaderPatch, ItemFields, SubItemFields } from '../types/collaboration'
 
 export function useCollabSync() {
   const collabStore = useCollaborationStore()
-  const sphStore = useSphStore()
-
-  function onSync(raw: unknown) {
-    collabStore.applySnapshot(raw)
-
-    const snap = collabStore.snapshot
-    if (snap.doc && collabStore.isLive) {
-      const doc = snap.doc as unknown as SphSaveInput
-      const docId = collabStore.sphDocumentId
-      if (docId && doc) {
-        sphStore.list = sphStore.list
-      }
-    }
-  }
 
   function sendHeaderOp(patch: HeaderPatch) {
     const op: OpPayload = { type: OpType.HEADER_UPDATED, header: patch }
@@ -70,14 +53,6 @@ export function useCollabSync() {
   function sendSubItemMoved(itemId: number, subItemId: number, toIndex: number) {
     return collabStore.sendOp({ type: OpType.SUB_ITEM_MOVED, itemId, subItemId, toIndex })
   }
-
-  onMounted(() => {
-    EventsOn('collab:sync', onSync)
-  })
-
-  onUnmounted(() => {
-    EventsOff('collab:sync')
-  })
 
   return {
     sendHeaderOp,

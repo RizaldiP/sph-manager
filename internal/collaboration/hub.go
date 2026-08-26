@@ -178,6 +178,8 @@ func (m *Manager) HostRoom(docID uint, roomName, displayName string, port int) (
 			"atau gunakan port lain di halaman Pengaturan.", port)
 	}
 
+	EnsureFirewallRules(srv.Port(), DefaultDiscoveryPort, m.log)
+
 	now := time.Now()
 	hostPart := Participant{
 		ID:          uuid.NewString(),
@@ -197,6 +199,7 @@ func (m *Manager) HostRoom(docID uint, roomName, displayName string, port int) (
 		AccessCode:     GenerateAccessCode(),
 		HostName:       displayName,
 		HostDevice:     m.cfg.DeviceName,
+		HostIPs:        localIPs(),
 		Port:           srv.Port(),
 		Status:         RoomStatusActive,
 		CreatedAt:      now,
@@ -527,7 +530,8 @@ func (m *Manager) fetchDocJSON(id uint) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	b, err := json.Marshal(doc)
+	save := services.DocToSaveInput(doc)
+	b, err := json.Marshal(save)
 	if err != nil {
 		return nil, err
 	}
@@ -767,7 +771,8 @@ func (r *Room) applyAndBroadcastLocked(actor string, op *services.OpPayload) (*E
 		r.activities = r.activities[len(r.activities)-r.cfg.ActivityCap:]
 	}
 
-	state, err := json.Marshal(doc)
+	save := services.DocToSaveInput(doc)
+	state, err := json.Marshal(save)
 	if err != nil {
 		r.log.Error("gagal serialisasi state", "error", err)
 		return nil, fmt.Errorf("gagal menyiapkan state")
@@ -836,10 +841,13 @@ func (r *Room) serveConn(ws *websocket.Conn) {
 	ws.SetReadDeadline(time.Now().Add(r.cfg.JoinWait))
 	var first Envelope
 	if err := ws.ReadJSON(&first); err != nil {
+		r.log.Warn("serveConn: gagal baca pesan pertama", "error", err)
 		conn.shutdown()
 		return
 	}
+	r.log.Info("serveConn: pesan pertama diterima", "type", first.Type, "remote", ws.RemoteAddr().String())
 	if first.Type != TypeJoinRequest {
+		r.log.Warn("serveConn: pesan pertama bukan JOIN_REQUEST", "type", first.Type)
 		r.sendError(conn, errCodeNotJoined, "Pesan pertama harus JOIN_REQUEST.")
 		conn.shutdown()
 		return
@@ -847,14 +855,17 @@ func (r *Room) serveConn(ws *websocket.Conn) {
 	var jr JoinRequest
 	if len(first.Payload) > 0 {
 		if err := json.Unmarshal(first.Payload, &jr); err != nil {
+			r.log.Warn("serveConn: JOIN_REQUEST payload tidak valid", "error", err)
 			r.sendError(conn, errCodeNotJoined, "JOIN_REQUEST tidak valid.")
 			conn.shutdown()
 			return
 		}
 	}
+	r.log.Info("serveConn: JOIN_REQUEST diterima", "name", jr.DisplayName, "device", jr.DeviceName, "hasClientID", jr.ClientID != "")
 
 	p, replaced, joined := r.authenticate(&jr, conn)
 	if !joined {
+		r.log.Warn("serveConn: authenticate gagal", "name", jr.DisplayName)
 		conn.shutdown()
 		return
 	}
@@ -863,9 +874,11 @@ func (r *Room) serveConn(ws *websocket.Conn) {
 		replaced.shutdown()
 	}
 
+	r.log.Info("serveConn: mengirim initial state", "participant", p.DisplayName, "docID", r.docID)
 	r.sendInitialState(conn)
 	r.broadcastPresence(TypeUserConnected, p)
 	r.notifyChanged()
+	r.log.Info("serveConn: client terhubung", "name", p.DisplayName, "id", p.ID)
 
 	for {
 		ws.SetReadDeadline(time.Now().Add(r.cfg.ReadWait))
@@ -905,15 +918,17 @@ func (r *Room) authenticate(jr *JoinRequest, conn *serverConn) (*Participant, *s
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.isClosed() {
+		r.log.Warn("authenticate: room sudah ditutup")
 		r.sendError(conn, errCodeClosed, "Room sudah ditutup.")
 		return nil, nil, false
 	}
 	if !equalConstTime(strings.TrimSpace(jr.AccessCode), r.info.AccessCode) {
-		r.log.Warn("access code salah", "device", jr.DeviceName, "name", jr.DisplayName)
+		r.log.Warn("authenticate: access code salah", "device", jr.DeviceName, "name", jr.DisplayName, "input_len", len(jr.AccessCode), "expected_len", len(r.info.AccessCode))
 		r.sendError(conn, errCodeAuth, "Access code salah. Minta kode kepada host room.")
 		return nil, nil, false
 	}
 	if rc := strings.TrimSpace(jr.RoomCode); rc != "" && !strings.EqualFold(rc, strings.TrimSpace(r.info.RoomCode)) {
+		r.log.Warn("authenticate: room code salah", "input", rc, "expected", r.info.RoomCode)
 		r.sendError(conn, errCodeAuth, "Room code salah.")
 		return nil, nil, false
 	}
@@ -962,6 +977,7 @@ func (r *Room) authenticate(jr *JoinRequest, conn *serverConn) (*Participant, *s
 	r.byID[p.ID] = p
 	r.conns[p.ID] = conn
 	r.publishAnnounceLocked()
+	r.log.Info("authenticate: berhasil", "name", p.DisplayName, "role", p.Role, "id", p.ID)
 	return p, nil, true
 }
 
@@ -971,12 +987,14 @@ func (r *Room) authenticate(jr *JoinRequest, conn *serverConn) (*Participant, *s
 func (r *Room) sendInitialState(c *serverConn) {
 	doc, err := r.ops.Snapshot(r.docID)
 	if err != nil {
-		r.log.Error("gagal memuat state untuk initial sync", "error", err)
+		r.log.Error("sendInitialState: gagal memuat state", "error", err, "docID", r.docID)
 		r.sendError(c, errCodeInternal, "Gagal menyiapkan state dokumen.")
 		return
 	}
-	state, err := json.Marshal(doc)
+	save := services.DocToSaveInput(doc)
+	state, err := json.Marshal(save)
 	if err != nil {
+		r.log.Error("sendInitialState: gagal marshal state", "error", err)
 		r.sendError(c, errCodeInternal, "Gagal menyiapkan state dokumen.")
 		return
 	}
@@ -991,8 +1009,11 @@ func (r *Room) sendInitialState(c *serverConn) {
 	ok := c.deliver(env)
 	r.mu.Unlock()
 	if !ok {
+		r.log.Warn("sendInitialState: deliver gagal (buffer penuh?)", "participant", c.participantID)
 		c.shutdown()
+		return
 	}
+	r.log.Info("sendInitialState: ROOM_JOINED terkirim", "participant", c.participantID, "stateSize", len(state), "version", r.version)
 }
 
 // applyRemote menjalankan operasi dari client remote; error dikirim balik hanya ke pengirim.

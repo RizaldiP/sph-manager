@@ -23,6 +23,7 @@ export interface RoomInfo {
   accessCode?: string
   hostName: string
   hostDevice: string
+  hostIPs?: string[]
   port: number
   status: string
   version: number
@@ -123,6 +124,7 @@ export interface SphHeaderInput {
 }
 
 export interface SphSubItemInput {
+  id?: number
   name: string
   description: string
   quantity: number
@@ -134,6 +136,7 @@ export interface SphSubItemInput {
 }
 
 export interface SphItemInput {
+  id?: number
   workItemId?: number
   name: string
   description: string
@@ -152,15 +155,15 @@ export interface SphSaveInput {
 }
 
 export const OpType = {
-  HEADER_UPDATED: 'header_updated',
-  ITEM_ADDED: 'item_added',
-  ITEM_UPDATED: 'item_updated',
-  ITEM_DELETED: 'item_deleted',
-  ITEM_MOVED: 'item_moved',
-  SUB_ITEM_ADDED: 'sub_item_added',
-  SUB_ITEM_UPDATED: 'sub_item_updated',
-  SUB_ITEM_DELETED: 'sub_item_deleted',
-  SUB_ITEM_MOVED: 'sub_item_moved'
+  HEADER_UPDATED: 'HEADER_UPDATED',
+  ITEM_ADDED: 'ITEM_ADDED',
+  ITEM_UPDATED: 'ITEM_UPDATED',
+  ITEM_DELETED: 'ITEM_DELETED',
+  ITEM_MOVED: 'ITEM_MOVED',
+  SUB_ITEM_ADDED: 'SUB_ITEM_ADDED',
+  SUB_ITEM_UPDATED: 'SUB_ITEM_UPDATED',
+  SUB_ITEM_DELETED: 'SUB_ITEM_DELETED',
+  SUB_ITEM_MOVED: 'SUB_ITEM_MOVED'
 } as const
 
 export const ModeLabel: Record<string, string> = {

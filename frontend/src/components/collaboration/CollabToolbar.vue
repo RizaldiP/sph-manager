@@ -18,7 +18,86 @@
     <div v-if="snap.room" class="mb-3 space-y-1 text-[13px]">
       <p class="font-semibold text-slate-800">{{ snap.room.roomName }}</p>
       <p class="text-xs text-slate-400">{{ snap.room.documentNumber }} · {{ snap.room.projectName }}</p>
-      <p v-if="snap.room.accessCode && store.isHost" class="text-xs text-slate-400">Code: <span class="font-mono font-semibold text-slate-600">{{ snap.room.accessCode }}</span></p>
+    </div>
+
+    <!-- Connection info (host only) -->
+    <div v-if="store.isHost && snap.room" class="mb-3 rounded-lg border border-brand-200 bg-brand-50 p-3">
+      <div class="mb-2 flex items-center justify-between">
+        <h4 class="text-[13px] font-semibold text-brand-700">Untuk Bergabung</h4>
+        <button type="button" class="rounded p-1 text-brand-500 transition-colors hover:bg-brand-100" :title="showConnInfo ? 'Sembunyikan' : 'Tampilkan'" @click="showConnInfo = !showConnInfo">
+          <svg v-if="showConnInfo" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+          </svg>
+          <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+      </div>
+
+      <template v-if="showConnInfo">
+        <!-- IP addresses -->
+        <div v-if="snap.room.hostIPs && snap.room.hostIPs.length" class="mb-2">
+          <p class="mb-1 text-[11px] font-medium uppercase tracking-wide text-brand-600">Alamat IP</p>
+          <div v-for="ip in snap.room.hostIPs" :key="ip" class="flex items-center gap-1.5">
+            <code class="flex-1 rounded bg-white px-2 py-1 font-mono text-[13px] font-semibold text-slate-800 ring-1 ring-brand-200">{{ ip }}</code>
+            <button type="button" class="shrink-0 rounded p-1.5 text-slate-400 transition-colors hover:bg-white hover:text-brand-600" title="Salin" @click="copyToClipboard(ip)">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div v-else class="mb-2">
+          <p class="mb-1 text-[11px] font-medium uppercase tracking-wide text-brand-600">Alamat IP</p>
+          <p class="text-[12px] italic text-brand-400">Tidak terdeteksi</p>
+        </div>
+
+        <!-- Port -->
+        <div class="mb-2">
+          <p class="mb-1 text-[11px] font-medium uppercase tracking-wide text-brand-600">Port</p>
+          <div class="flex items-center gap-1.5">
+            <code class="flex-1 rounded bg-white px-2 py-1 font-mono text-[13px] font-semibold text-slate-800 ring-1 ring-brand-200">{{ snap.room.port }}</code>
+            <button type="button" class="shrink-0 rounded p-1.5 text-slate-400 transition-colors hover:bg-white hover:text-brand-600" title="Salin" @click="copyToClipboard(String(snap.room.port))">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Access Code -->
+        <div>
+          <p class="mb-1 text-[11px] font-medium uppercase tracking-wide text-brand-600">Access Code</p>
+          <div class="flex items-center gap-1.5">
+            <code class="flex-1 rounded bg-white px-2 py-1 font-mono text-[13px] font-semibold text-slate-800 ring-1 ring-brand-200">{{ snap.room.accessCode }}</code>
+            <button type="button" class="shrink-0 rounded p-1.5 text-slate-400 transition-colors hover:bg-white hover:text-brand-600" title="Salin" @click="copyToClipboard(snap.room.accessCode ?? '')">
+              <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </template>
+
+      <template v-else>
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[12px] text-brand-600">IP</span>
+            <span class="font-mono text-[12px] text-brand-400">••••••••</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[12px] text-brand-600">Port</span>
+            <span class="font-mono text-[12px] text-brand-400">••••</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[12px] text-brand-600">Access Code</span>
+            <span class="font-mono text-[12px] text-brand-400">••••••</span>
+          </div>
+        </div>
+      </template>
+
+      <p v-if="copied" class="mt-2 text-center text-[11px] font-medium text-emerald-600">Tersalin!</p>
     </div>
 
     <!-- Connection status -->
@@ -57,11 +136,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useCollaborationStore } from '../../stores/collaboration'
 import { ConnLabel } from '../../types/collaboration'
 
 const store = useCollaborationStore()
+
+const showConnInfo = ref(false)
+const copied = ref(false)
 
 const snap = computed(() => store.snapshot)
 const live = computed(() => store.isLive)
@@ -74,6 +156,26 @@ function handleLeave() {
     store.closeRoom()
   } else {
     store.leaveRoom()
+  }
+}
+
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 1500)
+  } catch {
+    // fallback
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 1500)
   }
 }
 </script>

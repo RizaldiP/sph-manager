@@ -83,9 +83,17 @@ func (c *Client) StartAndWaitReady(timeout time.Duration) error {
 	go c.run()
 	select {
 	case err := <-c.firstResult:
+		if err != nil {
+			c.p.log.Warn("join gagal (firstResult)", "addr", c.p.addr, "error", err)
+		} else {
+			c.p.log.Info("join berhasil (firstResult)", "addr", c.p.addr)
+		}
 		return err
 	case <-time.After(timeout):
-		return fmt.Errorf("host di %s tidak merespons permintaan join.", c.p.addr)
+		c.p.log.Warn("join timeout", "addr", c.p.addr, "timeout", timeout)
+		return fmt.Errorf("host di %s tidak merespons permintaan join (%s). "+
+			"Kemungkinan firewall memblokir port. Izinkan SPH Manager pada jaringan privat.",
+			c.p.addr, timeout)
 	case <-c.stopCh:
 		return fmt.Errorf("koneksi dibatalkan.")
 	}
@@ -132,6 +140,13 @@ func (c *Client) wsURL() string {
 
 // run adalah supervisor koneksi: dial → join → tahan koneksi → reconnect saat putus.
 func (c *Client) run() {
+	defer func() {
+		if rec := recover(); rec != nil {
+			c.p.log.Error("client.run panic", "recover", rec)
+			c.setStatus(ConnDisconnected, "Terjadi kesalahan internal.")
+			c.resolveFirst(fmt.Errorf("kesalahan internal client"))
+		}
+	}()
 	cfg := c.p.cfg
 	backoff := cfg.BackoffMin
 	for {
@@ -238,8 +253,11 @@ func (c *Client) connect() (*connSession, error) {
 	}
 	conn, _, err := dialer.DialContext(context.Background(), c.wsURL(), http.Header{})
 	if err != nil {
+		c.p.log.Warn("connect gagal", "addr", c.p.addr, "error", err)
 		return nil, &clientErr{msg: fmt.Sprintf(
-			"tidak dapat terhubung ke %s. Periksa IP/port, pastikan room host aktif, dan izinkan aplikasi pada firewall jaringan privat.", c.p.addr)}
+			"gagal terhubung ke %s: %s. Periksa: 1) IP dan port benar, "+
+				"2) room host masih aktif, 3) firewall Windows mengizinkan aplikasi pada jaringan privat.",
+			c.p.addr, err.Error())}
 	}
 	conn.SetReadLimit(maxMessageSize)
 	return &connSession{conn: conn, dead: make(chan struct{})}, nil
@@ -294,6 +312,11 @@ func (c *Client) sendOp(op *services.OpPayload) error {
 
 // readLoop menerima envelope dari host dan meneruskannya ke manager.
 func (c *Client) readLoop(s *connSession) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			c.p.log.Error("client.readLoop panic", "recover", rec)
+		}
+	}()
 	defer s.kill()
 	for {
 		_ = s.conn.SetReadDeadline(time.Now().Add(c.p.cfg.ReadWait))
@@ -347,6 +370,11 @@ func (c *Client) markFatal(msg string) {
 
 // heartbeat mengirim PING periodik agar presence host tetap segar (§10.14).
 func (c *Client) heartbeat(s *connSession) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			c.p.log.Error("client.heartbeat panic", "recover", rec)
+		}
+	}()
 	ticker := time.NewTicker(c.p.cfg.Heartbeat)
 	defer ticker.Stop()
 	for {

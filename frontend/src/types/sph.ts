@@ -117,6 +117,7 @@ export interface SphDetail {
 // ===== payload simpan (tanpa field waktu agar aman lewat binding Wails) =====
 
 export type SphSubItemInput = {
+  id?: number
   name: string
   description: string
   quantity: number
@@ -128,6 +129,7 @@ export type SphSubItemInput = {
 }
 
 export type SphItemInput = {
+  id?: number
   workItemId?: number
   name: string
   description: string

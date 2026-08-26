@@ -348,6 +348,7 @@ func DocToSaveInput(d *models.SphDocument) SphSaveInput {
 	items := make([]SphItemInput, 0, len(d.Items))
 	for _, it := range d.Items {
 		row := SphItemInput{
+			ID:                it.ID,
 			WorkItemID:        it.WorkItemID,
 			Name:              it.NameSnapshot,
 			Description:       it.DescriptionSnapshot,
@@ -361,6 +362,7 @@ func DocToSaveInput(d *models.SphDocument) SphSaveInput {
 		}
 		for _, sb := range it.SubItems {
 			row.SubItems = append(row.SubItems, SphSubItemInput{
+				ID:                sb.ID,
 				Name:              sb.NameSnapshot,
 				Description:       sb.DescriptionSnapshot,
 				Quantity:          sb.Quantity,

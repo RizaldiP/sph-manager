@@ -99,6 +99,7 @@ export namespace collaboration {
 	    accessCode?: string;
 	    hostName: string;
 	    hostDevice: string;
+	    hostIPs?: string[];
 	    port: number;
 	    status: string;
 	    version: number;
@@ -121,6 +122,7 @@ export namespace collaboration {
 	        this.accessCode = source["accessCode"];
 	        this.hostName = source["hostName"];
 	        this.hostDevice = source["hostDevice"];
+	        this.hostIPs = source["hostIPs"];
 	        this.port = source["port"];
 	        this.status = source["status"];
 	        this.version = source["version"];
@@ -1568,6 +1570,7 @@ export namespace services {
 	    }
 	}
 	export class SphSubItemInput {
+	    id?: number;
 	    name: string;
 	    description: string;
 	    quantity: number;
@@ -1583,6 +1586,7 @@ export namespace services {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.description = source["description"];
 	        this.quantity = source["quantity"];
@@ -1594,6 +1598,7 @@ export namespace services {
 	    }
 	}
 	export class SphItemInput {
+	    id?: number;
 	    workItemId?: number;
 	    name: string;
 	    description: string;
@@ -1611,6 +1616,7 @@ export namespace services {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
 	        this.workItemId = source["workItemId"];
 	        this.name = source["name"];
 	        this.description = source["description"];

@@ -49,6 +49,9 @@ func startAnnouncer(port int, interval time.Duration, log *slog.Logger) (*Announ
 	}
 
 	dests := addIfaceBroadcasts(port)
+	if len(dests) <= 1 {
+		log.Warn("hanya broadcast global 255.255.255.255, directed broadcast tidak ditemukan")
+	}
 
 	a := &Announcer{
 		conn:     conn,
@@ -119,6 +122,11 @@ func (a *Announcer) Set(p announcePacket) { a.packet.Store(p) }
 
 func (a *Announcer) loop() {
 	defer close(a.doneCh)
+	defer func() {
+		if rec := recover(); rec != nil {
+			a.log.Error("announcer.loop panic", "recover", rec)
+		}
+	}()
 	ticker := time.NewTicker(a.interval)
 	defer ticker.Stop()
 
@@ -195,6 +203,11 @@ func startListener(port int, ttl time.Duration, pruneInterval time.Duration, log
 
 func (l *Listener) readLoop() {
 	defer close(l.doneCh)
+	defer func() {
+		if rec := recover(); rec != nil {
+			l.log.Error("listener.readLoop panic", "recover", rec)
+		}
+	}()
 	deadCalled := false
 	defer func() {
 		if !deadCalled && l.onDead != nil {
@@ -243,6 +256,11 @@ func (l *Listener) readLoop() {
 
 func (l *Listener) pruneLoop(interval time.Duration) {
 	defer close(l.pruneDone)
+	defer func() {
+		if rec := recover(); rec != nil {
+			l.log.Error("listener.pruneLoop panic", "recover", rec)
+		}
+	}()
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
