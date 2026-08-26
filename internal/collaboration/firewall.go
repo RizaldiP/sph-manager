@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os/exec"
 	"runtime"
+	"strings"
 )
 
 const (
@@ -13,12 +14,14 @@ const (
 )
 
 // EnsureFirewallRules attempts to add Windows Firewall inbound rules for the
-// collaboration ports. It uses netsh which may require admin privileges.
-// Returns nil if rules already exist or were added successfully.
-func EnsureFirewallRules(tcpPort, udpPort int, log *slog.Logger) error {
+// collaboration ports. Returns a warning message if rules could not be created
+// (typically because the app is not running as administrator).
+func EnsureFirewallRules(tcpPort, udpPort int, log *slog.Logger) string {
 	if runtime.GOOS != "windows" {
-		return nil
+		return ""
 	}
+
+	warnings := []string{}
 
 	tryAdd := func(name, protocol string, port int) {
 		cmd := exec.Command("netsh", "advfirewall", "firewall", "add", "rule",
@@ -33,6 +36,7 @@ func EnsureFirewallRules(tcpPort, udpPort int, log *slog.Logger) error {
 		if err != nil {
 			log.Warn("gagal membuat firewall rule",
 				"rule", name, "error", err, "output", string(out))
+			warnings = append(warnings, name)
 		} else {
 			log.Info("firewall rule siap", "rule", name, "port", port)
 		}
@@ -41,7 +45,11 @@ func EnsureFirewallRules(tcpPort, udpPort int, log *slog.Logger) error {
 	tryAdd(firewallRuleTCP, "TCP", tcpPort)
 	tryAdd(firewallRuleUDP, "UDP", udpPort)
 
-	return nil
+	if len(warnings) > 0 {
+		return "Firewall rules belum aktif. Jalankan aplikasi sebagai Administrator untuk " +
+			"mengizinkan koneksi jaringan, atau buka port secara manual."
+	}
+	return ""
 }
 
 // RemoveFirewallRules removes the SPH Manager firewall rules.
@@ -58,4 +66,17 @@ func RemoveFirewallRules(log *slog.Logger) {
 			log.Info("firewall rule dihapus", "rule", name)
 		}
 	}
+}
+
+// IsAdmin checks if the current process has administrator privileges on Windows.
+func IsAdmin() bool {
+	if runtime.GOOS != "windows" {
+		return true
+	}
+	cmd := exec.Command("net", "session")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(out), "Session ID")
 }

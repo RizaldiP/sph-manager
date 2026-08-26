@@ -35,8 +35,11 @@ type Announcer struct {
 }
 
 // startAnnouncer menyiapkan socket broadcast; pengiriman berjalan pada goroutine.
+// Menggunakan ListenUDP (unconnected) agar SO_BROADCAST bisa diset sebelum
+// pengiriman pertama ke alamat broadcast.
 func startAnnouncer(port int, interval time.Duration, log *slog.Logger) (*Announcer, error) {
-	conn, err := net.DialUDP("udp4", nil, &net.UDPAddr{IP: net.IPv4(255, 255, 255, 255), Port: port})
+	addr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
+	conn, err := net.ListenUDP("udp4", addr)
 	if err != nil {
 		return nil, err
 	}

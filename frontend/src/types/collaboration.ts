@@ -28,6 +28,7 @@ export interface RoomInfo {
   status: string
   version: number
   participants?: Participant[]
+  firewallWarning?: string
   createdAt: string
 }
 

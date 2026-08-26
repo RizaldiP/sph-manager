@@ -44,6 +44,7 @@
         </svg>
         <p class="text-[13px] text-slate-400">Belum ada room ditemukan di jaringan ini.</p>
         <p class="mt-1 text-xs text-slate-400">Mulai room baru atau gabung via IP manual.</p>
+        <p class="mt-2 text-[11px] text-slate-300">Tips: Pastikan kedua komputer di WiFi/LAN yang sama. Jika firewall memblokir, jalankan aplikasi sebagai Administrator.</p>
       </div>
 
       <ul v-else class="divide-y divide-slate-100">

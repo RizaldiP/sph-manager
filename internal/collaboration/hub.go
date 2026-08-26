@@ -178,7 +178,7 @@ func (m *Manager) HostRoom(docID uint, roomName, displayName string, port int) (
 			"atau gunakan port lain di halaman Pengaturan.", port)
 	}
 
-	EnsureFirewallRules(srv.Port(), DefaultDiscoveryPort, m.log)
+	firewallWarn := EnsureFirewallRules(srv.Port(), DefaultDiscoveryPort, m.log)
 
 	now := time.Now()
 	hostPart := Participant{
@@ -190,20 +190,21 @@ func (m *Manager) HostRoom(docID uint, roomName, displayName string, port int) (
 		LastSeen:    now,
 	}
 	info := RoomInfo{
-		RoomID:         uuid.NewString(),
-		SphDocumentID:  doc.ID,
-		DocumentNumber: doc.DocumentNumber,
-		ProjectName:    doc.ProjectName,
-		RoomCode:       GenerateRoomCode(),
-		RoomName:       strings.TrimSpace(roomName),
-		AccessCode:     GenerateAccessCode(),
-		HostName:       displayName,
-		HostDevice:     m.cfg.DeviceName,
-		HostIPs:        localIPs(),
-		Port:           srv.Port(),
-		Status:         RoomStatusActive,
-		CreatedAt:      now,
-		Participants:   []Participant{hostPart},
+		RoomID:          uuid.NewString(),
+		SphDocumentID:   doc.ID,
+		DocumentNumber:  doc.DocumentNumber,
+		ProjectName:     doc.ProjectName,
+		RoomCode:        GenerateRoomCode(),
+		RoomName:        strings.TrimSpace(roomName),
+		AccessCode:      GenerateAccessCode(),
+		HostName:        displayName,
+		HostDevice:      m.cfg.DeviceName,
+		HostIPs:         localIPs(),
+		Port:            srv.Port(),
+		Status:          RoomStatusActive,
+		FirewallWarning: firewallWarn,
+		CreatedAt:       now,
+		Participants:    []Participant{hostPart},
 	}
 	if info.RoomName == "" {
 		info.RoomName = doc.ProjectName

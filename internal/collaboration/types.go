@@ -47,21 +47,22 @@ type Participant struct {
 // RoomInfo adalah potret room untuk UI host maupun client.
 // AccessCode hanya diisi pada sisi host (tidak pernah dikirim ke client).
 type RoomInfo struct {
-	RoomID         string        `json:"roomId"`
-	SphDocumentID  uint          `json:"sphDocumentId"`
-	DocumentNumber string        `json:"documentNumber"`
-	ProjectName    string        `json:"projectName"`
-	RoomCode       string        `json:"roomCode"`
-	RoomName       string        `json:"roomName"`
-	AccessCode     string        `json:"accessCode,omitempty"`
-	HostName       string        `json:"hostName"`
-	HostDevice     string        `json:"hostDevice"`
-	HostIPs        []string      `json:"hostIPs,omitempty"`
-	Port           int           `json:"port"`
-	Status         string        `json:"status"`
-	Version        uint64        `json:"version"`
-	Participants   []Participant `json:"participants,omitempty"`
-	CreatedAt      time.Time     `json:"createdAt"`
+	RoomID           string        `json:"roomId"`
+	SphDocumentID    uint          `json:"sphDocumentId"`
+	DocumentNumber   string        `json:"documentNumber"`
+	ProjectName      string        `json:"projectName"`
+	RoomCode         string        `json:"roomCode"`
+	RoomName         string        `json:"roomName"`
+	AccessCode       string        `json:"accessCode,omitempty"`
+	HostName         string        `json:"hostName"`
+	HostDevice       string        `json:"hostDevice"`
+	HostIPs          []string      `json:"hostIPs,omitempty"`
+	Port             int           `json:"port"`
+	Status           string        `json:"status"`
+	Version          uint64        `json:"version"`
+	Participants     []Participant `json:"participants,omitempty"`
+	FirewallWarning  string        `json:"firewallWarning,omitempty"`
+	CreatedAt        time.Time     `json:"createdAt"`
 }
 
 // Sanitized menyalin info room tanpa access code agar aman dikirim ke client.

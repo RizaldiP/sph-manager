@@ -618,12 +618,9 @@ let focusedHeaderField = ''
 let focusedItemKey = ''
 let focusedSubItemKey = ''
 const syncPending = ref(false)
-let syncTimer: ReturnType<typeof setTimeout> | null = null
 
 function markSyncing() {
   syncPending.value = true
-  if (syncTimer) clearTimeout(syncTimer)
-  syncTimer = setTimeout(() => { syncPending.value = false }, 1500)
 }
 
 function onHeaderFocus(field: string) { focusedHeaderField = field }
@@ -1347,7 +1344,6 @@ function onCollabSync(raw: any) {
   const doc = collabStore.snapshot.doc as SphSaveInput | undefined
   if (!doc) return
   requestAnimationFrame(() => {
-    syncPending.value = false
     isApplyingRemote = true
     if (focusedHeaderField) {
       const patched = { ...header, ...doc.header }
@@ -1396,6 +1392,7 @@ function onCollabSync(raw: any) {
       if (remote) mergeSubItems(li, remote.subItems ?? [])
     }
     isApplyingRemote = false
+    syncPending.value = false
   })
 }
 </script>

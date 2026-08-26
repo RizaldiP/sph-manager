@@ -104,6 +104,7 @@ export namespace collaboration {
 	    status: string;
 	    version: number;
 	    participants?: Participant[];
+	    firewallWarning?: string;
 	    // Go type: time
 	    createdAt: any;
 	
@@ -127,6 +128,7 @@ export namespace collaboration {
 	        this.status = source["status"];
 	        this.version = source["version"];
 	        this.participants = this.convertValues(source["participants"], Participant);
+	        this.firewallWarning = source["firewallWarning"];
 	        this.createdAt = this.convertValues(source["createdAt"], null);
 	    }
 	
