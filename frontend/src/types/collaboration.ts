@@ -8,6 +8,7 @@ export interface CollabSnapshot {
   doc?: SphSaveInput
   participants?: Participant[]
   activities?: CollabActivity[]
+  turn?: TurnState
   version?: number
   error?: string
   notice?: string
@@ -153,6 +154,17 @@ export interface SphItemInput {
 export interface SphSaveInput {
   header: SphHeaderInput
   items: SphItemInput[]
+}
+
+export interface TurnState {
+  assignments: Record<string, string[]>  // participantID → []sectionID
+  activeEdits: Record<string, string>    // sectionID → participantID
+}
+
+export const SectionLabel: Record<string, string> = {
+  header: 'Header',
+  items: 'Items',
+  subitems: 'Sub Items'
 }
 
 export const OpType = {

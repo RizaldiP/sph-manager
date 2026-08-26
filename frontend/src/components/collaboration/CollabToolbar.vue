@@ -36,7 +36,6 @@
       </div>
 
       <template v-if="showConnInfo">
-        <!-- IP addresses -->
         <div v-if="snap.room.hostIPs && snap.room.hostIPs.length" class="mb-2">
           <p class="mb-1 text-[11px] font-medium uppercase tracking-wide text-brand-600">Alamat IP</p>
           <div v-for="ip in snap.room.hostIPs" :key="ip" class="flex items-center gap-1.5">
@@ -53,7 +52,6 @@
           <p class="text-[12px] italic text-brand-400">Tidak terdeteksi</p>
         </div>
 
-        <!-- Port -->
         <div class="mb-2">
           <p class="mb-1 text-[11px] font-medium uppercase tracking-wide text-brand-600">Port</p>
           <div class="flex items-center gap-1.5">
@@ -66,7 +64,6 @@
           </div>
         </div>
 
-        <!-- Access Code -->
         <div>
           <p class="mb-1 text-[11px] font-medium uppercase tracking-wide text-brand-600">Access Code</p>
           <div class="flex items-center gap-1.5">
@@ -118,6 +115,51 @@
     <div v-if="snap.error" class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">{{ snap.error }}</div>
     <div v-if="snap.notice" class="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[13px] text-blue-700">{{ snap.notice }}</div>
 
+    <!-- Turn Assignment Panel (Host only) -->
+    <div v-if="store.isHost && live && otherParticipants.length" class="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <h4 class="mb-2 text-[13px] font-semibold text-slate-700">Atur Hak Edit</h4>
+      <div v-for="p in otherParticipants" :key="p.id" class="mb-2 last:mb-0">
+        <p class="mb-1 text-[12px] font-medium text-slate-600">{{ p.displayName }}</p>
+        <div class="flex flex-wrap gap-1.5">
+          <label v-for="sec in allSections" :key="sec.id" class="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600 transition-colors hover:bg-slate-50">
+            <input type="checkbox" :checked="isAssigned(p.id, sec.id)" class="h-3 w-3 rounded border-slate-300 text-brand-600 focus:ring-brand-500" @change="toggleAssignment(p.id, sec.id, $event)" />
+            {{ sec.label }}
+          </label>
+        </div>
+      </div>
+      <button type="button" class="mt-2 w-full rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-[12px] font-medium text-brand-700 transition-colors hover:bg-brand-100" @click="applyAssignments">
+        Terapkan
+      </button>
+    </div>
+
+    <!-- Client: Active edit controls -->
+    <div v-if="store.isClient && live" class="mb-3 space-y-1.5">
+      <div v-for="sec in editableSections" :key="sec.id" class="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-3 py-1.5">
+        <span class="text-[12px] font-medium text-slate-600">{{ sec.label }}</span>
+        <div class="flex items-center gap-1.5">
+          <span v-if="activeEditorFor(sec.id)" class="text-[11px] text-amber-600">
+            {{ activeEditorFor(sec.id) === myId ? 'Anda sedang edit' : activeEditorFor(sec.id) }}
+          </span>
+          <button
+            v-if="!activeEditorFor(sec.id)"
+            type="button"
+            class="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
+            @click="store.requestEdit(sec.id)"
+          >
+            Edit
+          </button>
+          <button
+            v-else-if="activeEditorFor(sec.id) === myId"
+            type="button"
+            class="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 transition-colors hover:bg-amber-100"
+            @click="handleReleaseAndSync(sec.id)"
+          >
+            Selesai &amp; Sync
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Participants -->
     <div v-if="participants.length" class="mb-3">
       <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Pengguna ({{ participants.length }})</h4>
@@ -146,18 +188,72 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useCollaborationStore } from '../../stores/collaboration'
-import { ConnLabel } from '../../types/collaboration'
+import { ConnLabel, SectionLabel } from '../../types/collaboration'
 
 const store = useCollaborationStore()
 
 const showConnInfo = ref(false)
 const copied = ref(false)
+const pendingAssignments = ref<Record<string, string[]>>({})
 
 const snap = computed(() => store.snapshot)
 const live = computed(() => store.isLive)
 const participants = computed(() => store.snapshot.participants ?? [])
 const activities = computed(() => store.snapshot.activities ?? [])
 const connLabel = computed(() => ConnLabel[snap.value.connection ?? ''] ?? snap.value.connection ?? '')
+
+const otherParticipants = computed(() =>
+  participants.value.filter(p => p.role !== 'HOST')
+)
+
+const allSections = [
+  { id: 'header', label: 'Header' },
+  { id: 'items', label: 'Items' },
+  { id: 'subitems', label: 'Sub Items' }
+]
+
+const editableSections = computed(() => {
+  const assigned = store.myAssignments
+  return allSections.filter(s => assigned.includes(s.id))
+})
+
+const myId = computed(() => {
+  const parts = store.snapshot.participants ?? []
+  return parts.find(p => p.role !== 'HOST')?.id ?? ''
+})
+
+function isAssigned(participantId: string, sectionId: string): boolean {
+  const a = store.turn?.assignments ?? pendingAssignments.value
+  return (a[participantId] ?? []).includes(sectionId)
+}
+
+function toggleAssignment(participantId: string, sectionId: string, event: Event) {
+  const checked = (event.target as HTMLInputElement).checked
+  const current = pendingAssignments.value[participantId] ?? [...(store.turn?.assignments?.[participantId] ?? [])]
+  if (checked) {
+    if (!current.includes(sectionId)) current.push(sectionId)
+  } else {
+    const idx = current.indexOf(sectionId)
+    if (idx >= 0) current.splice(idx, 1)
+  }
+  pendingAssignments.value = { ...pendingAssignments.value, [participantId]: current }
+}
+
+async function applyAssignments() {
+  await store.assignTurns(pendingAssignments.value)
+  pendingAssignments.value = {}
+}
+
+function activeEditorFor(sectionId: string): string {
+  const editorId = store.turn?.activeEdits?.[sectionId]
+  if (!editorId) return ''
+  const parts = store.snapshot.participants ?? []
+  return parts.find(p => p.id === editorId)?.displayName ?? ''
+}
+
+async function handleReleaseAndSync(sectionId: string) {
+  await store.releaseEdit(sectionId)
+}
 
 function handleLeave() {
   if (store.isHost) {
@@ -173,7 +269,6 @@ async function copyToClipboard(text: string) {
     copied.value = true
     setTimeout(() => { copied.value = false }, 1500)
   } catch {
-    // fallback
     const ta = document.createElement('textarea')
     ta.value = text
     ta.style.position = 'fixed'

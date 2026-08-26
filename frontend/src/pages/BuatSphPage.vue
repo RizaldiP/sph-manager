@@ -2,12 +2,13 @@
   <div>
     <PageHeader :title="isEdit ? 'Edit Draft SPH' : 'Buat SPH'" subtitle="Wizard penyusunan penawaran langkah demi langkah">
       <template #actions>
-        <div v-if="isCollabMode && syncPending" class="flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200">
-          <svg class="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-          </svg>
-          Menyimpan...
+        <div v-if="isCollabMode" class="flex items-center gap-2">
+          <button type="button" class="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-[13px] font-medium text-brand-700 transition-colors hover:bg-brand-100" @click="syncNow">
+            <span class="flex items-center gap-1.5">
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" /></svg>
+              Sync
+            </span>
+          </button>
         </div>
         <button type="button" class="rounded-lg border border-slate-200 px-3.5 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-50" @click="router.back()">
           Batal
@@ -41,50 +42,50 @@
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label class="mb-1 block text-[13px] font-medium text-slate-600">Tanggal SPH <span class="text-red-500">*</span></label>
-            <input v-model="header.date" type="date" required class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" @input="onHeaderInput" @focus="onHeaderFocus('date')" @blur="onBlur" />
+            <input v-model="header.date" type="date" required class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" :disabled="!canEditSection('header')" />
             <p class="mt-1 text-xs text-slate-400">Nomor dokumen dibuat otomatis dari periode tanggal ini.</p>
           </div>
           <div>
             <label class="mb-1 block text-[13px] font-medium text-slate-600">Masa Berlaku</label>
-            <input v-model="header.validUntil" type="date" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" @input="onHeaderInput" @focus="onHeaderFocus('validUntil')" @blur="onBlur" />
+            <input v-model="header.validUntil" type="date" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" :disabled="!canEditSection('header')" />
           </div>
           <div>
             <label class="mb-1 block text-[13px] font-medium text-slate-600">Customer <span class="text-red-500">*</span></label>
-            <select v-model.number="header.customerId" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" @input="onHeaderInput" @focus="onHeaderFocus('customerId')" @blur="onBlur">
+            <select v-model.number="header.customerId" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" :disabled="!canEditSection('header')">
               <option :value="0" disabled>— Pilih customer —</option>
               <option v-for="c in partnerStore.customers" :key="c.id" :value="c.id">{{ c.name }}</option>
             </select>
           </div>
           <div>
             <label class="mb-1 block text-[13px] font-medium text-slate-600">Kapal</label>
-            <select v-model.number="vesselChoice" :disabled="!customerVessels.length" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none disabled:bg-slate-50 disabled:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100" @input="onHeaderInput" @focus="onHeaderFocus('vesselId')" @blur="onBlur">
+            <select v-model.number="vesselChoice" :disabled="!customerVessels.length || !canEditSection('header')" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none disabled:bg-slate-50 disabled:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100">
               <option :value="0">— Tanpa kapal —</option>
               <option v-for="v in customerVessels" :key="v.id" :value="v.id">{{ v.name }}</option>
             </select>
           </div>
           <div>
             <label class="mb-1 block text-[13px] font-medium text-slate-600">Nama Proyek</label>
-            <input v-model="header.projectName" type="text" maxlength="300" placeholder="misal Docking & Repair 2026" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" @input="onHeaderInput" @focus="onHeaderFocus('projectName')" @blur="onBlur" />
+            <input v-model="header.projectName" type="text" maxlength="300" placeholder="misal Docking & Repair 2026" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" :disabled="!canEditSection('header')" />
           </div>
           <div>
             <label class="mb-1 block text-[13px] font-medium text-slate-600">Subjek</label>
-            <input v-model="header.subject" type="text" maxlength="300" placeholder="Penawaran Jasa…" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" @input="onHeaderInput" @focus="onHeaderFocus('subject')" @blur="onBlur" />
+            <input v-model="header.subject" type="text" maxlength="300" placeholder="Penawaran Jasa…" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" :disabled="!canEditSection('header')" />
           </div>
           <div>
             <label class="mb-1 block text-[13px] font-medium text-slate-600">Referensi</label>
-            <input v-model="header.reference" type="text" maxlength="200" placeholder="No. RFQ / surat masuk" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" @input="onHeaderInput" @focus="onHeaderFocus('reference')" @blur="onBlur" />
+            <input v-model="header.reference" type="text" maxlength="200" placeholder="No. RFQ / surat masuk" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" :disabled="!canEditSection('header')" />
           </div>
           <div>
             <label class="mb-1 block text-[13px] font-medium text-slate-600">Lokasi Pekerjaan</label>
-            <input v-model="header.location" type="text" maxlength="200" placeholder="misal Tanjung Priok" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" @input="onHeaderInput" @focus="onHeaderFocus('location')" @blur="onBlur" />
+            <input v-model="header.location" type="text" maxlength="200" placeholder="misal Tanjung Priok" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" :disabled="!canEditSection('header')" />
           </div>
           <div>
             <label class="mb-1 block text-[13px] font-medium text-slate-600">PIC Customer</label>
-            <input v-model="header.picName" type="text" maxlength="150" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" @input="onHeaderInput" @focus="onHeaderFocus('picName')" @blur="onBlur" />
+            <input v-model="header.picName" type="text" maxlength="150" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" :disabled="!canEditSection('header')" />
           </div>
           <div>
             <label class="mb-1 block text-[13px] font-medium text-slate-600">Catatan Umum</label>
-            <textarea v-model="header.notes" rows="2" maxlength="2000" class="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" @input="onHeaderInput" @focus="onHeaderFocus('notes')" @blur="onBlur"></textarea>
+            <textarea v-model="header.notes" rows="2" maxlength="2000" class="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" :disabled="!canEditSection('header')"></textarea>
           </div>
         </div>
       </section>
@@ -217,37 +218,37 @@
             <div class="grid grid-cols-1 gap-2.5 md:grid-cols-12">
               <div class="md:col-span-3">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Nama</label>
-                <input v-model="it.name" type="text" maxlength="300" class="row-input" @input="onItemInput(idx)" @focus="onItemFocus(idx, 'name')" @blur="onBlur" />
+                <input v-model="it.name" type="text" maxlength="300" class="row-input" :disabled="!canEditSection('items') || isSectionLockedByOther('items')" />
               </div>
               <div class="md:col-span-2">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Deskripsi</label>
-                <input v-model="it.description" type="text" maxlength="500" class="row-input" @input="onItemInput(idx)" @focus="onItemFocus(idx, 'description')" @blur="onBlur" />
+                <input v-model="it.description" type="text" maxlength="500" class="row-input" :disabled="!canEditSection('items') || isSectionLockedByOther('items')" />
               </div>
               <div class="md:col-span-2">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Mode Harga</label>
-                <select v-model="it.pricingMode" class="row-input" @input="onItemInput(idx)" @focus="onItemFocus(idx, 'pricingMode')" @blur="onBlur">
+                <select v-model="it.pricingMode" class="row-input" :disabled="!canEditSection('items') || isSectionLockedByOther('items')">
                   <option value="HARGA_LANGSUNG">Harga Langsung</option>
                   <option value="PEMBOBOTAN">Pembobotan</option>
                 </select>
               </div>
               <div class="md:col-span-1">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Qty</label>
-                <input v-model.number="it.quantity" type="number" min="0" step="0.001" class="row-input" @input="onItemInput(idx)" @focus="onItemFocus(idx, 'quantity')" @blur="onBlur" />
+                <input v-model.number="it.quantity" type="number" min="0" step="0.001" class="row-input" :disabled="!canEditSection('items') || isSectionLockedByOther('items')" />
               </div>
               <div class="md:col-span-1">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Satuan</label>
-                <input v-model="it.unit" type="text" maxlength="30" class="row-input" @input="onItemInput(idx)" @focus="onItemFocus(idx, 'unit')" @blur="onBlur" />
+                <input v-model="it.unit" type="text" maxlength="30" class="row-input" :disabled="!canEditSection('items') || isSectionLockedByOther('items')" />
               </div>
               <div class="md:col-span-1">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Jasa</label>
-                <input v-model.number="it.serviceUnitPrice" type="number" min="0" class="row-input" @input="onItemInput(idx)" @focus="onItemFocus(idx, 'serviceUnitPrice')" @blur="onBlur" />
+                <input v-model.number="it.serviceUnitPrice" type="number" min="0" class="row-input" :disabled="!canEditSection('items') || isSectionLockedByOther('items')" />
               </div>
               <div class="md:col-span-1">
                 <label class="mb-1 flex items-center justify-between text-xs font-medium text-slate-500">
                   Mat.
                   <button type="button" title="Pilih dari master material" class="rounded px-1 text-[11px] font-semibold leading-none text-brand-600 transition-colors hover:bg-brand-50" @click="openPick(idx)">⌕</button>
                 </label>
-                <input v-model.number="it.materialUnitPrice" type="number" min="0" class="row-input" @input="onItemInput(idx)" @focus="onItemFocus(idx, 'materialUnitPrice')" @blur="onBlur" />
+                <input v-model.number="it.materialUnitPrice" type="number" min="0" class="row-input" :disabled="!canEditSection('items') || isSectionLockedByOther('items')" />
               </div>
             </div>
             <div class="mt-1 flex items-center justify-between gap-2">
@@ -307,24 +308,24 @@
             >
               <div class="md:col-span-4">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Nama Sub {{ sIdx + 1 }}</label>
-                <input v-model="sub.name" type="text" maxlength="300" class="row-input" @input="onSubItemInput(activeItemIdx, sIdx)" @focus="onSubItemFocus(activeItemIdx, sIdx, 'name')" @blur="onBlur" />
+                <input v-model="sub.name" type="text" maxlength="300" class="row-input" :disabled="!canEditSection('subitems') || isSectionLockedByOther('subitems')" />
               </div>
               <div class="md:col-span-3">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Deskripsi</label>
-                <input v-model="sub.description" type="text" maxlength="500" class="row-input" @input="onSubItemInput(activeItemIdx, sIdx)" @focus="onSubItemFocus(activeItemIdx, sIdx, 'description')" @blur="onBlur" />
+                <input v-model="sub.description" type="text" maxlength="500" class="row-input" :disabled="!canEditSection('subitems') || isSectionLockedByOther('subitems')" />
               </div>
               <div class="md:col-span-1">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Qty</label>
-                <input v-model.number="sub.quantity" type="number" min="0" step="0.001" class="row-input" @input="onSubItemInput(activeItemIdx, sIdx)" @focus="onSubItemFocus(activeItemIdx, sIdx, 'quantity')" @blur="onBlur" />
+                <input v-model.number="sub.quantity" type="number" min="0" step="0.001" class="row-input" :disabled="!canEditSection('subitems') || isSectionLockedByOther('subitems')" />
               </div>
               <div class="md:col-span-1">
                 <label class="mb-1 block text-xs font-medium text-slate-500">Satuan</label>
-                <input v-model="sub.unit" type="text" maxlength="30" class="row-input" @input="onSubItemInput(activeItemIdx, sIdx)" @focus="onSubItemFocus(activeItemIdx, sIdx, 'unit')" @blur="onBlur" />
+                <input v-model="sub.unit" type="text" maxlength="30" class="row-input" :disabled="!canEditSection('subitems') || isSectionLockedByOther('subitems')" />
               </div>
               <template v-if="isWeighted(activeItem)">
                 <div class="md:col-span-2">
                   <label class="mb-1 block text-xs font-medium text-brand-700">Bobot %</label>
-                  <input v-model.number="sub.weight" type="number" min="0" max="100" class="row-input" @input="onSubItemInput(activeItemIdx, sIdx)" @focus="onSubItemFocus(activeItemIdx, sIdx, 'weight')" @blur="onBlur" />
+                  <input v-model.number="sub.weight" type="number" min="0" max="100" class="row-input" :disabled="!canEditSection('subitems') || isSectionLockedByOther('subitems')" />
                   <p class="mt-0.5 text-[11px] tabular-nums text-slate-400">≈ {{ formatRupiah(subJumlah(activeItem, sIdx)) }}</p>
                 </div>
                 <div class="flex items-end justify-end md:col-span-1">
@@ -334,10 +335,10 @@
               <template v-else>
                 <div class="md:col-span-1">
                   <label class="mb-1 block text-xs font-medium text-slate-500">Jasa</label>
-                  <input v-model.number="sub.serviceUnitPrice" type="number" min="0" class="row-input" @input="onSubItemInput(activeItemIdx, sIdx)" @focus="onSubItemFocus(activeItemIdx, sIdx, 'serviceUnitPrice')" @blur="onBlur" />
+                  <input v-model.number="sub.serviceUnitPrice" type="number" min="0" class="row-input" :disabled="!canEditSection('subitems') || isSectionLockedByOther('subitems')" />
                 </div>
                 <div class="md:col-span-2 flex items-center justify-between gap-2">
-                  <input v-model.number="sub.materialUnitPrice" type="number" min="0" title="Harga material" class="row-input" @input="onSubItemInput(activeItemIdx, sIdx)" @focus="onSubItemFocus(activeItemIdx, sIdx, 'materialUnitPrice')" @blur="onBlur" />
+                  <input v-model.number="sub.materialUnitPrice" type="number" min="0" title="Harga material" class="row-input" :disabled="!canEditSection('subitems') || isSectionLockedByOther('subitems')" />
                   <button type="button" title="Pilih dari master material" class="shrink-0 rounded px-1.5 py-1.5 text-xs font-semibold text-brand-600 transition-colors hover:bg-brand-50" @click="openPick(activeItemIdx, sIdx)">⌕</button>
                   <button type="button" class="shrink-0 rounded px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" @click="removeSubItem(activeItem, sIdx)">✕</button>
                 </div>
@@ -590,7 +591,6 @@ import { useTemplateStore } from '../stores/template'
 import { useSphStore } from '../stores/sph'
 import { useMaterialStore } from '../stores/material'
 import { useCollaborationStore } from '../stores/collaboration'
-import { useCollabSync } from '../composables/useCollabSync'
 import { Terbilang } from '../../wailsjs/go/main/App'
 import { formatRupiah, formatQty, errorMessage } from '../utils/format'
 import type { CustomerView, VesselView } from '../types/partner'
@@ -610,92 +610,40 @@ const materialStore = useMaterialStore()
 const collabStore = useCollaborationStore()
 const isCollabMode = computed(() => collabStore.isLive)
 
-const { sendHeaderOp, sendItemAdded, sendItemUpdated, sendItemDeleted, sendItemMoved, sendSubItemAdded, sendSubItemUpdated, sendSubItemDeleted, sendSubItemMoved } = useCollabSync()
-
-// ===== collab echo prevention =====
-let isApplyingRemote = false
-let focusedHeaderField = ''
-let focusedItemKey = ''
-let focusedSubItemKey = ''
-const syncPending = ref(false)
-
-function markSyncing() {
-  syncPending.value = true
+// ===== turn-based helpers =====
+function canEditSection(sectionId: string): boolean {
+  if (!isCollabMode.value) return true
+  if (collabStore.isHost) return true
+  return collabStore.myAssignments.includes(sectionId)
 }
 
-function onHeaderFocus(field: string) { focusedHeaderField = field }
-function onItemFocus(idx: number, field: string) { focusedItemKey = `${idx}.${field}` }
-function onSubItemFocus(itemIdx: number, subIdx: number, field: string) { focusedSubItemKey = `${itemIdx}.${subIdx}.${field}` }
-function onBlur() { focusedHeaderField = ''; focusedItemKey = ''; focusedSubItemKey = '' }
-
-function debounce(fn: () => void, ms: number): () => void {
-  let t: ReturnType<typeof setTimeout> | undefined
-  return () => { clearTimeout(t); t = setTimeout(fn, ms) }
+function isSectionLockedByOther(sectionId: string): boolean {
+  if (!isCollabMode.value) return false
+  const edits = collabStore.turn?.activeEdits ?? {}
+  const editorId = edits[sectionId]
+  if (!editorId) return false
+  if (collabStore.isHost) return false
+  const myPart = (collabStore.snapshot.participants ?? []).find(p => p.role !== 'HOST')
+  return myPart ? editorId !== myPart.id : false
 }
 
-function pickItemFields(it: WizardRow & SphItemInput): { workItemId?: number; name: string; description: string; quantity: number; unit: string; serviceUnitPrice: number; materialUnitPrice: number; pricingMode: string; notes: string } {
-  return { workItemId: it.workItemId, name: it.name, description: it.description, quantity: it.quantity, unit: it.unit, serviceUnitPrice: it.serviceUnitPrice, materialUnitPrice: it.materialUnitPrice, pricingMode: it.pricingMode, notes: it.notes }
+function sectionEditorName(sectionId: string): string {
+  if (!isCollabMode.value) return ''
+  const edits = collabStore.turn?.activeEdits ?? {}
+  const editorId = edits[sectionId]
+  if (!editorId) return ''
+  const parts = collabStore.snapshot.participants ?? []
+  return parts.find(p => p.id === editorId)?.displayName ?? ''
 }
 
-function pickSubItemFields(sub: SphSubItemInput): { name: string; description: string; quantity: number; unit: string; weight: number; serviceUnitPrice: number; materialUnitPrice: number; notes: string } {
-  return { name: sub.name, description: sub.description, quantity: sub.quantity, unit: sub.unit, weight: sub.weight, serviceUnitPrice: sub.serviceUnitPrice, materialUnitPrice: sub.materialUnitPrice, notes: sub.notes }
-}
-
-function sendAllHeader() {
+async function syncNow() {
   if (!isCollabMode.value) return
-  markSyncing()
-  sendHeaderOp({ ...header, vesselId: vesselChoice.value > 0 ? vesselChoice.value : undefined } as any)
-}
-
-function sendItemById(itemId: number) {
-  if (!isCollabMode.value) return
-  markSyncing()
-  const it = items.value.find(i => i.id === itemId)
-  if (it?.id) sendItemUpdated(it.id, pickItemFields(it))
-}
-
-function sendSubItemById(itemId: number, subItemId: number) {
-  if (!isCollabMode.value) return
-  markSyncing()
-  const it = items.value.find(i => i.id === itemId)
-  if (!it) return
-  const sub = it.subItems.find(s => s.id === subItemId)
-  if (sub) sendSubItemUpdated(itemId, subItemId, pickSubItemFields(sub))
-}
-
-const debouncedSendHeader = debounce(sendAllHeader, 100)
-const itemTimers = new Map<number, ReturnType<typeof setTimeout>>()
-const subItemTimers = new Map<string, ReturnType<typeof setTimeout>>()
-
-function debouncedSendItem(itemId: number) {
-  const prev = itemTimers.get(itemId)
-  if (prev) clearTimeout(prev)
-  itemTimers.set(itemId, setTimeout(() => { sendItemById(itemId); itemTimers.delete(itemId) }, 100))
-}
-
-function debouncedSendSubItem(itemId: number, subItemId: number) {
-  const key = `${itemId}.${subItemId}`
-  const prev = subItemTimers.get(key)
-  if (prev) clearTimeout(prev)
-  subItemTimers.set(key, setTimeout(() => { sendSubItemById(itemId, subItemId); subItemTimers.delete(key) }, 100))
-}
-
-function onHeaderInput() {
-  if (isApplyingRemote || !isCollabMode.value) return
-  debouncedSendHeader()
-}
-
-function onItemInput(idx: number) {
-  if (isApplyingRemote || !isCollabMode.value) return
-  const it = items.value[idx]
-  if (it?.id) debouncedSendItem(it.id)
-}
-
-function onSubItemInput(itemIdx: number, subIdx: number) {
-  if (isApplyingRemote || !isCollabMode.value) return
-  const it = items.value[itemIdx]
-  const sub = it?.subItems[subIdx]
-  if (it?.id && sub?.id) debouncedSendSubItem(it.id, sub.id)
+  const payload = {
+    header: { ...header, vesselId: vesselChoice.value > 0 ? vesselChoice.value : undefined },
+    items: items.value.map(({ uid: _uid, id: _id, ...rest }) => ({ ...rest }))
+  }
+  await collabStore.syncPush(payload as SphSaveInput)
+  await collabStore.refreshSession()
 }
 
 // ===== pemilih material master (FR-M7) =====
@@ -1004,15 +952,10 @@ async function addFromWorkItem(wi: WorkItemView) {
     })
     if (isCollabMode.value) {
       const idx = items.value.length - 1
-      await sendItemAdded(pickItemFields(items.value[idx]), idx)
     }
   } catch (e) {
     const row = manualFromWorkItem(wi)
     items.value.push(row)
-    if (isCollabMode.value) {
-      const idx = items.value.length - 1
-      await sendItemAdded(pickItemFields(items.value[idx]), idx)
-    }
   }
 }
 
@@ -1133,36 +1076,20 @@ function addManual() {
     notes: '',
     subItems: []
   })
-  if (isCollabMode.value) {
-    const idx = items.value.length - 1
-    sendItemAdded(pickItemFields(items.value[idx]), idx)
-  }
 }
 
 const activeItem = computed(() => items.value[activeItemIdx.value] ?? null)
 
 function addSub(parent: WizardRow & SphItemInput) {
   parent.subItems.push({ name: '', description: '', quantity: 1, unit: 'giat', serviceUnitPrice: 0, materialUnitPrice: 0, weight: 0, notes: '' })
-  if (isCollabMode.value && parent.id) {
-    const newSub = parent.subItems[parent.subItems.length - 1]
-    sendSubItemAdded(parent.id, pickSubItemFields(newSub))
-  }
 }
 
 function removeItem(idx: number) {
-  const it = items.value[idx]
-  if (isCollabMode.value && it.id) {
-    sendItemDeleted(it.id)
-  }
   items.value.splice(idx, 1)
   if (activeItemIdx.value >= items.value.length) activeItemIdx.value = items.value.length - 1
 }
 
 function removeSubItem(parent: SphItemInput, sIdx: number) {
-  const sub = parent.subItems[sIdx]
-  if (isCollabMode.value && parent.id && sub?.id) {
-    sendSubItemDeleted(parent.id, sub.id)
-  }
   parent.subItems.splice(sIdx, 1)
 }
 
@@ -1171,9 +1098,6 @@ function moveItem(idx: number, dir: -1 | 1) {
   if (target < 0 || target >= items.value.length) return
   const [row] = items.value.splice(idx, 1)
   items.value.splice(target, 0, row)
-  if (isCollabMode.value && row.id) {
-    sendItemMoved(row.id, target)
-  }
 }
 
 // Drag-and-drop urutan main point (Phase 7): urutan array = urutan tersimpan.
@@ -1310,89 +1234,38 @@ onUnmounted(() => {
   EventsOff('collab:sync')
 })
 
-function mergeSubItems(localIdx: number, remoteSubs: SphSubItemInput[]) {
-  const local = items.value[localIdx]
-  if (!local) return
-  const localSubs = local.subItems
-  for (let i = 0; i < localSubs.length; i++) {
-    const ls = localSubs[i]
-    if (!ls.id) continue
-    const rs = remoteSubs.find(s => s.id === ls.id)
-    if (!rs) continue
-    const focused = focusedSubItemKey === `${localIdx}.${i}.${''}` ? '' :
-      focusedSubItemKey.startsWith(`${localIdx}.${i}.`)
-        ? focusedSubItemKey.split('.')[2] : ''
-    for (const key of ['name', 'description', 'quantity', 'unit', 'serviceUnitPrice', 'materialUnitPrice', 'weight', 'notes'] as const) {
-      if (key === focused) continue
-      ;(ls as any)[key] = (rs as any)[key]
-    }
-  }
-  for (const rs of remoteSubs) {
-    if (localSubs.some(l => l.id === rs.id)) continue
-    localSubs.push({ id: rs.id, name: rs.name, description: rs.description, quantity: rs.quantity, unit: rs.unit, serviceUnitPrice: rs.serviceUnitPrice, materialUnitPrice: rs.materialUnitPrice, weight: rs.weight, notes: rs.notes })
-  }
-  for (let i = localSubs.length - 1; i >= 0; i--) {
-    if (localSubs[i].id && !remoteSubs.some(r => r.id === localSubs[i].id)) {
-      localSubs.splice(i, 1)
-    }
-  }
-}
-
 function onCollabSync(raw: any) {
   collabStore.applySnapshot(raw)
   if (!isCollabMode.value) return
   const doc = collabStore.snapshot.doc as SphSaveInput | undefined
   if (!doc) return
   requestAnimationFrame(() => {
-    isApplyingRemote = true
-    if (focusedHeaderField) {
-      const patched = { ...header, ...doc.header }
-      delete (patched as any)[focusedHeaderField]
-      Object.assign(header, patched)
-    } else {
-      Object.assign(header, doc.header)
-    }
+    Object.assign(header, emptyHeader(), doc.header)
     vesselChoice.value = doc.header.vesselId ?? 0
-    const remoteItems = doc.items ?? []
-    const localItems = items.value
-    for (let i = 0; i < localItems.length; i++) {
-      const local = localItems[i]
-      if (!local.id) continue
-      const remote = remoteItems.find(r => r.id === local.id)
-      if (!remote) continue
-      const focusedField = focusedItemKey === `${i}.${''}` ? '' :
-        focusedItemKey.startsWith(`${i}.`) ? focusedItemKey.split('.')[1] : ''
-      for (const key of ['name', 'description', 'quantity', 'unit', 'serviceUnitPrice', 'materialUnitPrice', 'pricingMode', 'notes'] as const) {
-        if (key === focusedField) continue
-        ;(local as any)[key] = (remote as any)[key]
-      }
-      local.workItemId = remote.workItemId
-    }
-    for (const remote of remoteItems) {
-      if (localItems.some(l => l.id === remote.id)) continue
-      localItems.push({
-        uid: nextUid(), id: remote.id, workItemId: remote.workItemId,
-        name: remote.name, description: remote.description, quantity: remote.quantity,
-        unit: remote.unit, serviceUnitPrice: remote.serviceUnitPrice,
-        materialUnitPrice: remote.materialUnitPrice, pricingMode: remote.pricingMode,
-        notes: remote.notes,
-        subItems: (remote.subItems ?? []).map(s => ({ id: s.id, name: s.name, description: s.description, quantity: s.quantity, unit: s.unit, serviceUnitPrice: s.serviceUnitPrice, materialUnitPrice: s.materialUnitPrice, weight: s.weight, notes: s.notes }))
-      })
-    }
-    for (let i = localItems.length - 1; i >= 0; i--) {
-      if (localItems[i].id && !remoteItems.some(r => r.id === localItems[i].id)) {
-        localItems.splice(i, 1)
-        if (activeItemIdx.value >= localItems.length) activeItemIdx.value = Math.max(0, localItems.length - 1)
-      }
-    }
-    for (let li = 0; li < localItems.length; li++) {
-      const local = localItems[li]
-      if (!local.id) continue
-      const remote = remoteItems.find(r => r.id === local.id)
-      if (remote) mergeSubItems(li, remote.subItems ?? [])
-    }
-    isApplyingRemote = false
-    syncPending.value = false
+    items.value = (doc.items ?? []).map((row) => ({
+      uid: nextUid(),
+      id: row.id,
+      workItemId: row.workItemId ?? undefined,
+      name: row.name,
+      description: row.description,
+      quantity: row.quantity,
+      unit: row.unit,
+      serviceUnitPrice: row.serviceUnitPrice,
+      materialUnitPrice: row.materialUnitPrice,
+      pricingMode: row.pricingMode || 'HARGA_LANGSUNG',
+      notes: row.notes,
+      subItems: (row.subItems ?? []).map((s): SphSubItemInput => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        quantity: s.quantity,
+        unit: s.unit,
+        serviceUnitPrice: s.serviceUnitPrice,
+        materialUnitPrice: s.materialUnitPrice,
+        weight: s.weight ?? 0,
+        notes: s.notes
+      }))
+    }))
   })
 }
 </script>

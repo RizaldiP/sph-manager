@@ -150,6 +150,20 @@ export namespace collaboration {
 		    return a;
 		}
 	}
+	export class TurnState {
+	    assignments: Record<string, Array<string>>;
+	    activeEdits: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new TurnState(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.assignments = source["assignments"];
+	        this.activeEdits = source["activeEdits"];
+	    }
+	}
 	export class UISnapshot {
 	    mode: string;
 	    connection?: string;
@@ -157,6 +171,7 @@ export namespace collaboration {
 	    doc?: number[];
 	    participants?: Participant[];
 	    activities?: services.CollabActivity[];
+	    turn?: TurnState;
 	    version?: number;
 	    error?: string;
 	    notice?: string;
@@ -173,6 +188,7 @@ export namespace collaboration {
 	        this.doc = source["doc"];
 	        this.participants = this.convertValues(source["participants"], Participant);
 	        this.activities = this.convertValues(source["activities"], services.CollabActivity);
+	        this.turn = this.convertValues(source["turn"], TurnState);
 	        this.version = source["version"];
 	        this.error = source["error"];
 	        this.notice = source["notice"];

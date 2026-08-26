@@ -431,6 +431,11 @@ func (s *SphService) UpdateDraft(id uint, in SphSaveInput) (*models.SphDocument,
 	return s.applyDraftUpdate(id, in, "")
 }
 
+// ApplySave applies a full document state to the database. Used by collaboration SyncPush.
+func (s *SphService) ApplySave(id uint, in *SphSaveInput, actor string) (*models.SphDocument, error) {
+	return s.applyDraftUpdate(id, *in, actor)
+}
+
 // applyDraftUpdate inti pembaruan draft tanpa guard room — dipakai jalur solo maupun
 // operasi kolaborasi. Actor tidak kosong berarti perubahan dari kolaborator (audit BR-13).
 func (s *SphService) applyDraftUpdate(id uint, in SphSaveInput, actor string) (*models.SphDocument, error) {

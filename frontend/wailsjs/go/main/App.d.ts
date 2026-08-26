@@ -6,6 +6,8 @@ import {collaboration} from '../models';
 import {main} from '../models';
 import {importers} from '../models';
 
+export function AssignTurns(arg1:Record<string, Array<string>>):Promise<void>;
+
 export function ClearLogo():Promise<services.SettingsView>;
 
 export function CloseCollabRoom():Promise<void>;
@@ -108,6 +110,8 @@ export function PreviewImportSheet(arg1:string,arg2:string):Promise<importers.Sh
 
 export function PreviewSphNumber(arg1:string):Promise<string>;
 
+export function ReleaseEdit(arg1:string):Promise<void>;
+
 export function ReorderCategories(arg1:Array<number>):Promise<void>;
 
 export function ReorderSubItems(arg1:number,arg2:Array<number>):Promise<void>;
@@ -115,6 +119,8 @@ export function ReorderSubItems(arg1:number,arg2:Array<number>):Promise<void>;
 export function ReorderTemplates(arg1:Array<number>):Promise<void>;
 
 export function ReorderWorkItems(arg1:number,arg2:Array<number>):Promise<void>;
+
+export function RequestEdit(arg1:string):Promise<void>;
 
 export function RunWorkItemImport(arg1:number,arg2:string,arg3:string,arg4:importers.ColumnMapping,arg5:Array<services.ConfirmRow>):Promise<services.ImportResult>;
 
@@ -141,6 +147,8 @@ export function SetWorkItemActive(arg1:number,arg2:boolean):Promise<void>;
 export function StartDiscoveryListener():Promise<void>;
 
 export function StopDiscoveryListener():Promise<void>;
+
+export function SyncPush(arg1:services.SphSaveInput):Promise<void>;
 
 export function Terbilang(arg1:number):Promise<string>;
 

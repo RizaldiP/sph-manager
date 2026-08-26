@@ -70,6 +70,7 @@ type UISnapshot struct {
 	Doc          json.RawMessage           `json:"doc,omitempty"`
 	Participants []Participant             `json:"participants,omitempty"`
 	Activities   []services.CollabActivity `json:"activities,omitempty"`
+	Turn         *TurnState                `json:"turn,omitempty"`
 	Version      uint64                    `json:"version,omitempty"`
 	Error        string                    `json:"error,omitempty"`
 	Notice       string                    `json:"notice,omitempty"`
@@ -103,6 +104,7 @@ type Manager struct {
 	clientDoc      json.RawMessage
 	clientParts    []Participant
 	clientActs     []services.CollabActivity
+	clientTurn     *TurnState
 }
 
 func NewManager(cfg Config, ops *services.CollabOps, sph *services.SphService, log *slog.Logger) *Manager {
@@ -228,10 +230,14 @@ func (m *Manager) HostRoom(docID uint, roomName, displayName string, port int) (
 		cfg:       m.cfg,
 		log:       m.log,
 		ops:       m.ops,
+		sph:       m.sph,
 		server:    srv,
 		announcer: announcer,
 		conns:     map[string]*serverConn{},
 		byID:      map[string]*Participant{hostPart.ID: &hostPart},
+		assignments:     map[string][]string{},
+		activeEdits:     map[string]string{},
+		participantNames: map[string]string{},
 		stopCh:    make(chan struct{}),
 		closedCh:  make(chan struct{}),
 	}
@@ -499,6 +505,7 @@ func (m *Manager) sessionLocked() UISnapshot {
 			Doc:          docJSON,
 			Participants: info.Participants,
 			Activities:   data.Activities,
+			Turn:         data.Turn,
 			Version:      data.Version,
 		}
 	}
@@ -518,6 +525,7 @@ func (m *Manager) sessionLocked() UISnapshot {
 			Doc:          m.clientDoc,
 			Participants: parts,
 			Activities:   acts,
+			Turn:         m.clientTurn,
 			Version:      m.clientVersion,
 			Error:        m.clientErr,
 			Notice:       m.clientNotice,
@@ -548,6 +556,7 @@ func (m *Manager) resetClientStateLocked() {
 	m.clientDoc = nil
 	m.clientParts = nil
 	m.clientActs = nil
+	m.clientTurn = nil
 }
 
 // ===== callback client =====
@@ -613,6 +622,9 @@ func (m *Manager) onClientEnvelope(env *Envelope) {
 	if sp.Participants != nil {
 		m.clientParts = cloneParticipants(sp.Participants)
 	}
+	if sp.Turn != nil {
+		m.clientTurn = sp.Turn
+	}
 	switch env.Type {
 	case TypeSphUpdated:
 		if sp.Activity != nil {
@@ -667,11 +679,16 @@ type Room struct {
 	cfg       Config
 	log       *slog.Logger
 	ops       *services.CollabOps
+	sph       *services.SphService
 	server    *wsServer
 	announcer *Announcer
 
 	conns map[string]*serverConn  // participantID → koneksi aktif (remote)
 	byID  map[string]*Participant // participantID → data peserta
+
+	assignments     map[string][]string // participantID → []sectionID
+	activeEdits     map[string]string   // sectionID → participantID
+	participantNames map[string]string  // participantID → displayName (for turn state broadcast)
 
 	stopCh    chan struct{}
 	closedCh  chan struct{}
@@ -714,13 +731,15 @@ func (r *Room) eventData() roomEventData {
 	defer r.mu.Unlock()
 	info := r.infoSnapshotLocked()
 	acts := r.activitiesLocked()
-	return roomEventData{Info: info, Activities: acts, Version: r.version}
+	turn := r.buildTurnStateLocked()
+	return roomEventData{Info: info, Activities: acts, Version: r.version, Turn: turn}
 }
 
 type roomEventData struct {
 	Info       RoomInfo
 	Activities []services.CollabActivity
 	Version    uint64
+	Turn       *TurnState
 }
 
 // notifyRoomChanged memicu pengiriman snapshot UI terbaru untuk sesi host.
@@ -783,6 +802,7 @@ func (r *Room) applyAndBroadcastLocked(actor string, op *services.OpPayload) (*E
 		State:        state,
 		Activity:     act,
 		Participants: cloneParticipants(r.info.Participants),
+		Turn:         r.buildTurnStateLocked(),
 	}
 	env := envelopeWith(TypeSphUpdated, r.info.RoomID, "", r.version, payload)
 	r.broadcastLocked(env)
@@ -892,12 +912,44 @@ func (r *Room) serveConn(ws *websocket.Conn) {
 			r.touch(p.ID)
 			conn.deliver(envelopeWith(TypePong, r.info.RoomID, "", 0, nil))
 		case TypeOpRequest:
+			if p.Role != RoleHost {
+				r.sendError(conn, errCodeOp, "Hanya host yang dapat mengirim operasi edit langsung.")
+				continue
+			}
 			var op services.OpPayload
 			if err := json.Unmarshal(e.Payload, &op); err != nil {
 				r.sendError(conn, errCodeOp, "Operasi tidak valid.")
 				continue
 			}
 			r.applyRemote(conn, p, &op)
+		case TypeAssignTurns:
+			var ta map[string][]string
+			if err := json.Unmarshal(e.Payload, &ta); err != nil {
+				r.sendError(conn, errCodeOp, "Payload assign turns tidak valid.")
+				continue
+			}
+			r.handleAssignTurns(ta)
+		case TypeRequestEdit:
+			var sectionID string
+			if err := json.Unmarshal(e.Payload, &sectionID); err != nil {
+				r.sendError(conn, errCodeOp, "Payload request edit tidak valid.")
+				continue
+			}
+			r.handleRequestEdit(p, sectionID)
+		case TypeReleaseEdit:
+			var sectionID string
+			if err := json.Unmarshal(e.Payload, &sectionID); err != nil {
+				r.sendError(conn, errCodeOp, "Payload release edit tidak valid.")
+				continue
+			}
+			r.handleReleaseEdit(p, sectionID)
+		case TypeSyncPush:
+			var input services.SphSaveInput
+			if err := json.Unmarshal(e.Payload, &input); err != nil {
+				r.sendError(conn, errCodeOp, "Payload sync push tidak valid.")
+				continue
+			}
+			r.handleSyncPush(p, &input)
 		case TypeSyncRequest:
 			r.sendInitialState(conn)
 		case TypeLeave:
@@ -940,6 +992,7 @@ func (r *Room) authenticate(jr *JoinRequest, conn *serverConn) (*Participant, *s
 			p.LastSeen = now
 			old := r.conns[cid]
 			r.conns[cid] = conn
+			r.participantNames[cid] = p.DisplayName
 			r.publishAnnounceLocked()
 			return p, old, true
 		}
@@ -954,6 +1007,7 @@ func (r *Room) authenticate(jr *JoinRequest, conn *serverConn) (*Participant, *s
 		}
 		p := &Participant{ID: cid, DisplayName: name, DeviceName: device, Role: RoleEditor, JoinedAt: now, LastSeen: now}
 		r.byID[cid] = p
+		r.participantNames[cid] = p.DisplayName
 		r.conns[cid] = conn
 		r.publishAnnounceLocked()
 		return p, nil, true
@@ -976,6 +1030,7 @@ func (r *Room) authenticate(jr *JoinRequest, conn *serverConn) (*Participant, *s
 		LastSeen:    now,
 	}
 	r.byID[p.ID] = p
+	r.participantNames[p.ID] = p.DisplayName
 	r.conns[p.ID] = conn
 	r.publishAnnounceLocked()
 	r.log.Info("authenticate: berhasil", "name", p.DisplayName, "role", p.Role, "id", p.ID)
@@ -1005,6 +1060,7 @@ func (r *Room) sendInitialState(c *serverConn) {
 		Room:         r.sanitizedInfoLocked(),
 		State:        state,
 		Participants: cloneParticipants(r.info.Participants),
+		Turn:         r.buildTurnStateLocked(),
 	}
 	env := envelopeWith(TypeRoomJoined, r.info.RoomID, c.participantID, r.version, payload)
 	ok := c.deliver(env)
@@ -1082,6 +1138,13 @@ func (r *Room) dropParticipant(participantID string, conn *serverConn, onlyIfCur
 	}
 	delete(r.byID, participantID)
 	delete(r.conns, participantID)
+	delete(r.participantNames, participantID)
+	for section, editor := range r.activeEdits {
+		if editor == participantID {
+			delete(r.activeEdits, section)
+		}
+	}
+	delete(r.assignments, participantID)
 	payload := StatePayload{
 		Room:         r.sanitizedInfoLocked(),
 		Participants: cloneParticipants(r.info.Participants),
@@ -1180,9 +1243,276 @@ func (r *Room) close(reason string) {
 	})
 }
 
+func (r *Room) handleAssignTurns(assignments map[string][]string) {
+	r.mu.Lock()
+	r.assignments = assignments
+	r.activeEdits = map[string]string{}
+	r.version++
+	tState := r.buildTurnStateLocked()
+	payload := StatePayload{
+		Room:         r.sanitizedInfoLocked(),
+		Participants: cloneParticipants(r.info.Participants),
+		Turn:         tState,
+	}
+	env := envelopeWith(TypeTurnsUpdated, r.info.RoomID, "", r.version, payload)
+	r.broadcastLocked(env)
+	r.mu.Unlock()
+	r.notifyChanged()
+}
+
+func (r *Room) handleRequestEdit(p *Participant, sectionID string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.isClosed() {
+		r.sendErrorToParticipant(p.ID, "Room sudah ditutup.")
+		return
+	}
+
+	validSections := map[string]bool{"header": true, "items": true, "subitems": true}
+	if !validSections[sectionID] {
+		r.sendErrorToParticipant(p.ID, "Section tidak valid: "+sectionID)
+		return
+	}
+
+	allowed := r.assignments[p.ID]
+	hasAccess := false
+	for _, s := range allowed {
+		if s == sectionID {
+			hasAccess = true
+			break
+		}
+	}
+	if !hasAccess {
+		r.sendErrorToParticipant(p.ID, "Anda tidak memiliki akses ke section ini.")
+		return
+	}
+
+	if editor, ok := r.activeEdits[sectionID]; ok && editor != p.ID {
+		r.sendErrorToParticipant(p.ID, "Section sedang diedit oleh "+r.participantNames[editor]+".")
+		return
+	}
+
+	r.activeEdits[sectionID] = p.ID
+	r.version++
+
+	tState := r.buildTurnStateLocked()
+	payload := StatePayload{
+		Room:         r.sanitizedInfoLocked(),
+		Participants: cloneParticipants(r.info.Participants),
+		Turn:         tState,
+	}
+	env := envelopeWith(TypeTurnsUpdated, r.info.RoomID, "", r.version, payload)
+	r.broadcastLocked(env)
+	r.notifyChanged()
+}
+
+func (r *Room) handleReleaseEdit(p *Participant, sectionID string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.isClosed() {
+		return
+	}
+
+	editor, ok := r.activeEdits[sectionID]
+	if !ok || editor != p.ID {
+		return
+	}
+
+	delete(r.activeEdits, sectionID)
+	r.version++
+
+	tState := r.buildTurnStateLocked()
+	payload := StatePayload{
+		Room:         r.sanitizedInfoLocked(),
+		Participants: cloneParticipants(r.info.Participants),
+		Turn:         tState,
+	}
+	env := envelopeWith(TypeTurnsUpdated, r.info.RoomID, "", r.version, payload)
+	r.broadcastLocked(env)
+	r.notifyChanged()
+}
+
+func (r *Room) handleSyncPush(p *Participant, input *services.SphSaveInput) {
+	r.mu.Lock()
+	if r.isClosed() {
+		r.mu.Unlock()
+		r.sendErrorToParticipant(p.ID, "Room sudah ditutup.")
+		return
+	}
+
+	doc, err := r.sph.ApplySave(r.docID, input, p.DisplayName)
+	if err != nil {
+		r.mu.Unlock()
+		r.sendErrorToParticipant(p.ID, "Gagal menerapkan perubahan: "+err.Error())
+		return
+	}
+
+	r.version++
+	save := services.DocToSaveInput(doc)
+	state, err := json.Marshal(save)
+	if err != nil {
+		r.mu.Unlock()
+		r.sendErrorToParticipant(p.ID, "Gagal memproses dokumen.")
+		return
+	}
+
+	act := &services.CollabActivity{
+		Actor:   p.DisplayName,
+		Action:  "SYNC",
+		Summary: "menyinkronkan perubahan.",
+	}
+	r.activities = append(r.activities, *act)
+	if len(r.activities) > r.cfg.ActivityCap {
+		r.activities = r.activities[len(r.activities)-r.cfg.ActivityCap:]
+	}
+
+	payload := StatePayload{
+		Room:         r.sanitizedInfoLocked(),
+		State:        state,
+		Activity:     act,
+		Participants: cloneParticipants(r.info.Participants),
+		Turn:         r.buildTurnStateLocked(),
+	}
+	env := envelopeWith(TypeSphUpdated, r.info.RoomID, "", r.version, payload)
+	r.broadcastLocked(env)
+	r.mu.Unlock()
+	r.notifyChanged()
+}
+
+func (r *Room) buildTurnStateLocked() *TurnState {
+	return &TurnState{
+		Assignments: r.assignments,
+		ActiveEdits: r.activeEdits,
+	}
+}
+
+func (r *Room) sendErrorToParticipant(participantID, message string) {
+	if c, ok := r.conns[participantID]; ok {
+		c.deliver(envelopeWith(TypeError, "", "", 0, ErrorPayload{Code: errCodeOp, Message: message}))
+	}
+}
+
 // notifyChanged memberi tahu UI setelah lock dilepas.
 func (r *Room) notifyChanged() {
 	if mgr := r.managerRef; mgr != nil {
 		mgr.notifyRoomChanged(r)
 	}
+}
+
+func (m *Manager) AssignTurns(assignments map[string][]string) error {
+	m.mu.Lock()
+	r, c := m.room, m.client
+	m.mu.Unlock()
+	if r != nil {
+		r.handleAssignTurns(assignments)
+		return nil
+	}
+	if c != nil {
+		return c.sendAssignTurns(assignments)
+	}
+	return services.NewConflictError("Tidak ada sesi Work Together yang aktif.")
+}
+
+func (m *Manager) RequestEdit(sectionID string) error {
+	m.mu.Lock()
+	r, c := m.room, m.client
+	m.mu.Unlock()
+	if r != nil {
+		hostID := ""
+		r.mu.Lock()
+		for id, p := range r.byID {
+			if p.Role == RoleHost {
+				hostID = id
+				break
+			}
+		}
+		if hostID != "" {
+			r.handleRequestEdit(r.byID[hostID], sectionID)
+		}
+		r.mu.Unlock()
+		return nil
+	}
+	if c != nil {
+		return c.sendRequestEdit(sectionID)
+	}
+	return services.NewConflictError("Tidak ada sesi Work Together yang aktif.")
+}
+
+func (m *Manager) ReleaseEdit(sectionID string) error {
+	m.mu.Lock()
+	r, c := m.room, m.client
+	m.mu.Unlock()
+	if r != nil {
+		hostID := ""
+		r.mu.Lock()
+		for id, p := range r.byID {
+			if p.Role == RoleHost {
+				hostID = id
+				break
+			}
+		}
+		if hostID != "" {
+			r.handleReleaseEdit(r.byID[hostID], sectionID)
+		}
+		r.mu.Unlock()
+		return nil
+	}
+	if c != nil {
+		return c.sendReleaseEdit(sectionID)
+	}
+	return services.NewConflictError("Tidak ada sesi Work Together yang aktif.")
+}
+
+func (m *Manager) SyncPush(input *services.SphSaveInput) error {
+	m.mu.Lock()
+	r, c := m.room, m.client
+	m.mu.Unlock()
+	if r != nil {
+		doc, err := m.sph.ApplySave(r.docID, input, r.info.HostName)
+		if err != nil {
+			return err
+		}
+		r.mu.Lock()
+		r.version++
+		save := services.DocToSaveInput(doc)
+		state, _ := json.Marshal(save)
+		act := &services.CollabActivity{
+			Actor:   r.info.HostName,
+			Action:  "SYNC",
+			Summary: "menyinkronkan perubahan.",
+		}
+		r.activities = append(r.activities, *act)
+		if len(r.activities) > r.cfg.ActivityCap {
+			r.activities = r.activities[len(r.activities)-r.cfg.ActivityCap:]
+		}
+		payload := StatePayload{
+			Room:         r.sanitizedInfoLocked(),
+			State:        state,
+			Activity:     act,
+			Participants: cloneParticipants(r.info.Participants),
+			Turn:         r.buildTurnStateLocked(),
+		}
+		env := envelopeWith(TypeSphUpdated, r.info.RoomID, "", r.version, payload)
+		r.broadcastLocked(env)
+		r.mu.Unlock()
+		r.notifyChanged()
+		return nil
+	}
+	if c != nil {
+		return c.sendSyncPush(input)
+	}
+	return services.NewConflictError("Tidak ada sesi Work Together yang aktif.")
+}
+
+func (m *Manager) GetTurnState() *TurnState {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.room != nil {
+		m.room.mu.Lock()
+		defer m.room.mu.Unlock()
+		return m.room.buildTurnStateLocked()
+	}
+	return m.clientTurn
 }

@@ -310,6 +310,46 @@ func (c *Client) sendOp(op *services.OpPayload) error {
 	return nil
 }
 
+func (c *Client) sendRequestEdit(sectionID string) error {
+	c.mu.Lock()
+	s := c.session
+	c.mu.Unlock()
+	if s == nil {
+		return fmt.Errorf("tidak terhubung ke host.")
+	}
+	return c.writeOn(s, envelopeWith(TypeRequestEdit, "", "", 0, sectionID))
+}
+
+func (c *Client) sendReleaseEdit(sectionID string) error {
+	c.mu.Lock()
+	s := c.session
+	c.mu.Unlock()
+	if s == nil {
+		return fmt.Errorf("tidak terhubung ke host.")
+	}
+	return c.writeOn(s, envelopeWith(TypeReleaseEdit, "", "", 0, sectionID))
+}
+
+func (c *Client) sendSyncPush(input *services.SphSaveInput) error {
+	c.mu.Lock()
+	s := c.session
+	c.mu.Unlock()
+	if s == nil {
+		return fmt.Errorf("tidak terhubung ke host.")
+	}
+	return c.writeOn(s, envelopeWith(TypeSyncPush, "", "", 0, input))
+}
+
+func (c *Client) sendAssignTurns(assignments map[string][]string) error {
+	c.mu.Lock()
+	s := c.session
+	c.mu.Unlock()
+	if s == nil {
+		return fmt.Errorf("tidak terhubung ke host.")
+	}
+	return c.writeOn(s, envelopeWith(TypeAssignTurns, "", "", 0, assignments))
+}
+
 // readLoop menerima envelope dari host dan meneruskannya ke manager.
 func (c *Client) readLoop(s *connSession) {
 	defer func() {

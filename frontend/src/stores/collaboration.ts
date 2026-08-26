@@ -10,7 +10,11 @@ import {
   JoinCollabRoom,
   LeaveCollabRoom,
   SendCollabOp,
-  GetCollabSession
+  GetCollabSession,
+  AssignTurns,
+  RequestEdit,
+  ReleaseEdit,
+  SyncPush
 } from '../../wailsjs/go/main/App'
 import type {
   CollabSnapshot,
@@ -18,7 +22,9 @@ import type {
   CollabMode,
   CollabConnection,
   DiscoveredRoom,
-  OpPayload
+  OpPayload,
+  TurnState,
+  SphSaveInput
 } from '../types/collaboration'
 
 export const useCollaborationStore = defineStore('collaboration', () => {
@@ -41,6 +47,26 @@ export const useCollaborationStore = defineStore('collaboration', () => {
   const participantCount = computed(() => snapshot.value.participants?.length ?? 0)
   const documentNumber = computed(() => snapshot.value.room?.documentNumber ?? '')
   const sphDocumentId = computed(() => snapshot.value.room?.sphDocumentId ?? 0)
+  const turn = computed(() => snapshot.value.turn)
+  const myAssignments = computed(() => {
+    // Host has all sections assigned
+    if (isHost.value) return ['header', 'items', 'subitems']
+    const parts = snapshot.value.participants ?? []
+    const myPart = parts.find(p => p.role !== 'HOST')
+    if (!myPart) return []
+    return turn.value?.assignments?.[myPart.id] ?? []
+  })
+  const myActiveEdits = computed(() => {
+    if (isHost.value) {
+      // Host can see all active edits
+      return Object.keys(turn.value?.activeEdits ?? {})
+    }
+    const parts = snapshot.value.participants ?? []
+    const myPart = parts.find(p => p.role !== 'HOST')
+    if (!myPart) return []
+    const edits = turn.value?.activeEdits ?? {}
+    return Object.entries(edits).filter(([, editorId]) => editorId === myPart.id).map(([section]) => section)
+  })
 
   function applySnapshot(raw: unknown) {
     const s = raw as Record<string, unknown>
@@ -51,6 +77,7 @@ export const useCollaborationStore = defineStore('collaboration', () => {
       doc: s.doc as CollabSnapshot['doc'],
       participants: s.participants as CollabSnapshot['participants'],
       activities: s.activities as CollabSnapshot['activities'],
+      turn: s.turn as CollabSnapshot['turn'],
       version: s.version as number | undefined,
       error: s.error as string | undefined,
       notice: s.notice as string | undefined
@@ -166,6 +193,41 @@ export const useCollaborationStore = defineStore('collaboration', () => {
     error.value = ''
   }
 
+  async function assignTurns(assignments: Record<string, string[]>) {
+    try {
+      await AssignTurns(assignments)
+      await refreshSession()
+    } catch (e) {
+      error.value = String(e)
+    }
+  }
+
+  async function requestEdit(sectionID: string) {
+    try {
+      await RequestEdit(sectionID)
+      await refreshSession()
+    } catch (e) {
+      error.value = String(e)
+    }
+  }
+
+  async function releaseEdit(sectionID: string) {
+    try {
+      await ReleaseEdit(sectionID)
+      await refreshSession()
+    } catch (e) {
+      error.value = String(e)
+    }
+  }
+
+  async function syncPush(input: SphSaveInput) {
+    try {
+      await SyncPush(input as never)
+    } catch (e) {
+      error.value = String(e)
+    }
+  }
+
   return {
     snapshot,
     defaults,
@@ -180,6 +242,9 @@ export const useCollaborationStore = defineStore('collaboration', () => {
     participantCount,
     documentNumber,
     sphDocumentId,
+    turn,
+    myAssignments,
+    myActiveEdits,
     applySnapshot,
     loadDefaults,
     createRoom,
@@ -187,6 +252,10 @@ export const useCollaborationStore = defineStore('collaboration', () => {
     joinRoom,
     leaveRoom,
     sendOp,
+    assignTurns,
+    requestEdit,
+    releaseEdit,
+    syncPush,
     startDiscovery,
     stopDiscovery,
     refreshDiscovered,

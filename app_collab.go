@@ -86,3 +86,19 @@ func (a *App) wireCollab() {
 		runtime.EventsEmit(a.ctx, "collab:sync", snap)
 	})
 }
+
+func (a *App) AssignTurns(assignments map[string][]string) error {
+	return a.collabMgr.AssignTurns(assignments)
+}
+
+func (a *App) RequestEdit(sectionID string) error {
+	return a.collabMgr.RequestEdit(sectionID)
+}
+
+func (a *App) ReleaseEdit(sectionID string) error {
+	return a.collabMgr.ReleaseEdit(sectionID)
+}
+
+func (a *App) SyncPush(input services.SphSaveInput) error {
+	return a.collabMgr.SyncPush(&input)
+}

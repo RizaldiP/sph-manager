@@ -17,11 +17,16 @@ const (
 	TypeOpRequest   = "OP_REQUEST"
 	TypeSyncRequest = "SYNC_REQUEST"
 	TypePing        = "PING"
+	TypeAssignTurns = "ASSIGN_TURNS"
+	TypeRequestEdit = "REQUEST_EDIT"
+	TypeReleaseEdit = "RELEASE_EDIT"
+	TypeSyncPush    = "SYNC_PUSH"
 
 	// host → client
 	TypeRoomJoined      = "ROOM_JOINED"   // jawaban join/reconnect berisi initial sync
 	TypeSyncResponse    = "SYNC_RESPONSE" // jawaban SYNC_REQUEST (bentuk payload sama)
 	TypeSphUpdated      = "SPH_UPDATED"   // hasil operasi diterapkan (broadcast)
+	TypeTurnsUpdated    = "TURNS_UPDATED"
 	TypeUserConnected   = "USER_CONNECTED"
 	TypeUserDisonnected = "USER_DISCONNECTED"
 	TypeRoomClosed      = "ROOM_CLOSED"
@@ -87,6 +92,7 @@ type StatePayload struct {
 	State        json.RawMessage          `json:"state,omitempty"`
 	Activity     *services.CollabActivity `json:"activity,omitempty"`
 	Participants []Participant            `json:"participants,omitempty"`
+	Turn         *TurnState               `json:"turn,omitempty"`
 }
 
 // ErrorPayload isi pesan ERROR.

@@ -84,3 +84,10 @@ type DiscoveredRoom struct {
 	Users          int       `json:"users"`
 	LastSeen       time.Time `json:"lastSeen"`
 }
+
+// TurnState tracks turn-based edit assignments for the room.
+// Section IDs: "header", "items" (all items group), "subitems" (all sub-items group).
+type TurnState struct {
+	Assignments map[string][]string `json:"assignments"` // participantID → []sectionID
+	ActiveEdits map[string]string   `json:"activeEdits"` // sectionID → participantID
+}
