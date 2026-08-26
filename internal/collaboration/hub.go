@@ -333,12 +333,19 @@ func (m *Manager) Join(hostIP string, port int, displayName, accessCode, roomCod
 
 	// Pasang sesi SEBELUM start agar envelope ROOM_JOINED yang tiba saat handshake
 	// tidak terbuang oleh guard m.client pada callback.
+	// Penting: mu.Unlock() SEBELUM StartAndWaitReady agar onClientEnvelope tidak
+	// memblokir readLoop (bila host mengirim USER_DISCONNECTED sebelum ROOM_JOINED).
 	m.resetClientStateLocked()
 	m.connStatus = ConnReconnecting
 	m.client = c
+	m.mu.Unlock()
+
 	if err := c.StartAndWaitReady(m.cfg.DialTimeout + 2*time.Second); err != nil {
-		m.client = nil
-		m.resetClientStateLocked()
+		m.mu.Lock()
+		if m.client == c {
+			m.client = nil
+			m.resetClientStateLocked()
+		}
 		fn := m.emitFn
 		m.mu.Unlock()
 		c.stopQuiet()
@@ -347,6 +354,13 @@ func (m *Manager) Join(hostIP string, port int, displayName, accessCode, roomCod
 		}
 		m.log.Error("gagal join room", "error", err)
 		return err
+	}
+
+	m.mu.Lock()
+	if m.client != c {
+		m.mu.Unlock()
+		c.stopQuiet()
+		return fmt.Errorf("sesi join dibatalkan.")
 	}
 	m.connStatus = ConnConnected
 	snap := m.sessionLocked()

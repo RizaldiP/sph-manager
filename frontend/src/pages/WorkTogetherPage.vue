@@ -86,7 +86,11 @@ const joinOpen = ref(false)
 const joinTarget = ref<DiscoveredRoom | null>(null)
 const manualOpen = ref(false)
 
-const discovered = computed(() => collabStore.discovered)
+const discovered = computed(() => {
+  const currentRoomId = collabStore.snapshot.room?.roomId
+  if (!currentRoomId) return collabStore.discovered
+  return collabStore.discovered.filter(r => r.roomId !== currentRoomId)
+})
 
 function openCreate() {
   createOpen.value = true

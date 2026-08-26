@@ -197,6 +197,8 @@ import { ConnLabel, SectionLabel } from '../../types/collaboration'
 
 const store = useCollaborationStore()
 
+const emit = defineEmits<{ closed: [] }>()
+
 const showConnInfo = ref(false)
 const copied = ref(false)
 const leaving = ref(false)
@@ -267,6 +269,7 @@ async function handleLeave() {
   try {
     if (store.isHost) {
       await store.closeRoom()
+      emit('closed')
     } else {
       await store.leaveRoom()
     }

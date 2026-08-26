@@ -173,14 +173,18 @@ func (a *Announcer) loop() {
 
 func (a *Announcer) Stop() {
 	a.stopOnce.Do(func() {
-		// Kirim goodbye packet agar listener langsung hapus room.
+		close(a.stopCh)
+		<-a.doneCh
 		if last, ok := a.packet.Load().(announcePacket); ok && last.RoomID != "" {
 			goodbye := announcePacket{RoomID: last.RoomID, Status: "CLOSED"}
-			a.sendPacket(goodbye)
+			for i := 0; i < 3; i++ {
+				a.sendPacket(goodbye)
+				if i < 2 {
+					time.Sleep(100 * time.Millisecond)
+				}
+			}
 		}
-		close(a.stopCh)
 		_ = a.conn.Close()
-		<-a.doneCh
 	})
 }
 

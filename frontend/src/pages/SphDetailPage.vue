@@ -142,7 +142,7 @@
 
         <!-- Panel aksi & riwayat -->
         <aside class="space-y-4">
-          <CollabToolbar v-if="collabStore.isLive" />
+          <CollabToolbar v-if="collabStore.isLive" @closed="router.push('/work-together')" />
           <div class="rounded-xl border border-slate-200 bg-white p-4">
             <h3 class="mb-3 text-[13px] font-semibold uppercase tracking-wide text-slate-400">Aksi Status</h3>
             <div class="space-y-2">

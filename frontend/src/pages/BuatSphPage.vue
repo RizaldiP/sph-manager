@@ -24,7 +24,7 @@
 
     <!-- Collaboration toolbar (host: Atur Hak Edit, client: Edit controls) -->
     <div v-if="isCollabMode" class="mb-4 rounded-xl border border-slate-200 bg-white">
-      <CollabToolbar />
+      <CollabToolbar @closed="router.push('/work-together')" />
     </div>
 
     <!-- Stepper -->
@@ -621,6 +621,7 @@ const sphStore = useSphStore()
 const materialStore = useMaterialStore()
 const collabStore = useCollaborationStore()
 const isCollabMode = computed(() => collabStore.isLive)
+const lastDocVersion = ref(0)
 
 // ===== turn-based helpers =====
 function canEditSection(sectionId: string): boolean {
@@ -655,7 +656,6 @@ async function syncNow() {
     items: items.value.map(({ uid: _uid, id: _id, ...rest }) => ({ ...rest }))
   }
   await collabStore.syncPush(payload as SphSaveInput)
-  await collabStore.refreshSession()
 }
 
 // ===== pemilih material master (FR-M7) =====
@@ -1250,7 +1250,9 @@ function onCollabSync(raw: any) {
   collabStore.applySnapshot(raw)
   if (!isCollabMode.value) return
   const doc = collabStore.snapshot.doc as SphSaveInput | undefined
-  if (!doc) return
+  const ver = collabStore.snapshot.version ?? 0
+  if (!doc || ver === lastDocVersion.value) return
+  lastDocVersion.value = ver
   requestAnimationFrame(() => {
     Object.assign(header, emptyHeader(), doc.header)
     vesselChoice.value = doc.header.vesselId ?? 0
