@@ -9,8 +9,8 @@
         </span>
         <span class="text-xs font-semibold text-slate-500">{{ store.modeLabel }}</span>
       </div>
-      <button v-if="live" type="button" class="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50" @click="handleLeave">
-        {{ store.isHost ? 'Tutup Room' : 'Keluar' }}
+      <button v-if="live" type="button" :disabled="leaving" class="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50" @click="handleLeave">
+        {{ leaving ? 'Menutup...' : (store.isHost ? 'Tutup Room' : 'Keluar') }}
       </button>
     </div>
 
@@ -199,6 +199,7 @@ const store = useCollaborationStore()
 
 const showConnInfo = ref(false)
 const copied = ref(false)
+const leaving = ref(false)
 const pendingAssignments = ref<Record<string, string[]>>({})
 
 const snap = computed(() => store.snapshot)
@@ -260,11 +261,17 @@ async function handleReleaseAndSync(sectionId: string) {
   await store.releaseEdit(sectionId)
 }
 
-function handleLeave() {
-  if (store.isHost) {
-    store.closeRoom()
-  } else {
-    store.leaveRoom()
+async function handleLeave() {
+  if (leaving.value) return
+  leaving.value = true
+  try {
+    if (store.isHost) {
+      await store.closeRoom()
+    } else {
+      await store.leaveRoom()
+    }
+  } finally {
+    leaving.value = false
   }
 }
 

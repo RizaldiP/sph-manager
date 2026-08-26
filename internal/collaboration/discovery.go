@@ -18,6 +18,7 @@ type announcePacket struct {
 	HostName       string `json:"hostName"`
 	WSPort         int    `json:"port"`
 	Users          int    `json:"users"`
+	Status         string `json:"status,omitempty"`
 }
 
 // ===== Announcer (sisi host) =====
@@ -123,6 +124,16 @@ func broadcastOf(ipnet *net.IPNet) net.IP {
 
 func (a *Announcer) Set(p announcePacket) { a.packet.Store(p) }
 
+func (a *Announcer) sendPacket(p announcePacket) {
+	b, err := json.Marshal(p)
+	if err != nil {
+		return
+	}
+	for _, d := range a.dests {
+		_, _ = a.conn.WriteToUDP(b, d)
+	}
+}
+
 func (a *Announcer) loop() {
 	defer close(a.doneCh)
 	defer func() {
@@ -162,6 +173,11 @@ func (a *Announcer) loop() {
 
 func (a *Announcer) Stop() {
 	a.stopOnce.Do(func() {
+		// Kirim goodbye packet agar listener langsung hapus room.
+		if last, ok := a.packet.Load().(announcePacket); ok && last.RoomID != "" {
+			goodbye := announcePacket{RoomID: last.RoomID, Status: "CLOSED"}
+			a.sendPacket(goodbye)
+		}
 		close(a.stopCh)
 		_ = a.conn.Close()
 		<-a.doneCh
@@ -234,7 +250,17 @@ func (l *Listener) readLoop() {
 			}
 		}
 		var p announcePacket
-		if json.Unmarshal(buf[:n], &p) != nil || p.RoomID == "" || p.WSPort <= 0 {
+		if err := json.Unmarshal(buf[:n], &p); err != nil || p.RoomID == "" {
+			continue
+		}
+		// Goodbye packet: room ditutup, langsung hapus dari daftar.
+		if p.Status == "CLOSED" {
+			l.mu.Lock()
+			delete(l.rooms, p.RoomID)
+			l.mu.Unlock()
+			continue
+		}
+		if p.WSPort <= 0 {
 			continue
 		}
 		hostIP := ""
