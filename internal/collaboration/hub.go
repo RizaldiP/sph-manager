@@ -993,6 +993,7 @@ func (r *Room) authenticate(jr *JoinRequest, conn *serverConn) (*Participant, *s
 			old := r.conns[cid]
 			r.conns[cid] = conn
 			r.participantNames[cid] = p.DisplayName
+			r.ensureParticipantListed(p)
 			r.publishAnnounceLocked()
 			return p, old, true
 		}
@@ -1009,6 +1010,7 @@ func (r *Room) authenticate(jr *JoinRequest, conn *serverConn) (*Participant, *s
 		r.byID[cid] = p
 		r.participantNames[cid] = p.DisplayName
 		r.conns[cid] = conn
+		r.ensureParticipantListed(p)
 		r.publishAnnounceLocked()
 		return p, nil, true
 	}
@@ -1032,9 +1034,21 @@ func (r *Room) authenticate(jr *JoinRequest, conn *serverConn) (*Participant, *s
 	r.byID[p.ID] = p
 	r.participantNames[p.ID] = p.DisplayName
 	r.conns[p.ID] = conn
+	r.ensureParticipantListed(p)
 	r.publishAnnounceLocked()
 	r.log.Info("authenticate: berhasil", "name", p.DisplayName, "role", p.Role, "id", p.ID)
 	return p, nil, true
+}
+
+// ensureParticipantListed menambahkan participant ke r.info.Participants jika belum ada.
+// Dipanggil saat client join atau reconnect.
+func (r *Room) ensureParticipantListed(p *Participant) {
+	for i := range r.info.Participants {
+		if r.info.Participants[i].ID == p.ID {
+			return
+		}
+	}
+	r.info.Participants = append(r.info.Participants, *p)
 }
 
 // sendInitialState mengirim ROOM_JOINED berisi state dokumen penuh ke satu client.
@@ -1145,6 +1159,12 @@ func (r *Room) dropParticipant(participantID string, conn *serverConn, onlyIfCur
 		}
 	}
 	delete(r.assignments, participantID)
+	for i, ep := range r.info.Participants {
+		if ep.ID == participantID {
+			r.info.Participants = append(r.info.Participants[:i], r.info.Participants[i+1:]...)
+			break
+		}
+	}
 	payload := StatePayload{
 		Room:         r.sanitizedInfoLocked(),
 		Participants: cloneParticipants(r.info.Participants),
