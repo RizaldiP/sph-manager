@@ -550,6 +550,7 @@ Event UI baru (via `runtime.EventsEmit`):
 | 9 | ✅ Selesai | `Compare(pkg)` → `[]DiffItem` (NEW/UPDATED/UNCHANGED/CONFLICT) + `PreviewMasterData` binding |
 | 10 | ✅ Selesai | `Install(pkg,strategy,decisions)`: verifikasi checksum, satu `db.Transaction`, create berurutan kategori→pekerjaan→sub→material, resolusi parent via natural key, skip induk hilang, dedup, audit, rollback; konflik strategi PROMPT/USE_LOCAL/USE_INCOMING/SKIP |
 | 11 | ✅ Selesai | Inbox/Sent persist: `SaveInbox` (dedup PackageID), `InboxList/Get/Payload`, `SetInboxStatus`, `SaveSent`, `UpdateSentStatus`; status ACK ↔ DB dialihkan lewat `MasterDataStore` |
+| 11 | ✅ Selesai | Chat attachment card: pesan chat `master_data` dirender sebagai card (RefPackage/RefMeta) di `CollabChatPanel.vue` → tombol "Pratinjau & Pasang" membuka diff inline, Pasang (strategi USE_INCOMING)/Tolak langsung dari chat |
 | 12 | ✅ Selesai | App layer: `gormMasterDataStore` bridge + binding `BuildMasterDataPackage`/`SendMasterData`/`ListMasterInbox`/`GetMasterInbox`/`GetMasterInboxPayload`/`PreviewMasterData`/`InstallMasterData`/`RejectMasterData`/`MarkMasterInboxViewed`; wails module di-regenerate |
 | 13 | ✅ Selesai | UI: `MasterDataPanel.vue` (kirim dialog rakit+target, inbox list+pratinjau diff, install strategi, tolak) + store action master data, badge pending; vue-tsc & vite build lolos |
 | — | ✅ Test | `go build/vet/test ./...` + `npm run build` hijau; unit test `internal/masterdata/service_test.go` (build, install fresh/update, skip-konflik, use-incoming, corrupt, compare, inbox dedup/status)

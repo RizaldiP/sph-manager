@@ -20,7 +20,54 @@
         class="flex"
         :class="isOwn(m) ? 'justify-end' : m.messageType === 'system' ? 'justify-center' : 'justify-start'"
       >
+        <div v-if="m.messageType === 'master_data'" :class="isOwn(m) ? 'max-w-[90%]' : 'max-w-[90%]'">
+          <p v-if="!isOwn(m)" class="mb-0.5 text-[11px] font-medium text-slate-400">{{ m.senderName || 'System' }}</p>
+          <div class="overflow-hidden rounded-xl border border-brand-200 bg-brand-50/50">
+            <div class="border-b border-brand-100 bg-white px-3 py-2">
+              <p class="text-[12px] font-semibold text-brand-700">Master Data Dikirim</p>
+              <p class="text-[11px] text-slate-500">{{ m.content || 'Dikirim melalui kolaborasi' }}</p>
+            </div>
+            <div v-if="cardOpen === m.messageId" class="px-3 py-2.5">
+              <div v-if="store.masterPreview.length" class="mb-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2">
+                <div v-for="(d, i) in store.masterPreview" :key="i" class="flex items-center gap-2 text-[11px]">
+                  <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold" :class="diffBadge(d.kind)">{{ MasterDiffLabel[d.kind] ?? d.kind }}</span>
+                  <span class="truncate font-medium text-slate-700">{{ d.name || d.code || '-' }}</span>
+                  <span class="ml-auto shrink-0 text-[10px] text-slate-400">{{ d.summary }}</span>
+                </div>
+              </div>
+              <p v-else class="mb-2 text-[12px] italic text-slate-400">{{ store.working ? 'Memuat…' : 'Tidak ada perubahan terdeteksi.' }}</p>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  :disabled="store.working"
+                  class="flex-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-40"
+                  @click="installFromChat(m.refPackage)"
+                >
+                  {{ store.working ? 'Memasang…' : 'Pasang' }}
+                </button>
+                <button
+                  type="button"
+                  :disabled="store.working"
+                  class="rounded-lg border border-red-200 px-2.5 py-1.5 text-[11px] font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-40"
+                  @click="rejectFromChat(m.refPackage)"
+                >
+                  Tolak
+                </button>
+              </div>
+            </div>
+            <button
+              v-else
+              type="button"
+              class="w-full px-3 py-2 text-left text-[12px] font-medium text-brand-700 transition-colors hover:bg-brand-100"
+              @click="openCard(m)"
+            >
+              {{ store.working && cardLoading === m.refPackage ? 'Memuat…' : 'Pratinjau &amp; Pasang →' }}
+            </button>
+          </div>
+          <p class="mt-1 text-right text-[10px] text-slate-300">{{ formatTime(m.createdAt) }}</p>
+        </div>
         <div
+          v-else
           class="max-w-[85%] rounded-xl px-3 py-1.5 text-[13px]"
           :class="bubbleClass(m)"
         >
@@ -57,12 +104,18 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useCollaborationStore } from '../../stores/collaboration'
-import type { ChatMessage } from '../../types/collaboration'
+import {
+  MasterDiffLabel,
+  MasterStrategy,
+  type ChatMessage
+} from '../../types/collaboration'
 
 const store = useCollaborationStore()
 const draft = ref('')
 const sending = ref(false)
 const scrollRef = ref<HTMLElement | null>(null)
+const cardOpen = ref<string>('')
+const cardLoading = ref<string>('')
 
 const messages = computed(() => store.messages)
 
@@ -88,6 +141,51 @@ function formatTime(iso?: string): string {
   const d = new Date(iso)
   if (isNaN(d.getTime())) return ''
   return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+}
+
+function diffBadge(kind: string): string {
+  switch (kind) {
+    case 'NEW': return 'bg-emerald-100 text-emerald-700'
+    case 'UPDATED': return 'bg-blue-100 text-blue-700'
+    case 'CONFLICT': return 'bg-amber-100 text-amber-700'
+    default: return 'bg-slate-200 text-slate-500'
+  }
+}
+
+async function openCard(m: ChatMessage) {
+  if (cardOpen.value === m.messageId) {
+    cardOpen.value = ''
+    return
+  }
+  cardOpen.value = m.messageId
+  if (!m.refPackage) return
+  cardLoading.value = m.refPackage
+  try {
+    await store.previewMasterData(m.refPackage)
+  } finally {
+    cardLoading.value = ''
+  }
+}
+
+async function installFromChat(packageId?: string) {
+  if (!packageId) return
+  try {
+    await store.installMasterData(packageId, MasterStrategy.USE_INCOMING, {})
+    cardOpen.value = ''
+    await scrollToBottom()
+  } catch (e) {
+    store.error = String(e)
+  }
+}
+
+async function rejectFromChat(packageId?: string) {
+  if (!packageId) return
+  try {
+    await store.rejectMasterData(packageId)
+    cardOpen.value = ''
+  } catch (e) {
+    store.error = String(e)
+  }
 }
 
 async function scrollToBottom() {
