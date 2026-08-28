@@ -6,6 +6,14 @@ export function AssignTurns(arg1) {
   return window['go']['main']['App']['AssignTurns'](arg1);
 }
 
+export function BuildMasterDataPackage() {
+  return window['go']['main']['App']['BuildMasterDataPackage']();
+}
+
+export function ClearChatUnread() {
+  return window['go']['main']['App']['ClearChatUnread']();
+}
+
 export function ClearLogo() {
   return window['go']['main']['App']['ClearLogo']();
 }
@@ -114,12 +122,24 @@ export function ExportSphPdf(arg1, arg2) {
   return window['go']['main']['App']['ExportSphPdf'](arg1, arg2);
 }
 
+export function GetChatUnread() {
+  return window['go']['main']['App']['GetChatUnread']();
+}
+
 export function GetCollabDefaults() {
   return window['go']['main']['App']['GetCollabDefaults']();
 }
 
 export function GetCollabSession() {
   return window['go']['main']['App']['GetCollabSession']();
+}
+
+export function GetMasterInbox(arg1) {
+  return window['go']['main']['App']['GetMasterInbox'](arg1);
+}
+
+export function GetMasterInboxPayload(arg1) {
+  return window['go']['main']['App']['GetMasterInboxPayload'](arg1);
 }
 
 export function GetSettings() {
@@ -140,6 +160,10 @@ export function GetWorkItemDetail(arg1) {
 
 export function Health() {
   return window['go']['main']['App']['Health']();
+}
+
+export function InstallMasterData(arg1, arg2, arg3) {
+  return window['go']['main']['App']['InstallMasterData'](arg1, arg2, arg3);
 }
 
 export function JoinCollabRoom(arg1, arg2, arg3, arg4, arg5) {
@@ -166,6 +190,14 @@ export function ListImportSheets(arg1) {
   return window['go']['main']['App']['ListImportSheets'](arg1);
 }
 
+export function ListMasterInbox() {
+  return window['go']['main']['App']['ListMasterInbox']();
+}
+
+export function ListMasterSent() {
+  return window['go']['main']['App']['ListMasterSent']();
+}
+
 export function ListMaterials(arg1, arg2) {
   return window['go']['main']['App']['ListMaterials'](arg1, arg2);
 }
@@ -184,6 +216,10 @@ export function ListWorkItems(arg1, arg2, arg3) {
 
 export function LogoDataUrl() {
   return window['go']['main']['App']['LogoDataUrl']();
+}
+
+export function MarkMasterInboxViewed(arg1) {
+  return window['go']['main']['App']['MarkMasterInboxViewed'](arg1);
 }
 
 export function OpenExportFolder(arg1) {
@@ -206,8 +242,16 @@ export function PreviewImportSheet(arg1, arg2) {
   return window['go']['main']['App']['PreviewImportSheet'](arg1, arg2);
 }
 
+export function PreviewMasterData(arg1) {
+  return window['go']['main']['App']['PreviewMasterData'](arg1);
+}
+
 export function PreviewSphNumber(arg1) {
   return window['go']['main']['App']['PreviewSphNumber'](arg1);
+}
+
+export function RejectMasterData(arg1) {
+  return window['go']['main']['App']['RejectMasterData'](arg1);
 }
 
 export function ReleaseEdit(arg1) {
@@ -238,8 +282,16 @@ export function RunWorkItemImport(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['RunWorkItemImport'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function SendChatMessage(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SendChatMessage'](arg1, arg2, arg3, arg4);
+}
+
 export function SendCollabOp(arg1) {
   return window['go']['main']['App']['SendCollabOp'](arg1);
+}
+
+export function SendMasterData(arg1, arg2) {
+  return window['go']['main']['App']['SendMasterData'](arg1, arg2);
 }
 
 export function SetCategoryActive(arg1, arg2) {

@@ -29,6 +29,12 @@
     <!-- Error -->
     <p v-if="collabStore.error" class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-[13px] text-red-700">{{ collabStore.error }}</p>
 
+    <!-- Chat -->
+    <CollabChatPanel v-if="collabStore.isLive" class="mb-4 max-w-2xl" />
+
+    <!-- Master Data -->
+    <MasterDataPanel v-if="collabStore.isLive" class="mb-4" />
+
     <!-- Discovered rooms -->
     <div class="rounded-xl border border-slate-200 bg-white p-5">
       <div class="mb-4 flex items-center justify-between">
@@ -75,6 +81,8 @@ import PageHeader from '../components/PageHeader.vue'
 import CreateRoomDialog from '../components/collaboration/CreateRoomDialog.vue'
 import JoinDialog from '../components/collaboration/JoinDialog.vue'
 import JoinManualDialog from '../components/collaboration/JoinManualDialog.vue'
+import CollabChatPanel from '../components/collaboration/CollabChatPanel.vue'
+import MasterDataPanel from '../components/collaboration/MasterDataPanel.vue'
 import { useCollaborationStore } from '../stores/collaboration'
 import type { DiscoveredRoom } from '../types/collaboration'
 
@@ -140,6 +148,7 @@ onMounted(async () => {
   await collabStore.loadDefaults()
   await collabStore.startDiscovery()
   await refreshList()
+  await collabStore.refreshMasterInbox()
   refreshTimer = setInterval(refreshList, 5000)
 })
 

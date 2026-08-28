@@ -350,6 +350,59 @@ func (c *Client) sendAssignTurns(assignments map[string][]string) error {
 	return c.writeOn(s, envelopeWith(TypeAssignTurns, "", "", 0, assignments))
 }
 
+// sendChat mengirim pesan chat ke host untuk diproses & di-broadcast.
+func (c *Client) sendChat(cp *ChatPayload) error {
+	if cp == nil {
+		return services.NewValidationError("Pesan kosong.")
+	}
+	c.mu.Lock()
+	s := c.session
+	c.mu.Unlock()
+	if s == nil {
+		return fmt.Errorf("gagal mengirim pesan: koneksi ke host sedang terputus.")
+	}
+	return c.writeOn(s, envelopeWith(TypeChatMessage, "", "", 0, cp))
+}
+
+// requestChatHistory meminta riwayat chat dari host (saat join/reconnect).
+func (c *Client) requestChatHistory() error {
+	c.mu.Lock()
+	s := c.session
+	c.mu.Unlock()
+	if s == nil {
+		return fmt.Errorf("tidak terhubung ke host.")
+	}
+	return c.writeOn(s, envelopeWith(TypeChatHistoryRequest, "", "", 0, nil))
+}
+
+// sendMasterData mengirim Master Data ke host; host meneruskan ke target.
+func (c *Client) sendMasterData(tp *MasterDataTransferPayload) error {
+	if tp == nil {
+		return services.NewValidationError("Payload kosong.")
+	}
+	c.mu.Lock()
+	s := c.session
+	c.mu.Unlock()
+	if s == nil {
+		return fmt.Errorf("gagal mengirim Master Data: koneksi ke host sedang terputus.")
+	}
+	return c.writeOn(s, envelopeWith(TypeMasterData, "", "", 0, tp))
+}
+
+// sendMasterDataAck mengirim status penerimaan/install/reject Master Data ke host.
+func (c *Client) sendMasterDataAck(ap *MasterDataAckPayload) error {
+	if ap == nil {
+		return services.NewValidationError("Payload kosong.")
+	}
+	c.mu.Lock()
+	s := c.session
+	c.mu.Unlock()
+	if s == nil {
+		return fmt.Errorf("gagal mengirim status: koneksi ke host sedang terputus.")
+	}
+	return c.writeOn(s, envelopeWith(TypeMasterDataAck, "", "", 0, ap))
+}
+
 // readLoop menerima envelope dari host dan meneruskannya ke manager.
 func (c *Client) readLoop(s *connSession) {
 	defer func() {

@@ -71,9 +71,12 @@ type UISnapshot struct {
 	Participants []Participant             `json:"participants,omitempty"`
 	Activities   []services.CollabActivity `json:"activities,omitempty"`
 	Turn         *TurnState                `json:"turn,omitempty"`
+	Chat         []ChatPayload             `json:"chat,omitempty"`
+	Unread       int                       `json:"unread,omitempty"`
 	Version      uint64                    `json:"version,omitempty"`
 	Error        string                    `json:"error,omitempty"`
 	Notice       string                    `json:"notice,omitempty"`
+	Incoming     int                       `json:"incoming,omitempty"`
 }
 
 // Emit dipanggil setiap ada perubahan sesi; wiring aplikasi meneruskannya ke UI.
@@ -84,10 +87,12 @@ type Emit func(UISnapshot)
 // Manager mengimplementasikan services.RoomGuard sehingga dokumen yang sedang
 // dibuka dalam room terkunci dari jalur solo.
 type Manager struct {
-	cfg Config
-	log *slog.Logger
-	ops *services.CollabOps
-	sph *services.SphService
+	cfg  Config
+	log  *slog.Logger
+	ops  *services.CollabOps
+	sph  *services.SphService
+	chat ChatStore
+	md   MasterDataStore
 
 	mu       sync.Mutex
 	emitFn   Emit
@@ -105,6 +110,10 @@ type Manager struct {
 	clientParts    []Participant
 	clientActs     []services.CollabActivity
 	clientTurn     *TurnState
+	clientChat     []ChatPayload
+	clientUnread   int
+	hostUnread     int
+	clientIncoming []MasterDataTransferPayload // master data masuk (sisi client) menunggu dipasang
 }
 
 func NewManager(cfg Config, ops *services.CollabOps, sph *services.SphService, log *slog.Logger) *Manager {
@@ -114,6 +123,20 @@ func NewManager(cfg Config, ops *services.CollabOps, sph *services.SphService, l
 		ops: ops,
 		sph: sph,
 	}
+}
+
+// SetChatStore memasang penyimpanan riwayat chat (host). Dipanggil app saat startup.
+func (m *Manager) SetChatStore(cs ChatStore) {
+	m.mu.Lock()
+	m.chat = cs
+	m.mu.Unlock()
+}
+
+// SetMasterDataStore memasang penyimpanan Master Data (inbox/sent). Dipanggil app saat startup.
+func (m *Manager) SetMasterDataStore(st MasterDataStore) {
+	m.mu.Lock()
+	m.md = st
+	m.mu.Unlock()
 }
 
 // SetEmit memasang kanal notifikasi UI. Dipanggil setelah startup Wails.
@@ -225,21 +248,25 @@ func (m *Manager) HostRoom(docID uint, roomName, displayName string, port int) (
 	}
 
 	r := &Room{
-		info:      info,
-		docID:     doc.ID,
-		cfg:       m.cfg,
-		log:       m.log,
-		ops:       m.ops,
-		sph:       m.sph,
-		server:    srv,
-		announcer: announcer,
-		conns:     map[string]*serverConn{},
-		byID:      map[string]*Participant{hostPart.ID: &hostPart},
-		assignments:     map[string][]string{},
-		activeEdits:     map[string]string{},
+		info:             info,
+		docID:            doc.ID,
+		cfg:              m.cfg,
+		log:              m.log,
+		ops:              m.ops,
+		sph:              m.sph,
+		chat:             m.chat,
+		md:               m.md,
+		server:           srv,
+		announcer:        announcer,
+		conns:            map[string]*serverConn{},
+		byID:             map[string]*Participant{hostPart.ID: &hostPart},
+		assignments:      map[string][]string{},
+		activeEdits:      map[string]string{},
 		participantNames: map[string]string{},
-		stopCh:    make(chan struct{}),
-		closedCh:  make(chan struct{}),
+		chatLog:          []ChatPayload{},
+		chatCap:          m.cfg.ActivityCap,
+		stopCh:           make(chan struct{}),
+		closedCh:         make(chan struct{}),
 	}
 	r.managerRef = m
 	r.publishAnnounceLocked()
@@ -520,6 +547,8 @@ func (m *Manager) sessionLocked() UISnapshot {
 			Participants: info.Participants,
 			Activities:   data.Activities,
 			Turn:         data.Turn,
+			Chat:         data.Chat,
+			Unread:       m.hostUnread,
 			Version:      data.Version,
 		}
 	}
@@ -540,9 +569,12 @@ func (m *Manager) sessionLocked() UISnapshot {
 			Participants: parts,
 			Activities:   acts,
 			Turn:         m.clientTurn,
+			Chat:         cloneChat(m.clientChat),
+			Unread:       m.clientUnread,
 			Version:      m.clientVersion,
 			Error:        m.clientErr,
 			Notice:       m.clientNotice,
+			Incoming:     len(m.clientIncoming),
 		}
 	}
 	return UISnapshot{Mode: ModeNone, Activities: []services.CollabActivity{}, Participants: []Participant{}}
@@ -571,6 +603,9 @@ func (m *Manager) resetClientStateLocked() {
 	m.clientParts = nil
 	m.clientActs = nil
 	m.clientTurn = nil
+	m.clientChat = nil
+	m.clientUnread = 0
+	m.clientIncoming = nil
 }
 
 // ===== callback client =====
@@ -615,6 +650,105 @@ func (m *Manager) onClientEnvelope(env *Envelope) {
 		return
 	}
 
+	// Chat & master-data status masuk langsung ke snapshot UI (bukan state dokumen).
+	switch env.Type {
+	case TypeChatBroadcast:
+		var cp ChatPayload
+		_ = json.Unmarshal(env.Payload, &cp)
+		m.mu.Lock()
+		if m.client != nil {
+			m.clientChat = append(m.clientChat, cp)
+			if len(m.clientChat) > m.cfg.ActivityCap {
+				m.clientChat = m.clientChat[len(m.clientChat)-m.cfg.ActivityCap:]
+			}
+			if cp.SenderID != "" && cp.SenderID != m.client.clientIDLocked() {
+				m.clientUnread++
+			}
+		}
+		snap := m.sessionLocked()
+		fn := m.emitFn
+		m.mu.Unlock()
+		if fn != nil {
+			fn(snap)
+		}
+		return
+	case TypeChatHistory:
+		var hp ChatHistoryPayload
+		_ = json.Unmarshal(env.Payload, &hp)
+		m.mu.Lock()
+		if m.client != nil {
+			m.clientChat = hp.Messages
+			m.clientUnread = 0
+		}
+		snap := m.sessionLocked()
+		fn := m.emitFn
+		m.mu.Unlock()
+		if fn != nil {
+			fn(snap)
+		}
+		return
+	case TypeMasterDataStatus:
+		var mp MasterDataStatusPayload
+		_ = json.Unmarshal(env.Payload, &mp)
+		m.mu.Lock()
+		if m.client != nil {
+			var note string
+			switch mp.Status {
+			case MasterStatusAckInstalled:
+				note = mp.TargetName + " memasang Master Data."
+			case MasterStatusAckRejected:
+				note = mp.TargetName + " menolak Master Data."
+			default:
+				note = "Master Data " + mp.TargetName + " diterima."
+			}
+			if note != "" {
+				m.clientNotice = note
+			}
+		}
+		snap := m.sessionLocked()
+		fn := m.emitFn
+		m.mu.Unlock()
+		if fn != nil {
+			fn(snap)
+		}
+		return
+	case TypeMasterData:
+		var tp MasterDataTransferPayload
+		_ = json.Unmarshal(env.Payload, &tp)
+		m.mu.Lock()
+		if m.client != nil {
+			if m.md != nil {
+				_ = m.md.SaveInbox(&models.MasterInbox{
+					RoomID:        env.RoomID,
+					PackageID:     tp.PackageID,
+					SenderID:      tp.SenderID,
+					SenderName:    tp.SenderName,
+					SourceVersion: tp.SourceVersion,
+					Payload:       string(tp.Payload),
+					Checksum:      tp.Checksum,
+					Status:        models.MasterStatusPending,
+					ReceivedAt:    time.Now().UTC(),
+				})
+			}
+			cp := tp
+			cp.Targets = nil
+			m.clientIncoming = append(m.clientIncoming, cp)
+			if len(m.clientIncoming) > m.cfg.ActivityCap {
+				m.clientIncoming = m.clientIncoming[len(m.clientIncoming)-m.cfg.ActivityCap:]
+			}
+			if tp.SenderName != "" {
+				m.clientNotice = "Master Data masuk dari " + tp.SenderName + "."
+			}
+		}
+		snap := m.sessionLocked()
+		fn := m.emitFn
+		m.mu.Unlock()
+		if fn != nil {
+			fn(snap)
+		}
+		return
+	}
+
 	var sp StatePayload
 	if len(env.Payload) > 0 {
 		_ = json.Unmarshal(env.Payload, &sp)
@@ -649,6 +783,12 @@ func (m *Manager) onClientEnvelope(env *Envelope) {
 		}
 	case TypeRoomJoined, TypeSyncResponse:
 		m.clientActs = nil
+	}
+	// Setelah initial sync, client meminta riwayat chat.
+	if env.Type == TypeRoomJoined || env.Type == TypeSyncRequest {
+		if m.client != nil {
+			_ = m.client.requestChatHistory()
+		}
 	}
 	snap := m.sessionLocked()
 	fn := m.emitFn
@@ -689,20 +829,24 @@ type Room struct {
 	docID      uint
 	version    uint64
 	activities []services.CollabActivity
+	chatLog    []ChatPayload
+	chatCap    int
 
 	cfg       Config
 	log       *slog.Logger
 	ops       *services.CollabOps
 	sph       *services.SphService
+	chat      ChatStore
+	md        MasterDataStore
 	server    *wsServer
 	announcer *Announcer
 
 	conns map[string]*serverConn  // participantID → koneksi aktif (remote)
 	byID  map[string]*Participant // participantID → data peserta
 
-	assignments     map[string][]string // participantID → []sectionID
-	activeEdits     map[string]string   // sectionID → participantID
-	participantNames map[string]string  // participantID → displayName (for turn state broadcast)
+	assignments      map[string][]string // participantID → []sectionID
+	activeEdits      map[string]string   // sectionID → participantID
+	participantNames map[string]string   // participantID → displayName (for turn state broadcast)
 
 	stopCh    chan struct{}
 	closedCh  chan struct{}
@@ -746,7 +890,7 @@ func (r *Room) eventData() roomEventData {
 	info := r.infoSnapshotLocked()
 	acts := r.activitiesLocked()
 	turn := r.buildTurnStateLocked()
-	return roomEventData{Info: info, Activities: acts, Version: r.version, Turn: turn}
+	return roomEventData{Info: info, Activities: acts, Version: r.version, Turn: turn, Chat: cloneChat(r.chatLog)}
 }
 
 type roomEventData struct {
@@ -754,6 +898,7 @@ type roomEventData struct {
 	Activities []services.CollabActivity
 	Version    uint64
 	Turn       *TurnState
+	Chat       []ChatPayload
 }
 
 // notifyRoomChanged memicu pengiriman snapshot UI terbaru untuk sesi host.
@@ -966,6 +1111,29 @@ func (r *Room) serveConn(ws *websocket.Conn) {
 			r.handleSyncPush(p, &input)
 		case TypeSyncRequest:
 			r.sendInitialState(conn)
+		case TypeChatMessage:
+			var cp ChatPayload
+			if err := json.Unmarshal(e.Payload, &cp); err != nil {
+				r.sendError(conn, errCodeOp, "Payload chat tidak valid.")
+				continue
+			}
+			r.handleIncomingChat(p, &cp)
+		case TypeChatHistoryRequest:
+			r.handleChatHistoryRequest(conn)
+		case TypeMasterData:
+			var tp MasterDataTransferPayload
+			if err := json.Unmarshal(e.Payload, &tp); err != nil {
+				r.sendError(conn, errCodeOp, "Payload master data tidak valid.")
+				continue
+			}
+			r.relayMasterData(p, &tp)
+		case TypeMasterDataAck:
+			var ap MasterDataAckPayload
+			if err := json.Unmarshal(e.Payload, &ap); err != nil {
+				r.sendError(conn, errCodeOp, "Payload master data ack tidak valid.")
+				continue
+			}
+			r.handleMasterDataAck(conn, p, &ap)
 		case TypeLeave:
 			r.dropParticipant(p.ID, conn, false)
 			conn.shutdown()
@@ -1130,6 +1298,17 @@ func (r *Room) touch(participantID string) {
 		p.LastSeen = time.Now()
 	}
 	r.mu.Unlock()
+}
+
+// hostParticipantLocked mengembalikan participant berperan HOST. Dipanggil dengan
+// room.mu TERKUNCI (atau saat masih safe, room tidak sedang berubah).
+func (r *Room) hostParticipantLocked() *Participant {
+	for _, p := range r.byID {
+		if p.Role == RoleHost {
+			return p
+		}
+	}
+	return nil
 }
 
 // broadcastPresence menyiarkan perubahan kehadiran peserta.
@@ -1428,6 +1607,386 @@ func (r *Room) sendErrorToParticipant(participantID, message string) {
 	}
 }
 
+// ===== Chat (host) =====
+
+// handleIncomingChat menerima chat dari client/host, mempersist di host, lalu
+// broadcast ke seluruh member (termasuk echo ke pengirim).
+func (r *Room) handleIncomingChat(p *Participant, cp *ChatPayload) {
+	if cp == nil {
+		return
+	}
+	now := time.Now()
+	msg := ChatMessage{
+		RoomID:      r.info.RoomID,
+		MessageID:   cp.MessageID,
+		SenderID:    p.ID,
+		SenderName:  p.DisplayName,
+		MessageType: cp.MessageType,
+		Content:     cp.Content,
+		Status:      ChatStatusDelivered,
+		CreatedAt:   now,
+	}
+	if msg.MessageID == "" {
+		msg.MessageID = uuid.NewString()
+	}
+	if msg.MessageType == "" {
+		msg.MessageType = ChatTypeText
+	}
+
+	if r.chat != nil {
+		if err := r.chat.SaveChat(msg); err != nil {
+			r.log.Warn("gagal menyimpan chat di host", "error", err)
+		}
+	}
+
+	out := ChatPayload{
+		MessageID:   msg.MessageID,
+		RoomID:      msg.RoomID,
+		SenderID:    msg.SenderID,
+		SenderName:  msg.SenderName,
+		MessageType: msg.MessageType,
+		Content:     msg.Content,
+		Status:      msg.Status,
+		RefPackage:  cp.RefPackage,
+		RefMeta:     cp.RefMeta,
+		CreatedAt:   msg.CreatedAt,
+	}
+
+	r.mu.Lock()
+	if r.isClosed() {
+		r.mu.Unlock()
+		return
+	}
+	remote := true
+	for _, pp := range r.byID {
+		if pp.Role == RoleHost && pp.ID == p.ID {
+			remote = false
+			break
+		}
+	}
+	r.chatLog = append(r.chatLog, out)
+	if len(r.chatLog) > r.chatCap {
+		r.chatLog = r.chatLog[len(r.chatLog)-r.chatCap:]
+	}
+	env := envelopeWith(TypeChatBroadcast, r.info.RoomID, "", 0, out)
+	r.broadcastLocked(env)
+	r.mu.Unlock()
+	if remote {
+		if mgr := r.managerRef; mgr != nil {
+			mgr.mu.Lock()
+			mgr.hostUnread++
+			snap := mgr.sessionLocked()
+			fn := mgr.emitFn
+			mgr.mu.Unlock()
+			if fn != nil {
+				fn(snap)
+			}
+		}
+	}
+	r.notifyChanged()
+}
+
+// handleChatHistoryRequest mengirim riwayat chat terakhir ke client peminta.
+func (r *Room) handleChatHistoryRequest(conn *serverConn) {
+	if r.chat == nil {
+		conn.deliver(envelopeWith(TypeChatHistory, r.info.RoomID, "", 0, ChatHistoryPayload{}))
+		return
+	}
+	msgs, err := r.chat.History(r.info.RoomID, 200)
+	if err != nil {
+		r.log.Warn("gagal memuat riwayat chat", "error", err)
+		msgs = nil
+	}
+	out := make([]ChatPayload, 0, len(msgs))
+	for _, m := range msgs {
+		out = append(out, ChatPayload{
+			MessageID:   m.MessageID,
+			RoomID:      m.RoomID,
+			SenderID:    m.SenderID,
+			SenderName:  m.SenderName,
+			MessageType: m.MessageType,
+			Content:     m.Content,
+			Status:      m.Status,
+			CreatedAt:   m.CreatedAt,
+		})
+	}
+	env := envelopeWith(TypeChatHistory, r.info.RoomID, "", 0, ChatHistoryPayload{Messages: out})
+	conn.deliver(env)
+}
+
+// ===== Master Data (host relay) =====
+
+// handleIncomingMasterData menerima MasterDataPackage dari client, memvalidasi,
+// lalu meneruskan ke target (satu/banyak/semua) atau diproses sendiri bila target=host.
+// Implementasi relay penuh dirangkai di lapisan Manager/app; di Room ini kita menangani
+// notifikasi ACK status agar pengirim mendapat status penerimaan.
+//
+// Catatan: pengiriman MasterDataPackage dilakukan lewat Manager (bukan raw serveConn)
+// karena butuh akses DB lokal host (inbox) untuk target host. Di sini hanya ACK status.
+func (r *Room) handleMasterDataAck(conn *serverConn, p *Participant, ap *MasterDataAckPayload) {
+	if ap == nil || ap.PackageID == "" {
+		r.sendError(conn, errCodeOp, "Payload master data ack tidak valid.")
+		return
+	}
+	status := MasterDataAckPayload{
+		PackageID:  ap.PackageID,
+		Status:     ap.Status,
+		Message:    ap.Message,
+		AckedAt:    time.Now(),
+		TargetID:   p.ID,
+		TargetName: p.DisplayName,
+	}
+	// Jika host adalah pengirim, mutakhirkan status pengiriman lokal host.
+	if r.md != nil {
+		_ = r.md.SetSentStatus(ap.PackageID, ap.Status)
+	}
+	env := envelopeWith(TypeMasterDataStatus, r.info.RoomID, "", 0, status)
+	r.mu.Lock()
+	if !r.isClosed() {
+		r.broadcastLocked(env)
+	}
+	r.mu.Unlock()
+	r.notifyChanged()
+}
+
+// hostSendMasterData dipanggil saat HOST mengirim Master Data (bukan relay dari client):
+// mencatat sent, menambah pesan chat, lalu meneruskan ke tiap target.
+func (r *Room) hostSendMasterData(tp *MasterDataTransferPayload, targets []string) error {
+	r.mu.Lock()
+	host := r.hostParticipantLocked()
+	r.mu.Unlock()
+	if host == nil {
+		return services.NewConflictError("Host room tidak ditemukan.")
+	}
+	tp.SenderID = host.ID
+	tp.SenderName = host.DisplayName
+	tp.Targets = nil
+
+	if r.md != nil {
+		recips, _ := json.Marshal(targets)
+		_ = r.md.SaveSent(&models.MasterSent{
+			RoomID:        r.info.RoomID,
+			PackageID:     tp.PackageID,
+			Payload:       string(tp.Payload),
+			Checksum:      tp.Checksum,
+			SourceVersion: tp.SourceVersion,
+			Recipients:    string(recips),
+			Status:        models.MasterStatusPending,
+			SentAt:        time.Now().UTC(),
+		})
+	}
+	r.addMasterChat(host.ID, host.DisplayName, tp)
+	return r.dispatchMasterData(tp, targets, host.ID)
+}
+
+// relayMasterData menerima paket dari client (serveConn TypeMasterData) lalu
+// meneruskannya ke target. Sent dicatat di sisi pengirim (client) — di sini host
+// hanya meneruskan & memproses target host via inbox.
+func (r *Room) relayMasterData(sender *Participant, tp *MasterDataTransferPayload) {
+	if sender == nil || tp == nil || tp.PackageID == "" || len(tp.Payload) == 0 {
+		return
+	}
+	targets := tp.Targets
+	tp.Targets = nil
+	r.mu.Lock()
+	host := r.hostParticipantLocked()
+	r.mu.Unlock()
+	if host != nil {
+		r.addMasterChat(sender.ID, sender.DisplayName, tp)
+	}
+	_ = r.dispatchMasterData(tp, targets, "")
+	_ = host
+}
+
+// dispatchMasterData meneruskan tp ke tiap target: target==host → inbox host;
+// selain itu → deliver ke koneksi remote. hostID menandai identitas host.
+func (r *Room) dispatchMasterData(tp *MasterDataTransferPayload, targets []string, hostID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.isClosed() {
+		return services.NewConflictError("Room sudah ditutup.")
+	}
+	if hostID == "" {
+		host := r.hostParticipantLocked()
+		if host != nil {
+			hostID = host.ID
+		}
+	}
+	env := envelopeWith(TypeMasterData, r.info.RoomID, "", 0, tp)
+	seen := map[string]bool{}
+	for _, tid := range targets {
+		if tid == "" || seen[tid] {
+			continue
+		}
+		seen[tid] = true
+		if tid == hostID {
+			r.saveHostInboxLocked(tp)
+			continue
+		}
+		if c, ok := r.conns[tid]; ok {
+			c.deliver(env)
+		}
+	}
+	return nil
+}
+
+// saveHostInboxLocked menyimpan paket masuk ke inbox host (target host).
+func (r *Room) saveHostInboxLocked(tp *MasterDataTransferPayload) {
+	if r.md == nil || tp == nil {
+		return
+	}
+	_ = r.md.SaveInbox(&models.MasterInbox{
+		RoomID:        r.info.RoomID,
+		PackageID:     tp.PackageID,
+		SenderID:      tp.SenderID,
+		SenderName:    tp.SenderName,
+		SourceVersion: tp.SourceVersion,
+		Payload:       string(tp.Payload),
+		Checksum:      tp.Checksum,
+		Status:        models.MasterStatusPending,
+		ReceivedAt:    time.Now().UTC(),
+	})
+}
+
+// addMasterChat membuat pesan chat bertipe master_data lalu menyiarkan, agar
+// seluruh member (termasuk pengirim) melihat card transfer di panel chat.
+func (r *Room) addMasterChat(senderID, senderName string, tp *MasterDataTransferPayload) {
+	msg := ChatMessage{
+		RoomID:      r.info.RoomID,
+		MessageID:   uuid.NewString(),
+		SenderID:    senderID,
+		SenderName:  senderName,
+		MessageType: ChatTypeMasterData,
+		Content:     tp.Summary,
+		Status:      ChatStatusDelivered,
+		CreatedAt:   time.Now().UTC(),
+	}
+	if r.chat != nil {
+		_ = r.chat.SaveChat(msg)
+	}
+	out := ChatPayload{
+		MessageID:   msg.MessageID,
+		RoomID:      msg.RoomID,
+		SenderID:    msg.SenderID,
+		SenderName:  msg.SenderName,
+		MessageType: msg.MessageType,
+		Content:     msg.Content,
+		Status:      msg.Status,
+		RefPackage:  tp.PackageID,
+		RefMeta:     tp.Summary,
+		CreatedAt:   msg.CreatedAt,
+	}
+	r.mu.Lock()
+	if !r.isClosed() {
+		r.chatLog = append(r.chatLog, out)
+		if len(r.chatLog) > r.chatCap {
+			r.chatLog = r.chatLog[len(r.chatLog)-r.chatCap:]
+		}
+		env := envelopeWith(TypeChatBroadcast, r.info.RoomID, "", 0, out)
+		r.broadcastLocked(env)
+	}
+	r.mu.Unlock()
+}
+
+// Manager.SendMasterData mengirim Master Data ke sesi aktif.
+// targets berisi participant IDs tujuan; bisa memuat ID host untuk dikirim ke dirinya.
+func (m *Manager) SendMasterData(pkg *MasterDataPackage, targets []string) error {
+	if pkg == nil {
+		return services.NewValidationError("Package Master Data kosong.")
+	}
+	raw, err := pkg.Serialize()
+	if err != nil {
+		return fmt.Errorf("gagal serialisasi package: %w", err)
+	}
+	tp := &MasterDataTransferPayload{
+		PackageID:     pkg.Metadata.PackageID,
+		SenderID:      pkg.Metadata.SenderID,
+		SenderName:    pkg.Metadata.SenderName,
+		SourceVersion: pkg.Metadata.SourceVersion,
+		Checksum:      pkg.Checksum,
+		Title:         summarizePackage(pkg),
+		Summary:       summarizePackage(pkg),
+		Targets:       targets,
+		Payload:       raw,
+	}
+	m.mu.Lock()
+	r, c := m.room, m.client
+	m.mu.Unlock()
+	switch {
+	case r != nil:
+		return r.hostSendMasterData(tp, targets)
+	case c != nil:
+		return c.sendMasterData(tp)
+	default:
+		return services.NewConflictError("Tidak ada sesi Work Together yang aktif.")
+	}
+}
+
+func summarizePackage(pkg *MasterDataPackage) string {
+	if pkg == nil {
+		return "Master Data"
+	}
+	n := len(pkg.Data.Categories) + len(pkg.Data.WorkItems) + len(pkg.Data.WorkSubItems) + len(pkg.Data.Materials)
+	return fmt.Sprintf("Master Data (%d item)", n)
+}
+
+// CurrentIdentity mengembalikan ID & nama peserta sesi aktif (host atau client),
+// untuk mengisi identitas pengirim Master Data.
+func (m *Manager) CurrentIdentity() (string, string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.room != nil {
+		m.room.mu.Lock()
+		defer m.room.mu.Unlock()
+		if h := m.room.hostParticipantLocked(); h != nil {
+			return h.ID, h.DisplayName
+		}
+	}
+	if m.client != nil {
+		return m.client.clientIDLocked(), m.client.p.displayName
+	}
+	return "", ""
+}
+
+// CurrentRoomID mengembalikan ID Room sesi aktif.
+func (m *Manager) CurrentRoomID() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.room != nil {
+		return m.room.info.RoomID
+	}
+	if m.client != nil && m.clientRoomMeta != nil {
+		return m.clientRoomMeta.RoomID
+	}
+	return ""
+}
+
+// AcknowledgeMasterData melaporkan status pemasangan paket masuk (INSTALLED/
+// REJECTED/FAILED) ke pengirim. Untuk client dikirim ke host; untuk host (server)
+// cukup diperbarui lokal lewat store.
+func (m *Manager) AcknowledgeMasterData(packageID, status, message string) error {
+	if packageID == "" {
+		return services.NewValidationError("Package ID wajib diisi.")
+	}
+	m.mu.Lock()
+	r, c := m.room, m.client
+	m.mu.Unlock()
+	switch {
+	case c != nil:
+		ap := &MasterDataAckPayload{PackageID: packageID, Status: status, Message: message, AckedAt: time.Now().UTC()}
+		return c.sendMasterDataAck(ap)
+	case r != nil:
+		if r.md != nil {
+			if err := r.md.SetSentStatus(packageID, status); err != nil {
+				return err
+			}
+		}
+		return nil
+	default:
+		return services.NewConflictError("Tidak ada sesi Work Together yang aktif.")
+	}
+}
+
 // notifyChanged memberi tahu UI setelah lock dilepas.
 func (r *Room) notifyChanged() {
 	if mgr := r.managerRef; mgr != nil {
@@ -1555,4 +2114,72 @@ func (m *Manager) GetTurnState() *TurnState {
 		return m.room.buildTurnStateLocked()
 	}
 	return m.clientTurn
+}
+
+// SendChatMessage mengirim pesan chat ke sesi aktif (host memproses lokal & broadcast,
+// client meneruskan ke host). MessageType: text | system | master_data.
+func (m *Manager) SendChatMessage(messageType, content, refPackage, refMeta string) error {
+	messageType = strings.TrimSpace(messageType)
+	if messageType == "" {
+		messageType = ChatTypeText
+	}
+	m.mu.Lock()
+	r, c := m.room, m.client
+	m.mu.Unlock()
+
+	cp := &ChatPayload{
+		MessageID:   uuid.NewString(),
+		MessageType: messageType,
+		Content:     content,
+		RefPackage:  refPackage,
+		RefMeta:     refMeta,
+	}
+
+	switch {
+	case r != nil:
+		r.mu.Lock()
+		host := r.hostParticipantLocked()
+		r.mu.Unlock()
+		if host == nil {
+			return services.NewConflictError("Host room tidak ditemukan.")
+		}
+		r.handleIncomingChat(host, cp)
+		return nil
+	case c != nil:
+		return c.sendChat(cp)
+	default:
+		return services.NewConflictError("Tidak ada sesi Work Together yang aktif.")
+	}
+}
+
+// ClearChatUnread menetapkan unread chat menjadi 0 (saat chat dibuka).
+func (m *Manager) ClearChatUnread() {
+	m.mu.Lock()
+	if m.client != nil {
+		m.clientUnread = 0
+		snap := m.sessionLocked()
+		fn := m.emitFn
+		m.mu.Unlock()
+		if fn != nil {
+			fn(snap)
+		}
+		return
+	}
+	if m.room != nil {
+		m.hostUnread = 0
+	}
+	m.mu.Unlock()
+}
+
+// GetChatUnread mengembalikan jumlah pesan chat yang belum dibaca.
+func (m *Manager) GetChatUnread() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.client != nil {
+		return m.clientUnread
+	}
+	if m.room != nil {
+		return m.hostUnread
+	}
+	return 0
 }

@@ -39,7 +39,10 @@ func TestMigrateCreatesAllTables(t *testing.T) {
 	want := []string{
 		"audit_logs",
 		"categories",
+		"chat_messages",
 		"customers",
+		"master_data_inbox",
+		"master_data_sent",
 		"materials",
 		"sph_documents",
 		"sph_items",
@@ -255,5 +258,86 @@ func TestWorkSubItemOrderingAndDefaults(t *testing.T) {
 		if s.Name != names[i] {
 			t.Errorf("urutan salah index %d: dapat %s, mau %s", i, s.Name, names[i])
 		}
+	}
+}
+
+func TestChatMessageCRUDAndOrdering(t *testing.T) {
+	db := testDB(t)
+	if err := Migrate(db); err != nil {
+		t.Fatalf("Migrate gagal: %v", err)
+	}
+	roomID := "room-1"
+	m1 := models.ChatMessage{RoomID: roomID, MessageID: "m1", SenderID: "host", SenderName: "Admin", MessageType: models.ChatMessageTypeText, Content: "halo", Status: models.ChatStatusDelivered, CreatedAt: time.Now()}
+	if err := db.Create(&m1).Error; err != nil {
+		t.Fatalf("buat chat gagal: %v", err)
+	}
+	m2 := models.ChatMessage{RoomID: roomID, MessageID: "m2", SenderID: "c1", SenderName: "Budi", MessageType: models.ChatMessageTypeMasterData, Content: "{\"refPackage\":\"p1\"}", Status: models.ChatStatusSent, CreatedAt: time.Now().Add(time.Second)}
+	if err := db.Create(&m2).Error; err != nil {
+		t.Fatalf("buat chat master_data gagal: %v", err)
+	}
+
+	var msgs []models.ChatMessage
+	if err := db.Where("room_id = ?", roomID).Order("created_at asc").Find(&msgs).Error; err != nil {
+		t.Fatalf("ambil riwayat gagal: %v", err)
+	}
+	if len(msgs) != 2 {
+		t.Fatalf("jumlah riwayat salah: %d", len(msgs))
+	}
+	if msgs[0].MessageID != "m1" || msgs[1].MessageID != "m2" {
+		t.Errorf("urutan riwayat salah")
+	}
+
+	// Room isolation: pesan room lain tidak ikut terambil.
+	if err := db.Create(&models.ChatMessage{RoomID: "room-2", MessageID: "m3", SenderID: "x", SenderName: "X", Content: "lain", Status: models.ChatStatusSent, CreatedAt: time.Now()}).Error; err != nil {
+		t.Fatalf("buat chat room lain gagal: %v", err)
+	}
+	var count int64
+	db.Model(&models.ChatMessage{}).Where("room_id = ?", roomID).Count(&count)
+	if count != 2 {
+		t.Errorf("room isolation gagal: count=%d", count)
+	}
+}
+
+func TestMasterInboxUniquePackageCRCUD(t *testing.T) {
+	db := testDB(t)
+	if err := Migrate(db); err != nil {
+		t.Fatalf("Migrate gagal: %v", err)
+	}
+	in1 := models.MasterInbox{
+		RoomID: "room-1", PackageID: "pkg-a", SenderID: "host", SenderName: "Admin",
+		Payload: `{"x":1}`, Checksum: "abc", Status: models.MasterStatusPending, ReceivedAt: time.Now(),
+	}
+	if err := db.Create(&in1).Error; err != nil {
+		t.Fatalf("buat inbox gagal: %v", err)
+	}
+	// Status transisi PENDING -> VIEWED -> INSTALLED
+	db.Model(&models.MasterInbox{}).Where("package_id = ?", "pkg-a").Update("status", models.MasterStatusInstalled)
+	var got models.MasterInbox
+	if err := db.Where("package_id = ?", "pkg-a").First(&got).Error; err != nil {
+		t.Fatalf("ambil inbox gagal: %v", err)
+	}
+	if got.Status != models.MasterStatusInstalled {
+		t.Errorf("status tidak terupdate: %s", got.Status)
+	}
+
+	// PackageID unik
+	dup := models.MasterInbox{RoomID: "room-1", PackageID: "pkg-a", SenderID: "host", SenderName: "Admin", Payload: `{"y":2}`, Checksum: "def", Status: models.MasterStatusPending, ReceivedAt: time.Now()}
+	if err := db.Create(&dup).Error; err == nil {
+		t.Fatal("package_id duplikat seharusnya ditolak")
+	}
+}
+
+func TestMasterSentUniquePackage(t *testing.T) {
+	db := testDB(t)
+	if err := Migrate(db); err != nil {
+		t.Fatalf("Migrate gagal: %v", err)
+	}
+	s1 := models.MasterSent{RoomID: "room-1", PackageID: "pkg-b", Payload: `{"x":1}`, Checksum: "abc", Recipients: `["c1"]`, Status: "DELIVERED", SentAt: time.Now()}
+	if err := db.Create(&s1).Error; err != nil {
+		t.Fatalf("buat sent gagal: %v", err)
+	}
+	dup := models.MasterSent{RoomID: "room-1", PackageID: "pkg-b", Payload: `{"x":2}`, Checksum: "xyz", Recipients: `["c2"]`, Status: "DELIVERED", SentAt: time.Now()}
+	if err := db.Create(&dup).Error; err == nil {
+		t.Fatal("package_id duplikat pada sent seharusnya ditolak")
 	}
 }

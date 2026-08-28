@@ -288,3 +288,75 @@ type Setting struct {
 }
 
 func (Setting) TableName() string { return "settings" }
+
+// ===== Chat & Master Data Transfer (Fase: Chat & Master Data) =====
+
+// Status pesan chat.
+const (
+	ChatMessageTypeText       = "text"
+	ChatMessageTypeSystem     = "system"
+	ChatMessageTypeMasterData = "master_data"
+
+	ChatStatusSent      = "SENT"
+	ChatStatusDelivered = "DELIVERED"
+)
+
+// ChatMessage adalah satu pesan chat dalam Room. Disimpan di database host
+// sebagai sumber kebenaran riwayat; client mengambil riwayat dari host saat join.
+type ChatMessage struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	RoomID      string    `gorm:"size:64;notNull;index" json:"roomId"`
+	MessageID   string    `gorm:"size:64;notNull;index" json:"messageId"`
+	SenderID    string    `gorm:"size:64;notNull" json:"senderId"`
+	SenderName  string    `gorm:"size:150;notNull" json:"senderName"`
+	MessageType string    `gorm:"size:20;notNull;default:text" json:"messageType"`
+	Content     string    `gorm:"type:text;notNull" json:"content"`
+	Status      string    `gorm:"size:20;notNull;default:SENT" json:"status"`
+	CreatedAt   time.Time `gorm:"index" json:"createdAt"`
+}
+
+func (ChatMessage) TableName() string { return "chat_messages" }
+
+// Status master data masuk.
+const (
+	MasterStatusPending   = "PENDING"
+	MasterStatusViewed    = "VIEWED"
+	MasterStatusInstalled = "INSTALLED"
+	MasterStatusRejected  = "REJECTED"
+	MasterStatusFailed    = "FAILED"
+)
+
+// MasterInbox adalah catatan Master Data yang diterima oleh PC ini dari member
+// lain dalam Room (disimpan lokal di penerima).
+type MasterInbox struct {
+	ID            uint       `gorm:"primaryKey" json:"id"`
+	RoomID        string     `gorm:"size:64;notNull;index" json:"roomId"`
+	PackageID     string     `gorm:"size:64;notNull;uniqueIndex" json:"packageId"`
+	SenderID      string     `gorm:"size:64;notNull;index" json:"senderId"`
+	SenderName    string     `gorm:"size:150;notNull" json:"senderName"`
+	SourceVersion int        `gorm:"notNull;default:0" json:"sourceVersion"`
+	Payload       string     `gorm:"type:text;notNull" json:"payload"`
+	Checksum      string     `gorm:"size:64;notNull" json:"checksum"`
+	Status        string     `gorm:"size:20;notNull;default:PENDING;index" json:"status"`
+	ReceivedAt    time.Time  `json:"receivedAt"`
+	InstalledAt   *time.Time `json:"installedAt,omitempty"`
+	RejectedAt    *time.Time `json:"rejectedAt,omitempty"`
+}
+
+func (MasterInbox) TableName() string { return "master_data_inbox" }
+
+// MasterSent adalah catatan Master Data yang dikirim oleh PC ini ke member lain
+// dalam Room (disimpan lokal di pengirim).
+type MasterSent struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	RoomID        string    `gorm:"size:64;notNull;index" json:"roomId"`
+	PackageID     string    `gorm:"size:64;notNull;uniqueIndex" json:"packageId"`
+	Payload       string    `gorm:"type:text;notNull" json:"payload"`
+	Checksum      string    `gorm:"size:64;notNull" json:"checksum"`
+	SourceVersion int       `gorm:"notNull;default:0" json:"sourceVersion"`
+	Recipients    string    `gorm:"type:text;notNull" json:"recipients"` // JSON array participant
+	Status        string    `gorm:"size:20;notNull;default:DELIVERED" json:"status"`
+	SentAt        time.Time `json:"sentAt"`
+}
+
+func (MasterSent) TableName() string { return "master_data_sent" }

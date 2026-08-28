@@ -102,3 +102,18 @@ func (a *App) ReleaseEdit(sectionID string) error {
 func (a *App) SyncPush(input services.SphSaveInput) error {
 	return a.collabMgr.SyncPush(&input)
 }
+
+// SendChatMessage mengirim satu pesan chat ke sesi aktif (host memproses/broadcast).
+func (a *App) SendChatMessage(messageType, content, refPackage, refMeta string) error {
+	return a.collabMgr.SendChatMessage(messageType, content, refPackage, refMeta)
+}
+
+// ClearChatUnread menetapkan unread chat sesi saat ini menjadi 0.
+func (a *App) ClearChatUnread() {
+	a.collabMgr.ClearChatUnread()
+}
+
+// GetChatUnread mengembalikan jumlah pesan chat yang belum dibaca.
+func (a *App) GetChatUnread() int {
+	return a.collabMgr.GetChatUnread()
+}

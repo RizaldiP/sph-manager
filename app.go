@@ -9,6 +9,7 @@ import (
 	"github.com/RizaldiP/sph-manager/internal/collaboration"
 	"github.com/RizaldiP/sph-manager/internal/config"
 	"github.com/RizaldiP/sph-manager/internal/database"
+	"github.com/RizaldiP/sph-manager/internal/masterdata"
 	"github.com/RizaldiP/sph-manager/internal/services"
 	"gorm.io/gorm"
 )
@@ -38,6 +39,7 @@ type App struct {
 	settings   *services.SettingsService
 	export     *services.ExportService
 	collabMgr  *collaboration.Manager
+	masterSvc  *masterdata.Service
 }
 
 func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
@@ -46,6 +48,9 @@ func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
 	collabOps := services.NewCollabOps(db, sphSvc, lg)
 	deviceName, _ := os.Hostname()
 	collabMgr := collaboration.NewManager(collaboration.Config{DeviceName: deviceName}, collabOps, sphSvc, lg)
+	collabMgr.SetChatStore(newGormChatStore(db))
+	masterSvc := masterdata.NewService(db, lg)
+	collabMgr.SetMasterDataStore(newGormMasterDataStore(masterSvc))
 	// Dokumen yang dibuka dalam room kolaborasi terkunci dari jalur solo (guard BR-08/BR-16).
 	sphSvc.SetRoomGuard(collabMgr)
 	return &App{
@@ -62,6 +67,7 @@ func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
 		settings:   settingsSvc,
 		export:     services.NewExportService(sphSvc, settingsSvc, lg),
 		collabMgr:  collabMgr,
+		masterSvc:  masterSvc,
 	}
 }
 

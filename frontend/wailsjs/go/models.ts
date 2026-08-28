@@ -1,5 +1,54 @@
 export namespace collaboration {
 	
+	export class ChatPayload {
+	    messageId: string;
+	    roomId?: string;
+	    senderId?: string;
+	    senderName?: string;
+	    messageType: string;
+	    content: string;
+	    status: string;
+	    refPackage?: string;
+	    refMeta?: string;
+	    // Go type: time
+	    createdAt: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChatPayload(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.messageId = source["messageId"];
+	        this.roomId = source["roomId"];
+	        this.senderId = source["senderId"];
+	        this.senderName = source["senderName"];
+	        this.messageType = source["messageType"];
+	        this.content = source["content"];
+	        this.status = source["status"];
+	        this.refPackage = source["refPackage"];
+	        this.refMeta = source["refMeta"];
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class DiscoveredRoom {
 	    roomId: string;
 	    roomName: string;
@@ -47,6 +96,239 @@ export namespace collaboration {
 		    return a;
 		}
 	}
+	export class PackageMaterial {
+	    code?: string;
+	    name: string;
+	    description?: string;
+	    unit?: string;
+	    defaultPrice: number;
+	    supplier?: string;
+	    notes?: string;
+	    isActive: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PackageMaterial(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.unit = source["unit"];
+	        this.defaultPrice = source["defaultPrice"];
+	        this.supplier = source["supplier"];
+	        this.notes = source["notes"];
+	        this.isActive = source["isActive"];
+	    }
+	}
+	export class PackageWorkSubItem {
+	    code?: string;
+	    sequence: number;
+	    name: string;
+	    description?: string;
+	    difficultyWeight: number;
+	    defaultUnit?: string;
+	    defaultQuantity: number;
+	    defaultServicePrice: number;
+	    defaultMaterialPrice: number;
+	    notes?: string;
+	    isActive: boolean;
+	    workItemCode?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PackageWorkSubItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.sequence = source["sequence"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.difficultyWeight = source["difficultyWeight"];
+	        this.defaultUnit = source["defaultUnit"];
+	        this.defaultQuantity = source["defaultQuantity"];
+	        this.defaultServicePrice = source["defaultServicePrice"];
+	        this.defaultMaterialPrice = source["defaultMaterialPrice"];
+	        this.notes = source["notes"];
+	        this.isActive = source["isActive"];
+	        this.workItemCode = source["workItemCode"];
+	    }
+	}
+	export class PackageWorkItem {
+	    code: string;
+	    name: string;
+	    description?: string;
+	    defaultUnit?: string;
+	    defaultQuantity: number;
+	    defaultServicePrice: number;
+	    defaultMaterialPrice: number;
+	    notes?: string;
+	    sequence: number;
+	    isActive: boolean;
+	    categoryCode?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PackageWorkItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.defaultUnit = source["defaultUnit"];
+	        this.defaultQuantity = source["defaultQuantity"];
+	        this.defaultServicePrice = source["defaultServicePrice"];
+	        this.defaultMaterialPrice = source["defaultMaterialPrice"];
+	        this.notes = source["notes"];
+	        this.sequence = source["sequence"];
+	        this.isActive = source["isActive"];
+	        this.categoryCode = source["categoryCode"];
+	    }
+	}
+	export class PackageCategory {
+	    code: string;
+	    name: string;
+	    description?: string;
+	    sequence: number;
+	    isActive: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PackageCategory(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.sequence = source["sequence"];
+	        this.isActive = source["isActive"];
+	    }
+	}
+	export class MasterPackageData {
+	    categories?: PackageCategory[];
+	    workItems?: PackageWorkItem[];
+	    workSubItems?: PackageWorkSubItem[];
+	    materials?: PackageMaterial[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MasterPackageData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.categories = this.convertValues(source["categories"], PackageCategory);
+	        this.workItems = this.convertValues(source["workItems"], PackageWorkItem);
+	        this.workSubItems = this.convertValues(source["workSubItems"], PackageWorkSubItem);
+	        this.materials = this.convertValues(source["materials"], PackageMaterial);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MasterPackageMetadata {
+	    packageId: string;
+	    senderId: string;
+	    senderName: string;
+	    roomId: string;
+	    // Go type: time
+	    createdAt: any;
+	    schemaVersion: string;
+	    packageVersion: string;
+	    sourceVersion: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MasterPackageMetadata(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.packageId = source["packageId"];
+	        this.senderId = source["senderId"];
+	        this.senderName = source["senderName"];
+	        this.roomId = source["roomId"];
+	        this.createdAt = this.convertValues(source["createdAt"], null);
+	        this.schemaVersion = source["schemaVersion"];
+	        this.packageVersion = source["packageVersion"];
+	        this.sourceVersion = source["sourceVersion"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MasterDataPackage {
+	    metadata: MasterPackageMetadata;
+	    data: MasterPackageData;
+	    checksum: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MasterDataPackage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.metadata = this.convertValues(source["metadata"], MasterPackageMetadata);
+	        this.data = this.convertValues(source["data"], MasterPackageData);
+	        this.checksum = source["checksum"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
+	
+	
+	
 	export class Participant {
 	    id: string;
 	    displayName: string;
@@ -172,9 +454,12 @@ export namespace collaboration {
 	    participants?: Participant[];
 	    activities?: services.CollabActivity[];
 	    turn?: TurnState;
+	    chat?: ChatPayload[];
+	    unread?: number;
 	    version?: number;
 	    error?: string;
 	    notice?: string;
+	    incoming?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new UISnapshot(source);
@@ -189,9 +474,12 @@ export namespace collaboration {
 	        this.participants = this.convertValues(source["participants"], Participant);
 	        this.activities = this.convertValues(source["activities"], services.CollabActivity);
 	        this.turn = this.convertValues(source["turn"], TurnState);
+	        this.chat = this.convertValues(source["chat"], ChatPayload);
+	        this.unread = source["unread"];
 	        this.version = source["version"];
 	        this.error = source["error"];
 	        this.notice = source["notice"];
+	        this.incoming = source["incoming"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -387,6 +675,161 @@ export namespace main {
 	        this.platform = source["platform"];
 	        this.databasePath = source["databasePath"];
 	    }
+	}
+
+}
+
+export namespace masterdata {
+	
+	export class DiffItem {
+	    kind: string;
+	    entity: string;
+	    code: string;
+	    name: string;
+	    summary: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DiffItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.entity = source["entity"];
+	        this.code = source["code"];
+	        this.name = source["name"];
+	        this.summary = source["summary"];
+	    }
+	}
+	export class InboxItem {
+	    packageId: string;
+	    senderId: string;
+	    senderName: string;
+	    roomId: string;
+	    sourceVersion: number;
+	    title: string;
+	    summary: string;
+	    itemCount: number;
+	    status: string;
+	    // Go type: time
+	    receivedAt: any;
+	    // Go type: time
+	    installedAt?: any;
+	    // Go type: time
+	    rejectedAt?: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new InboxItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.packageId = source["packageId"];
+	        this.senderId = source["senderId"];
+	        this.senderName = source["senderName"];
+	        this.roomId = source["roomId"];
+	        this.sourceVersion = source["sourceVersion"];
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.itemCount = source["itemCount"];
+	        this.status = source["status"];
+	        this.receivedAt = this.convertValues(source["receivedAt"], null);
+	        this.installedAt = this.convertValues(source["installedAt"], null);
+	        this.rejectedAt = this.convertValues(source["rejectedAt"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class InstallSummary {
+	    categoriesCreated: number;
+	    categoriesUpdated: number;
+	    workItemsCreated: number;
+	    workItemsUpdated: number;
+	    subItemsCreated: number;
+	    subItemsUpdated: number;
+	    materialsCreated: number;
+	    materialsUpdated: number;
+	    skipped: number;
+	    conflicts: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new InstallSummary(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.categoriesCreated = source["categoriesCreated"];
+	        this.categoriesUpdated = source["categoriesUpdated"];
+	        this.workItemsCreated = source["workItemsCreated"];
+	        this.workItemsUpdated = source["workItemsUpdated"];
+	        this.subItemsCreated = source["subItemsCreated"];
+	        this.subItemsUpdated = source["subItemsUpdated"];
+	        this.materialsCreated = source["materialsCreated"];
+	        this.materialsUpdated = source["materialsUpdated"];
+	        this.skipped = source["skipped"];
+	        this.conflicts = source["conflicts"];
+	    }
+	}
+	export class SentItem {
+	    packageId: string;
+	    roomId: string;
+	    sourceVersion: number;
+	    title: string;
+	    itemCount: number;
+	    status: string;
+	    recipients: string;
+	    // Go type: time
+	    sentAt: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new SentItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.packageId = source["packageId"];
+	        this.roomId = source["roomId"];
+	        this.sourceVersion = source["sourceVersion"];
+	        this.title = source["title"];
+	        this.itemCount = source["itemCount"];
+	        this.status = source["status"];
+	        this.recipients = source["recipients"];
+	        this.sentAt = this.convertValues(source["sentAt"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }

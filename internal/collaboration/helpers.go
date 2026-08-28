@@ -134,6 +134,15 @@ func cloneRoomInfo(src *RoomInfo) *RoomInfo {
 	return &c
 }
 
+func cloneChat(src []ChatPayload) []ChatPayload {
+	if src == nil {
+		return nil
+	}
+	out := make([]ChatPayload, len(src))
+	copy(out, src)
+	return out
+}
+
 // sortDiscoveredByNewest mengurutkan entri discovery dari yang terakhir terlihat.
 func sortDiscoveredByNewest(rows []DiscoveredRoom) {
 	for i := 1; i < len(rows); i++ {

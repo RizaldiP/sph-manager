@@ -22,6 +22,9 @@ func Migrate(db *gorm.DB) error {
 		&models.SphRevision{},
 		&models.AuditLog{},
 		&models.Setting{},
+		&models.ChatMessage{},
+		&models.MasterInbox{},
+		&models.MasterSent{},
 	)
 	if err != nil {
 		return err

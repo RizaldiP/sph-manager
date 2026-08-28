@@ -14,7 +14,16 @@ import {
   AssignTurns,
   RequestEdit,
   ReleaseEdit,
-  SyncPush
+  SyncPush,
+  SendChatMessage,
+  ClearChatUnread,
+  BuildMasterDataPackage,
+  SendMasterData,
+  ListMasterInbox,
+  PreviewMasterData,
+  InstallMasterData,
+  RejectMasterData,
+  MarkMasterInboxViewed
 } from '../../wailsjs/go/main/App'
 import type {
   CollabSnapshot,
@@ -24,7 +33,12 @@ import type {
   DiscoveredRoom,
   OpPayload,
   TurnState,
-  SphSaveInput
+  ChatMessageType,
+  SphSaveInput,
+  MasterDataPackage,
+  MasterInboxItem,
+  MasterDiffItem,
+  MasterInstallSummary
 } from '../types/collaboration'
 
 export const useCollaborationStore = defineStore('collaboration', () => {
@@ -78,6 +92,8 @@ export const useCollaborationStore = defineStore('collaboration', () => {
       participants: s.participants as CollabSnapshot['participants'],
       activities: s.activities as CollabSnapshot['activities'],
       turn: s.turn as CollabSnapshot['turn'],
+      chat: s.chat as CollabSnapshot['chat'],
+      unread: s.unread as number | undefined,
       version: s.version as number | undefined,
       error: s.error as string | undefined,
       notice: s.notice as string | undefined
@@ -228,6 +244,103 @@ export const useCollaborationStore = defineStore('collaboration', () => {
     }
   }
 
+  const messages = computed(() => snapshot.value.chat ?? [])
+  const unreadCount = computed(() => snapshot.value.unread ?? 0)
+
+  async function sendChat(content: string, messageType: ChatMessageType = 'text') {
+    try {
+      await SendChatMessage(messageType, content, '', '')
+      await refreshSession()
+    } catch (e) {
+      error.value = String(e)
+      throw e
+    }
+  }
+
+  async function clearChatUnread() {
+    await ClearChatUnread()
+    await refreshSession()
+  }
+
+  const masterInbox = ref<MasterInboxItem[]>([])
+  const masterPreview = ref<MasterDiffItem[]>([])
+  const working = ref(false)
+
+  async function buildMasterDataPackage(): Promise<MasterDataPackage> {
+    return (await BuildMasterDataPackage()) as unknown as MasterDataPackage
+  }
+
+  async function sendMasterData(pkg: MasterDataPackage, targets: string[]) {
+    working.value = true
+    error.value = ''
+    try {
+      await SendMasterData(pkg as never, targets)
+    } catch (e) {
+      error.value = String(e)
+      throw e
+    } finally {
+      working.value = false
+    }
+  }
+
+  async function refreshMasterInbox() {
+    try {
+      masterInbox.value = (await ListMasterInbox()) as unknown as MasterInboxItem[]
+    } catch (e) {
+      error.value = String(e)
+    }
+  }
+
+  async function previewMasterData(packageId: string) {
+    working.value = true
+    error.value = ''
+    try {
+      masterPreview.value = ((await PreviewMasterData(packageId)) ?? []) as unknown as MasterDiffItem[]
+    } catch (e) {
+      error.value = String(e)
+      throw e
+    } finally {
+      working.value = false
+    }
+  }
+
+  async function installMasterData(packageId: string, strategy: string, decisions: Record<string, string> = {}): Promise<MasterInstallSummary> {
+    working.value = true
+    error.value = ''
+    try {
+      const sum = (await InstallMasterData(packageId, strategy, decisions)) as unknown as MasterInstallSummary
+      await refreshMasterInbox()
+      return sum
+    } catch (e) {
+      error.value = String(e)
+      throw e
+    } finally {
+      working.value = false
+    }
+  }
+
+  async function rejectMasterData(packageId: string) {
+    working.value = true
+    error.value = ''
+    try {
+      await RejectMasterData(packageId)
+      await refreshMasterInbox()
+    } catch (e) {
+      error.value = String(e)
+      throw e
+    } finally {
+      working.value = false
+    }
+  }
+
+  async function markMasterInboxViewed(packageId: string) {
+    try {
+      await MarkMasterInboxViewed(packageId)
+    } catch {
+      // non-fatal
+    }
+  }
+
   return {
     snapshot,
     defaults,
@@ -245,6 +358,8 @@ export const useCollaborationStore = defineStore('collaboration', () => {
     turn,
     myAssignments,
     myActiveEdits,
+    messages,
+    unreadCount,
     applySnapshot,
     loadDefaults,
     createRoom,
@@ -256,6 +371,18 @@ export const useCollaborationStore = defineStore('collaboration', () => {
     requestEdit,
     releaseEdit,
     syncPush,
+    sendChat,
+    clearChatUnread,
+    masterInbox,
+    masterPreview,
+    working,
+    buildMasterDataPackage,
+    sendMasterData,
+    refreshMasterInbox,
+    previewMasterData,
+    installMasterData,
+    rejectMasterData,
+    markMasterInboxViewed,
     startDiscovery,
     stopDiscovery,
     refreshDiscovered,

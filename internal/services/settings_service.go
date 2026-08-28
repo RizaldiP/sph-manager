@@ -24,10 +24,15 @@ const (
 	keyDefaultNotes    = "default_notes"
 	keyCollabPort      = "collab_port"
 	keyCollabName      = "collab_display_name"
+	keyMasterDataMax   = "masterdata_max_package_size"
 )
 
 // DefaultCollabPort adalah port WebSocket Work Together bila tidak dikonfigurasi.
 const DefaultCollabPort = 48765
+
+// DefaultMasterDataMaxPackageSize adalah batas ukuran package Master Data (byte)
+// bila tidak dikonfigurasi.
+const DefaultMasterDataMaxPackageSize = 1_000_000
 
 // CollabDefaults: nilai awal untuk dialog kolaborasi (host/join room).
 type CollabDefaults struct {
@@ -268,4 +273,17 @@ func (s *SettingsService) CollabDisplayNameOrDefault() string {
 		return ""
 	}
 	return v
+}
+
+// MasterDataMaxPackageSizeOrDefault membaca batas ukuran package Master Data (byte)
+// dari settings dengan fallback ke default bila tidak valid.
+func (s *SettingsService) MasterDataMaxPackageSizeOrDefault() int {
+	v, err := repositories.SettingValue(s.db, keyMasterDataMax)
+	if err != nil {
+		return DefaultMasterDataMaxPackageSize
+	}
+	if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && n > 0 {
+		return n
+	}
+	return DefaultMasterDataMaxPackageSize
 }

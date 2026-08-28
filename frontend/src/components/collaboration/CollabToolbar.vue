@@ -179,6 +179,7 @@
     </div>
 
     <!-- Activity log -->
+    <CollabChatPanel v-if="live" class="mb-3" />
     <div v-if="activities.length">
       <h4 class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Aktivitas Terakhir</h4>
       <ul class="max-h-[140px] space-y-1 overflow-y-auto">
@@ -194,6 +195,7 @@
 import { computed, ref } from 'vue'
 import { useCollaborationStore } from '../../stores/collaboration'
 import { ConnLabel, SectionLabel } from '../../types/collaboration'
+import CollabChatPanel from './CollabChatPanel.vue'
 
 const store = useCollaborationStore()
 
