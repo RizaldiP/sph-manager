@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -77,6 +78,7 @@ type UISnapshot struct {
 	Error        string                    `json:"error,omitempty"`
 	Notice       string                    `json:"notice,omitempty"`
 	Incoming     int                       `json:"incoming,omitempty"`
+	MasterStatus []MasterStatusEntry       `json:"masterStatus,omitempty"`
 }
 
 // Emit dipanggil setiap ada perubahan sesi; wiring aplikasi meneruskannya ke UI.
@@ -114,6 +116,7 @@ type Manager struct {
 	clientUnread   int
 	hostUnread     int
 	clientIncoming []MasterDataTransferPayload // master data masuk (sisi client) menunggu dipasang
+	clientMasterStatus map[string][]MasterStatusEntry // packageID → status per penerima (sisi client)
 }
 
 func NewManager(cfg Config, ops *services.CollabOps, sph *services.SphService, log *slog.Logger) *Manager {
@@ -263,6 +266,7 @@ func (m *Manager) HostRoom(docID uint, roomName, displayName string, port int) (
 		assignments:      map[string][]string{},
 		activeEdits:      map[string]string{},
 		participantNames: map[string]string{},
+		masterStatus:     map[string][]MasterStatusEntry{},
 		chatLog:          []ChatPayload{},
 		chatCap:          m.cfg.ActivityCap,
 		stopCh:           make(chan struct{}),
@@ -550,6 +554,7 @@ func (m *Manager) sessionLocked() UISnapshot {
 			Chat:         data.Chat,
 			Unread:       m.hostUnread,
 			Version:      data.Version,
+			MasterStatus: data.MasterStatus,
 		}
 	}
 	if m.client != nil {
@@ -575,6 +580,7 @@ func (m *Manager) sessionLocked() UISnapshot {
 			Error:        m.clientErr,
 			Notice:       m.clientNotice,
 			Incoming:     len(m.clientIncoming),
+			MasterStatus: m.clientMasterStatusListLocked(),
 		}
 	}
 	return UISnapshot{Mode: ModeNone, Activities: []services.CollabActivity{}, Participants: []Participant{}}
@@ -606,6 +612,7 @@ func (m *Manager) resetClientStateLocked() {
 	m.clientChat = nil
 	m.clientUnread = 0
 	m.clientIncoming = nil
+	m.clientMasterStatus = nil
 }
 
 // ===== callback client =====
@@ -704,6 +711,14 @@ func (m *Manager) onClientEnvelope(env *Envelope) {
 			if note != "" {
 				m.clientNotice = note
 			}
+			// Catat status di sisi client agar card chat client sender menampilkan status penerima.
+			m.addClientMasterStatusLocked(MasterStatusEntry{
+				PackageID:  mp.PackageID,
+				TargetID:   mp.TargetID,
+				TargetName: mp.TargetName,
+				Status:     mp.Status,
+				At:         time.Now().UTC(),
+			})
 		}
 		snap := m.sessionLocked()
 		fn := m.emitFn
@@ -848,6 +863,8 @@ type Room struct {
 	activeEdits      map[string]string   // sectionID → participantID
 	participantNames map[string]string   // participantID → displayName (for turn state broadcast)
 
+	masterStatus map[string][]MasterStatusEntry // packageID → status per penerima (sisi host)
+
 	stopCh    chan struct{}
 	closedCh  chan struct{}
 	closeOnce sync.Once
@@ -890,15 +907,80 @@ func (r *Room) eventData() roomEventData {
 	info := r.infoSnapshotLocked()
 	acts := r.activitiesLocked()
 	turn := r.buildTurnStateLocked()
-	return roomEventData{Info: info, Activities: acts, Version: r.version, Turn: turn, Chat: cloneChat(r.chatLog)}
+	return roomEventData{Info: info, Activities: acts, Version: r.version, Turn: turn, Chat: cloneChat(r.chatLog), MasterStatus: r.masterStatusListLocked()}
 }
 
 type roomEventData struct {
-	Info       RoomInfo
-	Activities []services.CollabActivity
-	Version    uint64
-	Turn       *TurnState
-	Chat       []ChatPayload
+	Info         RoomInfo
+	Activities   []services.CollabActivity
+	Version      uint64
+	Turn         *TurnState
+	Chat         []ChatPayload
+	MasterStatus []MasterStatusEntry
+}
+
+// masterStatusListLocked mengembalikan salinan seluruh status master data sisi host.
+// Memanggilnya dalam kondisi room.mu terkunci.
+func (r *Room) masterStatusListLocked() []MasterStatusEntry {
+	var out []MasterStatusEntry
+	for _, entries := range r.masterStatus {
+		out = append(out, entries...)
+	}
+	// urutkan pakai zaman agar terprediksi (terbaru dulu)
+	sort.SliceStable(out, func(i, j int) bool {
+		return out[i].At.After(out[j].At)
+	})
+	return out
+}
+
+// addHostMasterStatus mencatat status per penerima untuk satu package sisi host.
+// r.mu harus terkunci oleh pemanggil.
+func (r *Room) addHostMasterStatusLocked(e MasterStatusEntry) {
+	if e.PackageID == "" {
+		return
+	}
+	// jangan duplikat status yang sama untuk target yang sama
+	list := r.masterStatus[e.PackageID]
+	for _, existing := range list {
+		if existing.TargetID != "" && existing.TargetID == e.TargetID && existing.Status == e.Status {
+			return
+		}
+	}
+	list = append(list, e)
+	if len(list) > 32 {
+		list = list[len(list)-32:]
+	}
+	r.masterStatus[e.PackageID] = list
+}
+
+// clientMasterStatusListLocked mengembalikan salinan seluruh status master data sisi client.
+func (m *Manager) clientMasterStatusListLocked() []MasterStatusEntry {
+	var out []MasterStatusEntry
+	for _, entries := range m.clientMasterStatus {
+		out = append(out, entries...)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return out[i].At.After(out[j].At)
+	})
+	return out
+}
+
+// addClientMasterStatus mencatat status per penerima untuk satu package sisi client.
+func (m *Manager) addClientMasterStatusLocked(e MasterStatusEntry) {
+	if e.PackageID == "" {
+		return
+	}
+	list := m.clientMasterStatus[e.PackageID]
+	for _, existing := range list {
+		if existing.TargetID != "" && existing.TargetID == e.TargetID && existing.Status == e.Status {
+			return
+		}
+	}
+	list = append(list, e)
+	if len(list) > 32 {
+		list = list[len(list)-32:]
+	}
+	m.clientMasterStatus[e.PackageID] = list
 }
 
 // notifyRoomChanged memicu pengiriman snapshot UI terbaru untuk sesi host.
@@ -1740,8 +1822,18 @@ func (r *Room) handleMasterDataAck(conn *serverConn, p *Participant, ap *MasterD
 	if r.md != nil {
 		_ = r.md.SetSentStatus(ap.PackageID, ap.Status)
 	}
-	env := envelopeWith(TypeMasterDataStatus, r.info.RoomID, "", 0, status)
+	// Catat status di sisi host agar card chat host sender menampilkan status penerima.
 	r.mu.Lock()
+	if !r.isClosed() {
+		r.addHostMasterStatusLocked(MasterStatusEntry{
+			PackageID:  ap.PackageID,
+			TargetID:   p.ID,
+			TargetName: p.DisplayName,
+			Status:     ap.Status,
+			At:         time.Now().UTC(),
+		})
+	}
+	env := envelopeWith(TypeMasterDataStatus, r.info.RoomID, "", 0, status)
 	if !r.isClosed() {
 		r.broadcastLocked(env)
 	}
@@ -1886,6 +1978,7 @@ func (r *Room) addMasterChat(senderID, senderName string, tp *MasterDataTransfer
 		r.broadcastLocked(env)
 	}
 	r.mu.Unlock()
+	r.notifyChanged()
 }
 
 // Manager.SendMasterData mengirim Master Data ke sesi aktif.

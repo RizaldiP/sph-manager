@@ -14,6 +14,10 @@ export function BuildMasterDataPackage() {
   return window['go']['main']['App']['BuildMasterDataPackage']();
 }
 
+export function BuildMasterDataPackageFiltered(arg1) {
+  return window['go']['main']['App']['BuildMasterDataPackageFiltered'](arg1);
+}
+
 export function ClearChatUnread() {
   return window['go']['main']['App']['ClearChatUnread']();
 }
@@ -208,6 +212,10 @@ export function ListDiscoveredRooms() {
 
 export function ListImportSheets(arg1) {
   return window['go']['main']['App']['ListImportSheets'](arg1);
+}
+
+export function ListMasterDataForSelection() {
+  return window['go']['main']['App']['ListMasterDataForSelection']();
 }
 
 export function ListMasterInbox() {

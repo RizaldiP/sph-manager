@@ -63,6 +63,20 @@
             >
               {{ store.working && cardLoading === m.refPackage ? 'Memuat…' : 'Pratinjau &amp; Pasang →' }}
             </button>
+            <div v-if="statusFor(m.refPackage).length" class="border-t border-brand-100 bg-white px-3 py-2">
+              <p class="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Status Penerima</p>
+              <ul class="space-y-1">
+                <li v-for="s in statusFor(m.refPackage)" :key="s.targetId + s.status" class="flex items-center gap-2 text-[11px]">
+                  <span class="truncate font-medium text-slate-600">{{ s.targetName || 'Penerima' }}</span>
+                  <span
+                    class="ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                    :class="s.status === 'INSTALLED' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'"
+                  >
+                    {{ statusLabel(s.status) }}
+                  </span>
+                </li>
+              </ul>
+            </div>
           </div>
           <p class="mt-1 text-right text-[10px] text-slate-300">{{ formatTime(m.createdAt) }}</p>
         </div>
@@ -87,13 +101,88 @@
       <div class="mb-2 flex items-start justify-between gap-2">
         <div>
           <p class="text-[13px] font-semibold text-slate-700">Rakit &amp; Kirim Master Data</p>
-          <p class="text-[12px] text-slate-400">Package berisi seluruh Master Data aktif di perangkat ini.</p>
+          <p class="text-[12px] text-slate-400">Pilih master data yang akan dikirim (bisa di-search).</p>
         </div>
         <button type="button" class="rounded p-1 text-slate-400 transition-colors hover:bg-slate-200" title="Tutup" @click="closeSend">
           <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
 
+      <!-- Tahap 1: Pilih item -->
+      <template v-if="!built && masterList">
+        <div class="mb-2 flex flex-wrap items-center gap-1.5">
+          <button
+            v-for="t in tabs"
+            :key="t.key"
+            type="button"
+            class="rounded-lg px-2.5 py-1 text-[12px] font-medium transition-colors"
+            :class="activeTab === t.key ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'"
+            @click="activeTab = t.key"
+          >
+            {{ t.label }} ({{ countKey(t.key) }})
+          </button>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 bg-white p-2">
+          <input
+            v-model="search"
+            class="mb-2 w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[12px] text-slate-700 placeholder:text-slate-400 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
+            :placeholder="`Cari ${tabLabel(activeTab).toLowerCase()}…`"
+          />
+          <div class="flex items-center justify-between border-b border-slate-100 pb-1.5">
+            <button
+              type="button"
+              class="text-[11px] font-medium text-brand-600 hover:text-brand-700"
+              @click="toggleSelectAll(activeTab)"
+            >
+              {{ allOnTabSelected(activeTab) ? 'Batal Semua di Tab Ini' : 'Pilih Semua di Tab Ini' }}
+            </button>
+            <span class="text-[11px] text-slate-400">{{ selectedOnTab(activeTab) }} dari {{ visibleRows(activeTab).length }} dipilih</span>
+          </div>
+          <div class="mt-1.5 max-h-44 space-y-0.5 overflow-y-auto">
+            <label
+              v-for="row in visibleRows(activeTab)"
+              :key="row.key"
+              class="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-[12px] transition-colors hover:bg-slate-50"
+            >
+              <input type="checkbox" class="h-3.5 w-3.5 shrink-0 accent-brand-600" :checked="isSelected(activeTab, row.key)" @change="toggleSelect(activeTab, row.key)" />
+              <span class="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">{{ row.code }}</span>
+              <span class="truncate font-medium text-slate-700">{{ row.name }}</span>
+              <span v-if="row.sub" class="ml-auto shrink-0 text-[10px] text-slate-400">{{ row.sub }}</span>
+              <span v-if="!row.active" class="shrink-0 rounded bg-slate-100 px-1 py-0.5 text-[10px] text-slate-400">nonaktif</span>
+            </label>
+            <p v-if="!visibleRows(activeTab).length" class="py-3 text-center text-[12px] italic text-slate-400">Tidak ada item ditemukan.</p>
+          </div>
+        </div>
+
+        <div class="mt-3 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            class="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-[12px] font-medium text-brand-600 transition-colors hover:bg-brand-50"
+            @click="selectAllInAllTabs"
+          >
+            Pilih Semua ({{ totalSelected }} item)
+          </button>
+          <div class="flex gap-2">
+            <button type="button" class="rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100" @click="closeSend">
+              Batal
+            </button>
+            <button
+              type="button"
+              :disabled="store.working || totalSelected === 0"
+              class="rounded-lg bg-emerald-600 px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-40"
+              @click="doBuildSelection"
+            >
+              {{ store.working ? 'Merakit...' : `Rakit Package (${totalSelected} item)` }}
+            </button>
+          </div>
+        </div>
+      </template>
+
+      <p v-if="!built && !masterList && selLoading" class="py-3 text-center text-[12px] italic text-slate-400">Memuat master data…</p>
+      <p v-if="!built && !masterList && !selLoading && store.error" class="py-3 text-center text-[12px] text-red-600">Gagal memuat master data.</p>
+
+      <!-- Tahap 2: Ringkasan & kirim -->
       <template v-if="built">
         <div class="mb-3 grid grid-cols-4 gap-2 text-center">
           <div class="rounded-lg border border-slate-200 bg-white p-2">
@@ -125,8 +214,8 @@
         </p>
 
         <div class="flex justify-end gap-2">
-          <button type="button" class="rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100" @click="closeSend">
-            Batal
+          <button type="button" class="rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100" @click="backToSelection">
+            Kembali
           </button>
           <button
             type="button"
@@ -138,16 +227,6 @@
           </button>
         </div>
       </template>
-
-      <button
-        v-else
-        type="button"
-        :disabled="store.working"
-        class="w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-[13px] font-medium text-brand-700 transition-colors hover:bg-brand-50 disabled:opacity-40"
-        @click="doBuild"
-      >
-        {{ store.working ? 'Merakit...' : 'Rakit Package' }}
-      </button>
     </div>
 
     <!-- Error -->
@@ -206,7 +285,8 @@ import {
   MasterDiffLabel,
   MasterStrategy,
   type ChatMessage,
-  type MasterDataPackage
+  type MasterDataPackage,
+  type MasterDataList
 } from '../../types/collaboration'
 
 const store = useCollaborationStore()
@@ -218,6 +298,21 @@ const cardLoading = ref<string>('')
 const attachOpen = ref(false)
 const sendOpen = ref(false)
 const built = ref<MasterDataPackage | null>(null)
+const masterList = ref<MasterDataList | null>(null)
+const selLoading = ref(false)
+const activeTab = ref('categories')
+const search = ref('')
+const selectedCats = ref<Set<string>>(new Set())
+const selectedItems = ref<Set<string>>(new Set())
+const selectedSubs = ref<Set<string>>(new Set())
+const selectedMats = ref<Set<string>>(new Set())
+
+const tabs = [
+  { key: 'categories', label: 'Kategori' },
+  { key: 'workItems', label: 'Pekerjaan' },
+  { key: 'workSubItems', label: 'Sub Pekerjaan' },
+  { key: 'materials', label: 'Material' }
+]
 
 const messages = computed(() => store.messages)
 
@@ -257,6 +352,17 @@ function formatTime(iso?: string): string {
   return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
 }
 
+function statusFor(packageId?: string) {
+  if (!packageId) return []
+  return (store.masterStatuses ?? []).filter(s => s.packageId === packageId)
+}
+
+function statusLabel(status: string): string {
+  if (status === 'INSTALLED') return 'Terpasang'
+  if (status === 'REJECTED') return 'Ditolak'
+  return status
+}
+
 function diffBadge(kind: string): string {
   switch (kind) {
     case 'NEW': return 'bg-emerald-100 text-emerald-700'
@@ -266,9 +372,132 @@ function diffBadge(kind: string): string {
   }
 }
 
+function tabLabel(key: string): string {
+  return tabs.find(t => t.key === key)?.label ?? key
+}
+
+function subKey(sub: { workItemCode?: string; code?: string; name: string }): string {
+  if (sub.code) return `${sub.workItemCode ?? ''}:${sub.code}`
+  return `${sub.workItemCode ?? ''}::${sub.name}`
+}
+
+function countKey(key: string): number {
+  if (!masterList.value) return 0
+  const l = masterList.value
+  switch (key) {
+    case 'categories': return l.categories?.length ?? 0
+    case 'workItems': return l.workItems?.length ?? 0
+    case 'workSubItems': return l.workSubItems?.length ?? 0
+    case 'materials': return l.materials?.length ?? 0
+    default: return 0
+  }
+}
+
+interface SelectRow {
+  key: string
+  code: string
+  name: string
+  sub?: string
+  active: boolean
+}
+
+function allRows(key: string): SelectRow[] {
+  if (!masterList.value) return []
+  const l = masterList.value
+  switch (key) {
+    case 'categories':
+      return (l.categories ?? []).map(c => ({ key: c.code, code: c.code, name: c.name, active: c.isActive }))
+    case 'workItems':
+      return (l.workItems ?? []).map(w => ({ key: w.code, code: w.code, name: w.name, sub: w.categoryCode, active: w.isActive }))
+    case 'workSubItems':
+      return (l.workSubItems ?? []).map(s => ({ key: subKey(s), code: s.code || s.name, name: s.name, sub: s.workItemCode, active: s.isActive }))
+    case 'materials':
+      return (l.materials ?? []).map(m => ({ key: m.code ?? m.name, code: m.code ?? m.name, name: m.name, active: m.isActive }))
+    default:
+      return []
+  }
+}
+
+function visibleRows(key: string): SelectRow[] {
+  const q = (search.value || '').trim().toLowerCase()
+  const rows = allRows(key)
+  if (!q) return rows
+  return rows.filter(r => r.name.toLowerCase().includes(q) || r.code.toLowerCase().includes(q) || (r.sub || '').toLowerCase().includes(q))
+}
+
+function selectedSet(key: string): Set<string> {
+  switch (key) {
+    case 'categories': return selectedCats.value
+    case 'workItems': return selectedItems.value
+    case 'workSubItems': return selectedSubs.value
+    case 'materials': return selectedMats.value
+    default: return new Set()
+  }
+}
+
+function isSelected(key: string, itemKey: string): boolean {
+  return selectedSet(key).has(itemKey)
+}
+
+function toggleSelect(key: string, itemKey: string) {
+  const s = selectedSet(key)
+  if (s.has(itemKey)) s.delete(itemKey)
+  else s.add(itemKey)
+}
+
+function toggleSelectAll(key: string) {
+  const visible = visibleRows(key)
+  const s = selectedSet(key)
+  const all = allOnTabSelected(key)
+  if (all) {
+    visible.forEach(r => s.delete(r.key))
+  } else {
+    visible.forEach(r => s.add(r.key))
+  }
+}
+
+function allOnTabSelected(key: string): boolean {
+  const visible = visibleRows(key)
+  const s = selectedSet(key)
+  if (!visible.length) return false
+  return visible.every(r => s.has(r.key))
+}
+
+function selectedOnTab(key: string): number {
+  const visible = visibleRows(key)
+  return visible.filter(r => selectedSet(key).has(r.key)).length
+}
+
+const totalSelected = computed(() => selectedCats.value.size + selectedItems.value.size + selectedSubs.value.size + selectedMats.value.size)
+
+function selectAllInAllTabs() {
+  // Setiap tab: pilih semua item yang ada (tidak dibatasi search)
+  const sets: Array<[string, Set<string>]> = [
+    ['categories', selectedCats.value],
+    ['workItems', selectedItems.value],
+    ['workSubItems', selectedSubs.value],
+    ['materials', selectedMats.value]
+  ]
+  sets.forEach(([key, s]) => {
+    allRows(key).forEach(r => s.add(r.key))
+  })
+}
+
+function clearAll() {
+  selectedCats.value = new Set()
+  selectedItems.value = new Set()
+  selectedSubs.value = new Set()
+  selectedMats.value = new Set()
+}
+
 function openSend() {
   attachOpen.value = false
   sendOpen.value = true
+  built.value = null
+  clearAll()
+  search.value = ''
+  activeTab.value = 'categories'
+  loadSelectionData()
 }
 
 function closeSend() {
@@ -276,9 +505,30 @@ function closeSend() {
   built.value = null
 }
 
-async function doBuild() {
+function backToSelection() {
+  built.value = null
+}
+
+async function loadSelectionData() {
+  selLoading.value = true
   try {
-    built.value = await store.buildMasterDataPackage()
+    masterList.value = await store.listMasterDataForSelection()
+  } catch (e) {
+    store.error = String(e)
+  } finally {
+    selLoading.value = false
+  }
+}
+
+async function doBuildSelection() {
+  try {
+    built.value = await store.buildMasterDataPackageFiltered({
+      categoryCodes: Array.from(selectedCats.value),
+      workItemCodes: Array.from(selectedItems.value),
+      subItemKeys: Array.from(selectedSubs.value),
+      materialCodes: Array.from(selectedMats.value),
+      sendAll: false
+    })
   } catch (e) {
     store.error = String(e)
   }

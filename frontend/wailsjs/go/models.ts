@@ -325,6 +325,45 @@ export namespace collaboration {
 	}
 	
 	
+	export class MasterStatusEntry {
+	    packageId: string;
+	    targetId?: string;
+	    targetName?: string;
+	    status: string;
+	    // Go type: time
+	    at: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new MasterStatusEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.packageId = source["packageId"];
+	        this.targetId = source["targetId"];
+	        this.targetName = source["targetName"];
+	        this.status = source["status"];
+	        this.at = this.convertValues(source["at"], null);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	
 	
@@ -460,6 +499,7 @@ export namespace collaboration {
 	    error?: string;
 	    notice?: string;
 	    incoming?: number;
+	    masterStatus?: MasterStatusEntry[];
 	
 	    static createFrom(source: any = {}) {
 	        return new UISnapshot(source);
@@ -480,6 +520,7 @@ export namespace collaboration {
 	        this.error = source["error"];
 	        this.notice = source["notice"];
 	        this.incoming = source["incoming"];
+	        this.masterStatus = this.convertValues(source["masterStatus"], MasterStatusEntry);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -717,6 +758,26 @@ export namespace masterdata {
 	        this.summary = source["summary"];
 	    }
 	}
+	export class FilterSelection {
+	    categoryCodes: string[];
+	    workItemCodes: string[];
+	    subItemKeys: string[];
+	    materialCodes: string[];
+	    sendAll: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new FilterSelection(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.categoryCodes = source["categoryCodes"];
+	        this.workItemCodes = source["workItemCodes"];
+	        this.subItemKeys = source["subItemKeys"];
+	        this.materialCodes = source["materialCodes"];
+	        this.sendAll = source["sendAll"];
+	    }
+	}
 	export class InboxItem {
 	    packageId: string;
 	    senderId: string;
@@ -801,6 +862,42 @@ export namespace masterdata {
 	        this.skipped = source["skipped"];
 	        this.conflicts = source["conflicts"];
 	    }
+	}
+	export class MasterDataList {
+	    categories: collaboration.PackageCategory[];
+	    workItems: collaboration.PackageWorkItem[];
+	    workSubItems: collaboration.PackageWorkSubItem[];
+	    materials: collaboration.PackageMaterial[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MasterDataList(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.categories = this.convertValues(source["categories"], collaboration.PackageCategory);
+	        this.workItems = this.convertValues(source["workItems"], collaboration.PackageWorkItem);
+	        this.workSubItems = this.convertValues(source["workSubItems"], collaboration.PackageWorkSubItem);
+	        this.materials = this.convertValues(source["materials"], collaboration.PackageMaterial);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class SentItem {
 	    packageId: string;

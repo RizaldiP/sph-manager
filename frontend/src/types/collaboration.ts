@@ -14,6 +14,7 @@ export interface CollabSnapshot {
   version?: number
   error?: string
   notice?: string
+  masterStatus?: MasterStatusEntry[]
 }
 
 export type ChatMessageType = 'text' | 'system' | 'master_data'
@@ -277,6 +278,19 @@ export interface PackageMaterial {
   notes?: string
   isActive: boolean
 }
+export interface MasterDataList {
+  categories: PackageCategory[]
+  workItems: PackageWorkItem[]
+  workSubItems: PackageWorkSubItem[]
+  materials: PackageMaterial[]
+}
+export interface MasterDataSelection {
+  categoryCodes: string[]
+  workItemCodes: string[]
+  subItemKeys: string[]
+  materialCodes: string[]
+  sendAll: boolean
+}
 export interface MasterInboxItem {
   packageId: string
   senderId: string
@@ -320,6 +334,13 @@ export interface MasterSentItem {
   status: string
   recipients: string
   sentAt: string
+}
+export interface MasterStatusEntry {
+  packageId: string
+  targetId?: string
+  targetName?: string
+  status: string
+  at: string
 }
 export const MasterStrategy = {
   PROMPT: 'PROMPT',

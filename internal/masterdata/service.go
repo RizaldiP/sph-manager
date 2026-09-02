@@ -54,7 +54,180 @@ func NewService(db *gorm.DB, log *slog.Logger) *Service {
 	}
 }
 
+// FilterSelection berisi kode-kode item yang dipilih untuk dikirim.
+// Jika SendAll true, semua data akan disertakan tanpa filter.
+type FilterSelection struct {
+	CategoryCodes  []string `json:"categoryCodes"`
+	WorkItemCodes  []string `json:"workItemCodes"`
+	SubItemKeys    []string `json:"subItemKeys"`   // format: "workItemCode:subCode" atau "workItemCode::subName"
+	MaterialCodes  []string `json:"materialCodes"`
+	SendAll        bool     `json:"sendAll"`
+}
+
+// MasterDataList adalah daftar semua Master Data untuk UI selection.
+type MasterDataList struct {
+	Categories   []collaboration.PackageCategory    `json:"categories"`
+	WorkItems    []collaboration.PackageWorkItem    `json:"workItems"`
+	WorkSubItems []collaboration.PackageWorkSubItem `json:"workSubItems"`
+	Materials    []collaboration.PackageMaterial    `json:"materials"`
+}
+
 // ===== Build =====
+
+// ListAllMasterData mengembalikan seluruh Master Data aktif untuk UI selection.
+func (s *Service) ListAllMasterData() (*MasterDataList, error) {
+	var cats []models.Category
+	if err := s.db.Where("deleted_at IS NULL").Order("sequence ASC, id ASC").Find(&cats).Error; err != nil {
+		return nil, err
+	}
+	var items []models.WorkItem
+	if err := s.db.Where("deleted_at IS NULL").Order("sequence ASC, id ASC").Find(&items).Error; err != nil {
+		return nil, err
+	}
+	var subs []models.WorkSubItem
+	if err := s.db.Where("deleted_at IS NULL").Order("sequence ASC, id ASC").Find(&subs).Error; err != nil {
+		return nil, err
+	}
+	var mats []models.Material
+	if err := s.db.Where("deleted_at IS NULL").Order("id ASC").Find(&mats).Error; err != nil {
+		return nil, err
+	}
+
+	catByID := map[uint]models.Category{}
+	for _, c := range cats {
+		catByID[c.ID] = c
+	}
+	itemByID := map[uint]models.WorkItem{}
+	for _, w := range items {
+		itemByID[w.ID] = w
+	}
+
+	list := &MasterDataList{
+		Categories:   make([]collaboration.PackageCategory, 0, len(cats)),
+		WorkItems:    make([]collaboration.PackageWorkItem, 0, len(items)),
+		WorkSubItems: make([]collaboration.PackageWorkSubItem, 0, len(subs)),
+		Materials:    make([]collaboration.PackageMaterial, 0, len(mats)),
+	}
+	for _, c := range cats {
+		list.Categories = append(list.Categories, collaboration.PackageCategory{
+			Code: c.Code, Name: c.Name, Description: c.Description,
+			Sequence: c.Sequence, IsActive: c.IsActive,
+		})
+	}
+	for _, w := range items {
+		cc := catByID[w.CategoryID].Code
+		list.WorkItems = append(list.WorkItems, collaboration.PackageWorkItem{
+			Code: w.Code, Name: w.Name, Description: w.Description,
+			DefaultUnit: w.DefaultUnit, DefaultQuantity: w.DefaultQuantity,
+			DefaultServicePrice: w.DefaultServicePrice, DefaultMaterialPrice: w.DefaultMaterialPrice,
+			Notes: w.Notes, Sequence: w.Sequence, IsActive: w.IsActive, CategoryCode: cc,
+		})
+	}
+	for _, sb := range subs {
+		wc := itemByID[sb.WorkItemID].Code
+		list.WorkSubItems = append(list.WorkSubItems, collaboration.PackageWorkSubItem{
+			Code: sb.Code, Sequence: sb.Sequence, Name: sb.Name, Description: sb.Description,
+			DifficultyWeight: sb.DifficultyWeight, DefaultUnit: sb.DefaultUnit,
+			DefaultQuantity: sb.DefaultQuantity, DefaultServicePrice: sb.DefaultServicePrice,
+			DefaultMaterialPrice: sb.DefaultMaterialPrice, Notes: sb.Notes, IsActive: sb.IsActive,
+			WorkItemCode: wc,
+		})
+	}
+	for _, m := range mats {
+		list.Materials = append(list.Materials, collaboration.PackageMaterial{
+			Code: m.Code, Name: m.Name, Description: m.Description, Unit: m.Unit,
+			DefaultPrice: m.DefaultPrice, Supplier: m.Supplier, Notes: m.Notes, IsActive: m.IsActive,
+		})
+	}
+	return list, nil
+}
+
+// BuildPackageFiltered menyusun MasterDataPackage berdasarkan filter selection.
+func (s *Service) BuildPackageFiltered(senderID, senderName, roomID string, sel FilterSelection) (*collaboration.MasterDataPackage, error) {
+	if sel.SendAll {
+		return s.BuildPackage(senderID, senderName, roomID)
+	}
+
+	list, err := s.ListAllMasterData()
+	if err != nil {
+		return nil, err
+	}
+
+	selCat := toSet(sel.CategoryCodes)
+	selItem := toSet(sel.WorkItemCodes)
+	selMat := toSet(sel.MaterialCodes)
+	selSub := toSet(sel.SubItemKeys)
+
+	pkg := &collaboration.MasterDataPackage{
+		Metadata: collaboration.MasterPackageMetadata{
+			PackageID:      newPackageID(),
+			SenderID:       senderID,
+			SenderName:     senderName,
+			RoomID:         roomID,
+			CreatedAt:      time.Now().UTC(),
+			SchemaVersion:  collaboration.PackageSchemaVersion,
+			PackageVersion: "1",
+		},
+		Data: collaboration.MasterPackageData{
+			Categories:   make([]collaboration.PackageCategory, 0),
+			WorkItems:    make([]collaboration.PackageWorkItem, 0),
+			WorkSubItems: make([]collaboration.PackageWorkSubItem, 0),
+			Materials:    make([]collaboration.PackageMaterial, 0),
+		},
+	}
+
+	for _, c := range list.Categories {
+		if len(selCat) > 0 && !selCat[c.Code] {
+			continue
+		}
+		pkg.Data.Categories = append(pkg.Data.Categories, c)
+	}
+
+	for _, w := range list.WorkItems {
+		if len(selItem) > 0 && !selItem[w.Code] {
+			continue
+		}
+		pkg.Data.WorkItems = append(pkg.Data.WorkItems, w)
+	}
+
+	for _, sb := range list.WorkSubItems {
+		if len(selSub) > 0 {
+			key := sb.WorkItemCode + ":" + sb.Code
+			if sb.Code == "" {
+				key = sb.WorkItemCode + "::" + sb.Name
+			}
+			if !selSub[key] {
+				continue
+			}
+		}
+		pkg.Data.WorkSubItems = append(pkg.Data.WorkSubItems, sb)
+	}
+
+	for _, m := range list.Materials {
+		if len(selMat) > 0 && !selMat[m.Code] {
+			continue
+		}
+		pkg.Data.Materials = append(pkg.Data.Materials, m)
+	}
+
+	sum, err := pkg.ComputeChecksum()
+	if err != nil {
+		return nil, err
+	}
+	pkg.Checksum = sum
+	return pkg, nil
+}
+
+func toSet(items []string) map[string]bool {
+	if len(items) == 0 {
+		return nil
+	}
+	m := make(map[string]bool, len(items))
+	for _, v := range items {
+		m[v] = true
+	}
+	return m
+}
 
 // BuildPackage mengambil seluruh Master Data lokal (kategori, pekerjaan,
 // sub-pekerjaan, material) dan menyusun MasterDataPackage untuk dikirim.

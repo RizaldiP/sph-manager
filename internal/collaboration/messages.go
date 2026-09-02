@@ -193,6 +193,16 @@ type MasterDataStatusPayload struct {
 	At         time.Time `json:"at"`
 }
 
+// MasterStatusEntry adalah status per-penerima untuk satu package Master Data,
+// dipakai untuk menampilkan status (Terpasang/Ditolak) pada card chat master_data.
+type MasterStatusEntry struct {
+	PackageID  string    `json:"packageId"`
+	TargetID   string    `json:"targetId,omitempty"`
+	TargetName string    `json:"targetName,omitempty"`
+	Status     string    `json:"status"`
+	At         time.Time `json:"at"`
+}
+
 // MasterDataTransferPayload isi MASTER_DATA_TRANSFER: paket penuh + metadata
 // relay. Saat client mengirim, field Targets diisi agar host tahu tujuannya;
 // saat host meneruskan ke target, Targets dikosongkan.

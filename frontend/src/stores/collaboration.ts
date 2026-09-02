@@ -18,6 +18,8 @@ import {
   SendChatMessage,
   ClearChatUnread,
   BuildMasterDataPackage,
+  ListMasterDataForSelection,
+  BuildMasterDataPackageFiltered,
   SendMasterData,
   ListMasterInbox,
   PreviewMasterData,
@@ -36,6 +38,8 @@ import type {
   ChatMessageType,
   SphSaveInput,
   MasterDataPackage,
+  MasterDataList,
+  MasterDataSelection,
   MasterInboxItem,
   MasterDiffItem,
   MasterInstallSummary
@@ -96,7 +100,8 @@ export const useCollaborationStore = defineStore('collaboration', () => {
       unread: s.unread as number | undefined,
       version: s.version as number | undefined,
       error: s.error as string | undefined,
-      notice: s.notice as string | undefined
+      notice: s.notice as string | undefined,
+      masterStatus: (s.masterStatus as CollabSnapshot['masterStatus']) ?? []
     }
   }
 
@@ -246,6 +251,7 @@ export const useCollaborationStore = defineStore('collaboration', () => {
 
   const messages = computed(() => snapshot.value.chat ?? [])
   const unreadCount = computed(() => snapshot.value.unread ?? 0)
+  const masterStatuses = computed(() => snapshot.value.masterStatus ?? [])
 
   async function sendChat(content: string, messageType: ChatMessageType = 'text') {
     try {
@@ -268,6 +274,14 @@ export const useCollaborationStore = defineStore('collaboration', () => {
 
   async function buildMasterDataPackage(): Promise<MasterDataPackage> {
     return (await BuildMasterDataPackage()) as unknown as MasterDataPackage
+  }
+
+  async function listMasterDataForSelection(): Promise<MasterDataList> {
+    return (await ListMasterDataForSelection()) as unknown as MasterDataList
+  }
+
+  async function buildMasterDataPackageFiltered(sel: MasterDataSelection): Promise<MasterDataPackage> {
+    return (await BuildMasterDataPackageFiltered(sel as never)) as unknown as MasterDataPackage
   }
 
   async function sendMasterData(pkg: MasterDataPackage, targets: string[]) {
@@ -360,6 +374,7 @@ export const useCollaborationStore = defineStore('collaboration', () => {
     myActiveEdits,
     messages,
     unreadCount,
+    masterStatuses,
     applySnapshot,
     loadDefaults,
     createRoom,
@@ -377,6 +392,8 @@ export const useCollaborationStore = defineStore('collaboration', () => {
     masterPreview,
     working,
     buildMasterDataPackage,
+    listMasterDataForSelection,
+    buildMasterDataPackageFiltered,
     sendMasterData,
     refreshMasterInbox,
     previewMasterData,

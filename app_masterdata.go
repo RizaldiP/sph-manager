@@ -28,6 +28,18 @@ func (s *gormMasterDataStore) SetSentStatus(packageID, status string) error {
 	return s.svc.UpdateSentStatus(packageID, status)
 }
 
+// ListMasterDataForSelection mengembalikan seluruh Master Data untuk UI selection.
+func (a *App) ListMasterDataForSelection() (*masterdata.MasterDataList, error) {
+	return a.masterSvc.ListAllMasterData()
+}
+
+// BuildMasterDataPackageFiltered menyusun package Master Data berdasarkan filter selection.
+func (a *App) BuildMasterDataPackageFiltered(sel masterdata.FilterSelection) (*collaboration.MasterDataPackage, error) {
+	senderID, senderName := a.collabMgr.CurrentIdentity()
+	roomID := a.currentRoomID()
+	return a.masterSvc.BuildPackageFiltered(senderID, senderName, roomID, sel)
+}
+
 // BuildMasterDataPackage menyusun package Master Data dari seluruh data lokal
 // (kategori, pekerjaan, sub-pekerjaan, material) untuk dikirim ke member room.
 func (a *App) BuildMasterDataPackage() (*collaboration.MasterDataPackage, error) {
