@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -65,27 +66,44 @@ func (r *SphRepository) NumberExists(db *gorm.DB, number string, excludeID uint)
 	return n > 0, nil
 }
 
-// MaxSequenceInNumber mengembalikan suffix numerik terbesar dari nomor yang berawalan prefix.
-// Dipakai generator penomoran transaksional (BR-07).
-func (r *SphRepository) MaxSequenceInNumber(db *gorm.DB, prefix string) (int, error) {
+// MaxSequenceInNumber mengembalikan nomor urut terbesar dari dokumen tersimpan
+// yang berawalan prefix dan berakhiran suffix (bagian format di sekitar {SEQ},
+// salah satunya boleh kosong). Berfungsi untuk penempatan {SEQ} di depan,
+// tengah, maupun akhir. Dipakai generator penomoran transaksional (BR-07).
+func (r *SphRepository) MaxSequenceInNumber(db *gorm.DB, prefix, suffix string) (int, error) {
+	q := db.Model(&models.SphDocument{})
+	if prefix != "" {
+		q = q.Where("document_number LIKE ?", prefix+"%")
+	}
+	if suffix != "" {
+		q = q.Where("document_number LIKE ?", "%"+suffix)
+	}
 	var numbers []string
-	if err := db.Model(&models.SphDocument{}).
-		Where("document_number LIKE ?", prefix+"%").
-		Pluck("document_number", &numbers).Error; err != nil {
+	if err := q.Pluck("document_number", &numbers).Error; err != nil {
 		return 0, err
 	}
 	max := 0
 	for _, n := range numbers {
-		suffix := n[len(prefix):]
+		if !strings.HasPrefix(n, prefix) || !strings.HasSuffix(n, suffix) {
+			continue
+		}
+		middle := n[len(prefix):]
+		if suffix != "" {
+			middle = n[len(prefix) : len(n)-len(suffix)]
+		}
 		v := 0
-		for _, ch := range suffix {
+		valid := true
+		if len(middle) == 0 {
+			continue
+		}
+		for _, ch := range middle {
 			if ch < '0' || ch > '9' {
-				v = -1
+				valid = false
 				break
 			}
 			v = v*10 + int(ch-'0')
 		}
-		if v > max {
+		if valid && v > max {
 			max = v
 		}
 	}

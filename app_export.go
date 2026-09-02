@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -91,9 +90,6 @@ func (a *App) ExportSphPdf(id uint, orientation string) (string, error) {
 }
 
 // OpenExportFolder membuka folder berisi hasil export di file manager.
-func (a *App) OpenExportFolder(path string) {
-	dir := filepath.Dir(path)
-	if info, err := os.Stat(dir); err == nil && info.IsDir() {
-		runtime.BrowserOpenURL(a.ctx, dir)
-	}
+func (a *App) OpenExportFolder(path string) error {
+	return openPath(a.ctx, filepath.Dir(path))
 }

@@ -55,7 +55,7 @@
 | FR-C3 | Validasi weight: 0 ≤ weight ≤ 100; jika belum 100% tampilkan warning + total + selisih, larang finalisasi | MVP |
 | FR-C4 | Rounding deterministik di backend; integer Rupiah; floating point bukan sumber kebenaran (lihat BR-04) | MVP |
 
-## 5. Import / Export
+## 5. Import
 
 | ID | Kebutuhan | Prioritas |
 |---|---|---|
@@ -98,7 +98,7 @@
 | FR-U1 | Desain desktop modern: Sidebar, Topbar, Breadcrumb, Table, Card, Modal, Drawer, Tabs, Toast, Confirmation Dialog, Empty State, Loading State, Error State | MVP |
 | FR-U2 | **Tampilan simpel, rapi, tertata** — warna dasar **biru flat** + **orange flat** (aksen), komponen seragam | MVP |
 | FR-U3 | Bahasa UI: Indonesia, non-teknis (Pekerjaan, Sub-Pekerjaan, Template, Harga, Detail, Dokumen — bukan Entity/Foreign Key/Snapshot ID) | MVP |
-| FR-U4 | Halaman: Dashboard; SPH (Semua/Draft/Final/Buat); Pekerjaan (Master/Kategori/Template); Master Data (Customer/Kapal/Material); Import/Export; Backup; Settings | MVP |
+| FR-U4 | Halaman: Dashboard; SPH (Semua/Draft/Final/Buat); Pekerjaan (Master/Kategori/Template); Master Data (Customer/Kapal/Material); Import; Backup; Settings | MVP |
 | FR-U5 | Dashboard: Total SPH, Draft, Final, Accepted, Nilai SPH bulan ini; quick action (Buat SPH, Tambah Pekerjaan, Tambah Template, Import Excel); Recent SPH | MVP |
 | FR-U6 | Search di semua data utama: Work Item, Template, Customer, Vessel, SPH, Material | MVP |
 | FR-U7 | Keyboard shortcut: Ctrl+N (SPH baru), Ctrl+S (simpan), Ctrl+F (search), Ctrl+P (preview/print), Esc (tutup modal) | MVP |

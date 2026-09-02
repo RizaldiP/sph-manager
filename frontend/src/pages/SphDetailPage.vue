@@ -20,8 +20,12 @@
               class="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3.5 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
               @click.stop="exportMenuOpen = !exportMenuOpen"
             >
-              Export
-              <svg class="h-3.5 w-3.5 transition-transform" :class="exportMenuOpen ? 'rotate-180' : ''" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.23 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+              <svg v-if="busyAction === 'EXPORT'" class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              <span v-if="busyAction === 'EXPORT'">Menyusun dokumen…</span>
+              <template v-else>
+                Export
+                <svg class="h-3.5 w-3.5 transition-transform" :class="exportMenuOpen ? 'rotate-180' : ''" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.23 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+              </template>
             </button>
             <div v-if="exportMenuOpen" class="absolute right-0 z-20 mt-1.5 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
               <button type="button" class="block w-full px-3.5 py-2 text-left text-[13px] text-slate-700 hover:bg-brand-50" @click="runExport('excel')">Excel (.xlsx)</button>
@@ -44,7 +48,7 @@
       <p v-if="actionError" class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-[13px] text-red-700">{{ actionError }}</p>
       <div v-if="exportedPath" class="mb-4 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-[13px] text-emerald-800">
         <span class="min-w-0 truncate">Dokumen tersimpan: {{ exportedPath }}</span>
-        <button type="button" class="shrink-0 font-semibold underline-offset-2 hover:underline" @click="store.openExportFolder(exportedPath)">Buka Folder</button>
+        <button type="button" class="shrink-0 font-semibold underline-offset-2 hover:underline" @click="openExportedFolder">Buka Folder</button>
       </div>
 
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -101,11 +105,11 @@
                   <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-600">{{ formatRupiah(it.materialUnitPrice) }}</td>
                   <td class="whitespace-nowrap pl-2 py-2 text-right font-medium tabular-nums text-slate-800">{{ formatRupiah(it.total) }}</td>
                 </tr>
-                <tr v-for="sub in it.subItems ?? []" :key="`${it.id}-${sub.id}`" class="border-b border-slate-50 align-top text-[12px] text-slate-500">
+                <tr v-for="(sub, sIdx) in it.subItems ?? []" :key="`${it.id}-${sub.id}`" class="border-b border-slate-50 align-top text-[12px] text-slate-500">
                   <td class="py-1.5 pr-2"></td>
                   <td class="max-w-[320px] py-1.5 pl-8 pr-2">
                     <p>
-                      — {{ sub.nameSnapshot }}
+                      {{ subPointLetter(sIdx) }}. {{ sub.nameSnapshot }}
                       <span v-if="it.pricingMode === 'PEMBOBOTAN'" class="ml-0.5 rounded bg-brand-50 px-1 text-[10px] font-semibold text-brand-700">{{ sub.weight }}%</span>
                     </p>
                     <p v-if="sub.descriptionSnapshot" class="text-slate-400">{{ sub.descriptionSnapshot }}</p>
@@ -206,7 +210,7 @@ import CollabToolbar from '../components/collaboration/CollabToolbar.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import { useSphStore } from '../stores/sph'
 import { useCollaborationStore } from '../stores/collaboration'
-import { errorMessage, formatQty, formatRupiah } from '../utils/format'
+import { errorMessage, formatQty, formatRupiah, subPointLetter } from '../utils/format'
 import { statusLabelOf, statusToneOf, type SphDetail } from '../types/sph'
 import { h, type FunctionalComponent } from 'vue'
 
@@ -387,6 +391,16 @@ async function runExport(kind: ExportKind) {
     actionError.value = errorMessage(e)
   } finally {
     busyAction.value = ''
+  }
+}
+
+async function openExportedFolder() {
+  if (!exportedPath.value) return
+  actionError.value = ''
+  try {
+    await store.openExportFolder(exportedPath.value)
+  } catch (e) {
+    actionError.value = errorMessage(e)
   }
 }
 

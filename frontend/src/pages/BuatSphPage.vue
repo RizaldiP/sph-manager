@@ -54,7 +54,15 @@
           <div>
             <label class="mb-1 block text-[13px] font-medium text-slate-600">Tanggal SPH <span class="text-red-500">*</span></label>
             <input v-model="header.date" type="date" required class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" :disabled="!canEditSection('header')" />
-            <p class="mt-1 text-xs text-slate-400">Nomor dokumen dibuat otomatis dari periode tanggal ini.</p>
+            <p class="mt-1 text-xs text-slate-400">Bulan &amp; tahun diambil dari tanggal ini untuk membentuk nomor.</p>
+          </div>
+          <div>
+            <label class="mb-1 block text-[13px] font-medium text-slate-600">Nomor Urut SPH <span class="text-red-500">*</span></label>
+            <input v-model="header.sequence" type="text" inputmode="numeric" maxlength="9" placeholder="001" class="w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" :disabled="isEdit || !canEditSection('header')" />
+            <p class="mt-1 text-xs text-slate-400">{{ numberFieldHint }}</p>
+            <p v-if="isEdit && editDocNumber" class="mt-1 font-mono text-xs font-medium text-slate-500">{{ editDocNumber }}</p>
+            <p v-else-if="numberPreview" class="mt-1 font-mono text-xs font-medium text-emerald-700">{{ numberPreview }}</p>
+            <p v-else-if="numberPreviewError" class="mt-1 text-xs text-red-600">{{ numberPreviewError }}</p>
           </div>
           <div>
             <label class="mb-1 block text-[13px] font-medium text-slate-600">Masa Berlaku</label>
@@ -433,7 +441,7 @@
         <h2 class="mb-4 text-[15px] font-semibold text-slate-800">Preview Dokumen</h2>
         <article class="mx-auto max-w-3xl rounded-lg border border-slate-200 p-8 text-[13px] leading-relaxed">
           <header class="mb-6 border-b border-slate-200 pb-4">
-            <p class="font-mono text-sm font-bold tracking-wide text-slate-800">{{ numberPreview }}</p>
+            <p class="font-mono text-sm font-bold tracking-wide text-slate-800">{{ isEdit ? editDocNumber : numberPreview || '(isi nomor urut)' }}</p>
             <p class="mt-0.5 text-slate-500">{{ todayLabel }}</p>
           </header>
           <div class="mb-6 space-y-1 text-slate-700">
@@ -478,7 +486,7 @@
                   <td class="py-1 pr-2"></td>
                   <td class="py-1 pl-8 pr-2">
                     <p>
-                      — {{ sub.name }}
+                      {{ subPointLetter(sIdx) }}. {{ sub.name }}
                       <span v-if="isWeighted(it)" class="ml-0.5 rounded bg-brand-50 px-1 text-[10px] font-semibold text-brand-700">{{ sub.weight }}%</span>
                     </p>
                     <p v-if="sub.description" class="text-slate-400">{{ sub.description }}</p>
@@ -505,7 +513,7 @@
       <!-- ===== Langkah 8: Simpan ===== -->
       <section v-show="step === 8">
         <h2 class="mb-1 text-[15px] font-semibold text-slate-800">Simpan Draft</h2>
-        <p class="mb-4 text-[13px] text-slate-500">Draft tersimpan dengan nomor otomatis; status tetap Draft sampai difinalisasi dari halaman detail.</p>
+        <p class="mb-4 text-[13px] text-slate-500">Draft tersimpan dengan nomor dari nomor urut yang diisi; status tetap Draft sampai difinalisasi dari halaman detail.</p>
         <dl class="mb-5 grid grid-cols-2 gap-x-6 gap-y-1 rounded-lg border border-slate-200 bg-slate-50/70 p-4 text-[13px] md:grid-cols-4">
           <dt class="text-slate-500">Customer</dt><dd class="font-medium text-slate-700">{{ selectedCustomer?.name || '—' }}</dd>
           <dt class="text-slate-500">Baris</dt><dd class="font-medium text-slate-700">{{ items.length }} pekerjaan</dd>
@@ -603,8 +611,8 @@ import { useTemplateStore } from '../stores/template'
 import { useSphStore } from '../stores/sph'
 import { useMaterialStore } from '../stores/material'
 import { useCollaborationStore } from '../stores/collaboration'
-import { Terbilang } from '../../wailsjs/go/main/App'
-import { formatRupiah, formatQty, errorMessage } from '../utils/format'
+import { Terbilang, SuggestSphNumber, ComposeSphNumber } from '../../wailsjs/go/main/App'
+import { formatRupiah, formatQty, errorMessage, subPointLetter } from '../utils/format'
 import type { CustomerView, VesselView } from '../types/partner'
 import type { MaterialView, WorkItemView } from '../types/master'
 import type { TemplateView } from '../types/template'
@@ -714,6 +722,7 @@ const pageError = ref('')
 const saveError = ref('')
 const saving = ref(false)
 const savedView = ref<SphDocumentView | null>(null)
+const editDocNumber = ref('')
 
 function emptyHeader(): SphHeaderInput {
   const today = new Date()
@@ -725,6 +734,7 @@ function emptyHeader(): SphHeaderInput {
     String(today.getDate()).padStart(2, '0')
   return {
     date: ymd,
+    sequence: '',
     customerId: 0,
     vesselId: undefined,
     projectName: '',
@@ -900,7 +910,10 @@ const checks = computed(() => [
   }
 ])
 const canAdvance = computed(() => {
-  if (step.value === 1) return !!header.date && header.customerId > 0
+  if (step.value === 1) {
+    if (isEdit.value) return !!header.date && header.customerId > 0
+    return !!header.date && header.customerId > 0 && /^\d{1,9}$/.test(header.sequence.trim())
+  }
   return true
 })
 const allChecksOk = computed(() => checks.value.every((c) => c.ok))
@@ -923,14 +936,59 @@ const warnings = computed(() =>
     })
 )
 
-const numberPreview = computed(
-  () => `SPH/GEI/${romanMonth(header.date)}/${header.date.slice(0, 4)}/XXX`
+const numberPreview = ref('')
+const numberPreviewError = ref('')
+let numberPreviewTimer: ReturnType<typeof setTimeout> | null = null
+let lastAutoSeq = ''
+
+const numberFieldHint = computed(() =>
+  isEdit.value
+    ? 'Nomor dokumen sudah ditetapkan dan tidak berubah saat draft diedit.'
+    : 'Diisi manual (angka), otomatis disarankan nomor berikutnya. Dibulatkan ke 3 digit.'
 )
-function romanMonth(dateStr: string): string {
-  const m = Number(dateStr.slice(5, 7))
-  const romans = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
-  return romans[m] || '?'
+
+async function refreshNumberPreview() {
+  if (!header.date) return
+  try {
+    numberPreview.value = await ComposeSphNumber(header.sequence.trim(), header.date)
+    numberPreviewError.value = ''
+  } catch (e) {
+    numberPreview.value = ''
+    numberPreviewError.value = errorMessage(e)
+  }
 }
+
+function scheduleNumberPreview() {
+  if (numberPreviewTimer) clearTimeout(numberPreviewTimer)
+  numberPreviewTimer = setTimeout(refreshNumberPreview, 250)
+}
+
+async function prefillSequence() {
+  if (!header.date || isEdit.value) return
+  try {
+    lastAutoSeq = await SuggestSphNumber(header.date)
+    header.sequence = lastAutoSeq
+    await refreshNumberPreview()
+  } catch {
+    // saran gagal → biarkan kosong
+  }
+}
+
+watch(
+  () => header.date,
+  () => {
+    void prefillSequence()
+    scheduleNumberPreview()
+  }
+)
+
+watch(
+  () => header.sequence,
+  () => {
+    scheduleNumberPreview()
+  }
+)
+
 const todayLabel = computed(() => new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }))
 
 // ===== aksi =====
@@ -1168,6 +1226,7 @@ onMounted(async () => {
     if (isEdit.value) {
       if (isCollabMode.value && collabStore.snapshot.doc) {
         const doc = collabStore.snapshot.doc as SphSaveInput
+        editDocNumber.value = collabStore.snapshot.room?.documentNumber ?? ''
         Object.assign(header, emptyHeader(), doc.header)
         vesselChoice.value = doc.header.vesselId ?? 0
         items.value = (doc.items ?? []).map((row) => ({
@@ -1196,6 +1255,7 @@ onMounted(async () => {
         }))
       } else {
         const doc = await sphStore.getDetail(editId.value)
+        editDocNumber.value = doc.documentNumber
         Object.assign(header, emptyHeader(), {
           date: String(doc.date ?? '').slice(0, 10),
           customerId: doc.customerId,
@@ -1235,6 +1295,10 @@ onMounted(async () => {
     }
   } catch (e) {
     pageError.value = errorMessage(e)
+  }
+
+  if (!isEdit.value) {
+    await prefillSequence()
   }
 
   if (isCollabMode.value) {

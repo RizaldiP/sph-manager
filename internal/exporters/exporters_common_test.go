@@ -76,8 +76,14 @@ func TestBuildDataFlattensRows(t *testing.T) {
 		t.Errorf("roll-up main point salah: %+v", main)
 	}
 	sub := d.Rows[1]
-	if sub.Bold || sub.No != "" {
-		t.Errorf("sub point tidak boleh tebal/bernomor: %+v", sub)
+	if sub.Bold || sub.No != "" || sub.SubNo != "a" {
+		t.Errorf("sub point tidak boleh tebal/bernomor, harus huruf 'a': %+v", sub)
+	}
+	if d.Rows[2].SubNo != "b" {
+		t.Errorf("sub point kedua harus huruf 'b': %+v", d.Rows[2])
+	}
+	if d.Rows[3].SubNo != "" {
+		t.Errorf("main point tidak boleh punya huruf sub: %+v", d.Rows[3])
 	}
 	if sub.WeightNote != "[bobot 40%]" {
 		t.Errorf("catatan bobot salah: %q", sub.WeightNote)

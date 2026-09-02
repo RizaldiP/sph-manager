@@ -10,11 +10,17 @@
     </nav>
 
     <div class="flex items-center gap-3">
-      <div class="flex w-64 cursor-not-allowed items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-[13px] text-slate-400">
-        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+      <div class="relative">
+        <svg class="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
         </svg>
-        <span>Cari… (Ctrl+F)</span>
+        <input
+          v-model="searchTerm"
+          type="search"
+          placeholder="Cari SPH…"
+          class="w-64 rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-3 text-[13px] outline-none transition-colors focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100"
+          @keydown.enter="goSearch"
+        />
       </div>
       <span
         v-if="collabLive"
@@ -42,14 +48,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAppStore } from '../stores/app'
 import { useCollaborationStore } from '../stores/collaboration'
 
 const route = useRoute()
+const router = useRouter()
 const store = useAppStore()
 const collabStore = useCollaborationStore()
+
+const searchTerm = ref('')
+
+function goSearch() {
+  const q = searchTerm.value.trim()
+  if (q) {
+    void router.push({ path: '/sph', query: { q } })
+  } else {
+    void router.push({ path: '/sph' })
+  }
+}
 
 const collabLive = computed(() => collabStore.isLive)
 const collabRoomName = computed(() => collabStore.roomName)

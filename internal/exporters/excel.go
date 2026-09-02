@@ -293,7 +293,11 @@ func writeRows(f *excelize.File, d *ExportData, start int, st *xlStyles) (int, e
 	r := start
 	for i := range d.Rows {
 		it := &d.Rows[i]
-		nameLines := wrappedLines(it.Name, uraianWidth)
+		nameCell := it.Name
+		if it.SubNo != "" {
+			nameCell = it.SubNo + ". " + nameCell
+		}
+		nameLines := wrappedLines(nameCell, uraianWidth)
 		descText := joinDesc(it.Description, it.WeightNote)
 		descLines := wrappedLines(descText, uraianWidth)
 		lines := nameLines + descLines
@@ -309,7 +313,7 @@ func writeRows(f *excelize.File, d *ExportData, start int, st *xlStyles) (int, e
 		}
 
 		_ = f.MergeCell(xlSheet, "C"+itoa(r), "E"+itoa(r))
-		uraian := it.Name
+		uraian := nameCell
 		if descText != "" {
 			uraian += "\n" + descText
 		}

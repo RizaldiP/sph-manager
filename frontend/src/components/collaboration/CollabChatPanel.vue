@@ -20,7 +20,7 @@
         class="flex"
         :class="isOwn(m) ? 'justify-end' : m.messageType === 'system' ? 'justify-center' : 'justify-start'"
       >
-        <div v-if="m.messageType === 'master_data'" :class="isOwn(m) ? 'max-w-[90%]' : 'max-w-[90%]'">
+        <div v-if="m.messageType === 'master_data'" class="max-w-[90%]">
           <p v-if="!isOwn(m)" class="mb-0.5 text-[11px] font-medium text-slate-400">{{ m.senderName || 'System' }}</p>
           <div class="overflow-hidden rounded-xl border border-brand-200 bg-brand-50/50">
             <div class="border-b border-brand-100 bg-white px-3 py-2">
@@ -82,7 +82,105 @@
       </div>
     </div>
 
-    <div class="flex items-center gap-2 border-t border-slate-100 px-4 py-2.5">
+    <!-- Send Master Data dialog (dipicu dari icon peniti) -->
+    <div v-if="sendOpen" class="border-t border-slate-100 bg-slate-50/60 px-4 py-4">
+      <div class="mb-2 flex items-start justify-between gap-2">
+        <div>
+          <p class="text-[13px] font-semibold text-slate-700">Rakit &amp; Kirim Master Data</p>
+          <p class="text-[12px] text-slate-400">Package berisi seluruh Master Data aktif di perangkat ini.</p>
+        </div>
+        <button type="button" class="rounded p-1 text-slate-400 transition-colors hover:bg-slate-200" title="Tutup" @click="closeSend">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <template v-if="built">
+        <div class="mb-3 grid grid-cols-4 gap-2 text-center">
+          <div class="rounded-lg border border-slate-200 bg-white p-2">
+            <p class="text-lg font-bold text-slate-800">{{ built.data.categories?.length ?? 0 }}</p>
+            <p class="text-[11px] text-slate-400">Kategori</p>
+          </div>
+          <div class="rounded-lg border border-slate-200 bg-white p-2">
+            <p class="text-lg font-bold text-slate-800">{{ built.data.workItems?.length ?? 0 }}</p>
+            <p class="text-[11px] text-slate-400">Pekerjaan</p>
+          </div>
+          <div class="rounded-lg border border-slate-200 bg-white p-2">
+            <p class="text-lg font-bold text-slate-800">{{ built.data.workSubItems?.length ?? 0 }}</p>
+            <p class="text-[11px] text-slate-400">Sub Pekerjaan</p>
+          </div>
+          <div class="rounded-lg border border-slate-200 bg-white p-2">
+            <p class="text-lg font-bold text-slate-800">{{ built.data.materials?.length ?? 0 }}</p>
+            <p class="text-[11px] text-slate-400">Material</p>
+          </div>
+        </div>
+
+        <p class="mb-2 flex items-center gap-1.5 text-[12px] text-slate-500">
+          <svg class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>
+          Dikirim ke semua anggota room
+        </p>
+
+        <p v-if="!allTargets.length" class="mb-2 flex items-start gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[12px] text-amber-700">
+          <svg class="mt-0.5 h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" /></svg>
+          <span>Room belum memiliki member lain. Master Data tetap terkirim sebagai pesan chat, tetapi tidak ada yang dapat memasangnya.</span>
+        </p>
+
+        <div class="flex justify-end gap-2">
+          <button type="button" class="rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-100" @click="closeSend">
+            Batal
+          </button>
+          <button
+            type="button"
+            :disabled="store.working"
+            class="rounded-lg bg-emerald-600 px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-40"
+            @click="doSend"
+          >
+            {{ store.working ? 'Mengirim...' : 'Kirim ke Room' }}
+          </button>
+        </div>
+      </template>
+
+      <button
+        v-else
+        type="button"
+        :disabled="store.working"
+        class="w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-[13px] font-medium text-brand-700 transition-colors hover:bg-brand-50 disabled:opacity-40"
+        @click="doBuild"
+      >
+        {{ store.working ? 'Merakit...' : 'Rakit Package' }}
+      </button>
+    </div>
+
+    <!-- Error -->
+    <div v-if="store.error" class="border-t border-slate-100 px-4 py-2 text-[12px] text-red-700">{{ store.error }}</div>
+
+    <div class="relative flex items-center gap-2 border-t border-slate-100 px-4 py-2.5">
+      <!-- Paperclip -->
+      <div class="relative">
+        <button
+          type="button"
+          class="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-brand-600"
+          :title="attachOpen ? 'Tutup' : 'Lampirkan'"
+          @click="attachOpen = !attachOpen"
+        >
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+          </svg>
+        </button>
+        <div v-if="attachOpen" class="fixed inset-0 z-10" @click="attachOpen = false"></div>
+        <div v-if="attachOpen" class="absolute bottom-full left-0 z-20 mb-2 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+          <button
+            type="button"
+            class="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-[13px] text-slate-700 transition-colors hover:bg-brand-50"
+            @click="openSend"
+          >
+            <svg class="h-4 w-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </svg>
+            <span class="font-medium">Kirim Master Data</span>
+          </button>
+        </div>
+      </div>
+
       <input
         v-model="draft"
         class="min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-[13px] text-slate-700 placeholder:text-slate-400 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-400"
@@ -107,7 +205,8 @@ import { useCollaborationStore } from '../../stores/collaboration'
 import {
   MasterDiffLabel,
   MasterStrategy,
-  type ChatMessage
+  type ChatMessage,
+  type MasterDataPackage
 } from '../../types/collaboration'
 
 const store = useCollaborationStore()
@@ -116,16 +215,31 @@ const sending = ref(false)
 const scrollRef = ref<HTMLElement | null>(null)
 const cardOpen = ref<string>('')
 const cardLoading = ref<string>('')
+const attachOpen = ref(false)
+const sendOpen = ref(false)
+const built = ref<MasterDataPackage | null>(null)
 
 const messages = computed(() => store.messages)
 
-const myName = computed(() => {
+const ownId = computed(() => {
   const parts = store.snapshot.participants ?? []
-  const me = parts.find(p => p.role !== 'HOST')
-  return me?.displayName ?? store.snapshot.room?.hostName ?? ''
+  if (store.isHost) return parts.find(p => p.role === 'HOST')?.id ?? ''
+  return parts.find(p => p.role !== 'HOST')?.id ?? ''
+})
+
+const myName = computed(() => {
+  if (store.isHost) return store.snapshot.room?.hostName ?? ''
+  const parts = store.snapshot.participants ?? []
+  return parts.find(p => p.role !== 'HOST')?.displayName ?? ''
+})
+
+const allTargets = computed(() => {
+  const parts = store.snapshot.participants ?? []
+  return parts.filter(p => p.id !== ownId.value).map(p => p.id)
 })
 
 function isOwn(m: ChatMessage): boolean {
+  if (m.senderId) return m.senderId === ownId.value
   return m.senderName === myName.value && m.senderName !== ''
 }
 
@@ -149,6 +263,35 @@ function diffBadge(kind: string): string {
     case 'UPDATED': return 'bg-blue-100 text-blue-700'
     case 'CONFLICT': return 'bg-amber-100 text-amber-700'
     default: return 'bg-slate-200 text-slate-500'
+  }
+}
+
+function openSend() {
+  attachOpen.value = false
+  sendOpen.value = true
+}
+
+function closeSend() {
+  sendOpen.value = false
+  built.value = null
+}
+
+async function doBuild() {
+  try {
+    built.value = await store.buildMasterDataPackage()
+  } catch (e) {
+    store.error = String(e)
+  }
+}
+
+async function doSend() {
+  if (!built.value) return
+  try {
+    await store.sendMasterData(built.value, allTargets.value)
+    closeSend()
+    await scrollToBottom()
+  } catch (e) {
+    store.error = String(e)
   }
 }
 

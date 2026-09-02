@@ -56,6 +56,7 @@ func weightedSphInput(customerID uint, weights ...int) SphSaveInput {
 	return SphSaveInput{
 		Header: SphHeaderInput{
 			Date:        "2026-08-24",
+			Sequence:    "001",
 			CustomerID:  customerID,
 			ProjectName: "Overhaul KM Bahari",
 			Subject:     "Penawaran Overhaul Engine",
@@ -134,7 +135,7 @@ func TestPembobotanSigmaNot100BlocksFinalization(t *testing.T) {
 	svc := NewSphService(db, slog.Default())
 	cust := seedSphCustomer(t, db)
 
-	for _, tc := range []struct {
+	for i, tc := range []struct {
 		name            string
 		weights         []int
 		wantSumText     string
@@ -144,7 +145,9 @@ func TestPembobotanSigmaNot100BlocksFinalization(t *testing.T) {
 		{"lebih dari 100", []int{60, 50}, "= 110%", "(selisih -10%)"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			d1, err := svc.Create(weightedSphInput(cust.ID, tc.weights...))
+			in := weightedSphInput(cust.ID, tc.weights...)
+			in.Header.Sequence = fmt.Sprintf("%03d", i+1)
+			d1, err := svc.Create(in)
 			if err != nil {
 				t.Fatalf("draft dengan Σ≠100 harus boleh disimpan: %v", err)
 			}

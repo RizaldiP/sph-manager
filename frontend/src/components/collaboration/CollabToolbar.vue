@@ -192,9 +192,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useCollaborationStore } from '../../stores/collaboration'
 import { ConnLabel, SectionLabel } from '../../types/collaboration'
+import { EventsOn } from '../../../wailsjs/runtime/runtime'
 import CollabChatPanel from './CollabChatPanel.vue'
 
 const store = useCollaborationStore()
@@ -298,4 +299,18 @@ async function copyToClipboard(text: string) {
     setTimeout(() => { copied.value = false }, 1500)
   }
 }
+
+let collabSyncOff: (() => void) | undefined
+
+onMounted(() => {
+  if (!store.isLive) return
+  collabSyncOff = EventsOn('collab:sync', (raw: unknown) => {
+    store.applySnapshot(raw)
+  })
+})
+
+onUnmounted(() => {
+  if (collabSyncOff) collabSyncOff()
+  collabSyncOff = undefined
+})
 </script>

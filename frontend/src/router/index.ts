@@ -1,7 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import MainLayout from '../layouts/MainLayout.vue'
 import DashboardPage from '../pages/DashboardPage.vue'
-import PlaceholderPage from '../pages/PlaceholderPage.vue'
 import MasterPekerjaanPage from '../pages/MasterPekerjaanPage.vue'
 import KategoriPage from '../pages/KategoriPage.vue'
 import TemplatePage from '../pages/TemplatePage.vue'
@@ -12,6 +11,7 @@ import BuatSphPage from '../pages/BuatSphPage.vue'
 import SphDetailPage from '../pages/SphDetailPage.vue'
 import PengaturanPage from '../pages/PengaturanPage.vue'
 import ImportPage from '../pages/ImportPage.vue'
+import BackupPage from '../pages/BackupPage.vue'
 import WorkTogetherPage from '../pages/WorkTogetherPage.vue'
 
 const router = createRouter({
@@ -38,8 +38,8 @@ const router = createRouter({
         { path: 'pekerjaan/template', name: 'template', component: TemplatePage, meta: { title: 'Template', breadcrumb: ['Pekerjaan', 'Template'] } },
         { path: 'data/customer', name: 'customer', component: DataPartnerPage, meta: { title: 'Customer & Kapal', breadcrumb: ['Master Data', 'Customer'] } },
         { path: 'data/material', name: 'material', component: MaterialPage, meta: { title: 'Material', breadcrumb: ['Master Data', 'Material'] } },
-        { path: 'impor-ekspor', name: 'impor-ekspor', component: ImportPage, meta: { title: 'Import / Export', breadcrumb: ['Import / Export'] } },
-        { path: 'backup', name: 'backup', component: PlaceholderPage, meta: { title: 'Backup', breadcrumb: ['Backup'], phase: 'Phase 11' } },
+        { path: 'import', name: 'import', component: ImportPage, meta: { title: 'Import', breadcrumb: ['Import'] } },
+        { path: 'backup', name: 'backup', component: BackupPage, meta: { title: 'Backup', breadcrumb: ['Backup'] } },
         { path: 'work-together', name: 'work-together', component: WorkTogetherPage, meta: { title: 'Work Together', breadcrumb: ['Work Together'] } },
         { path: 'pengaturan', name: 'pengaturan', component: PengaturanPage, meta: { title: 'Pengaturan', breadcrumb: ['Pengaturan'] } }
       ]

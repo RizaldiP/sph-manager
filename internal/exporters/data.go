@@ -45,6 +45,7 @@ type DocumentInfo struct {
 // rincian nilainya sendiri.
 type Row struct {
 	No            string  // nomor main point ("1"); kosong untuk sub point
+	SubNo         string  // huruf sub point ("a"); kosong untuk main point
 	Name          string  //
 	Description   string  //
 	WeightNote    string  // keterangan bobot utk mode PEMBOBOTAN, mis. "[bobot 25%]"
@@ -100,6 +101,25 @@ func (d *ExportData) TitleLine2() string {
 	return strconv.Itoa(y)
 }
 
+// subLetter mengubah urutan sub point menjadi huruf gaya penomoran alfabetis:
+// 0→"a", 25→"z", 26→"aa", 51→"az", dst (basis-26 bijective seperti kolom Excel).
+func subLetter(idx int) string {
+	if idx < 0 {
+		return ""
+	}
+	n := idx + 1
+	var rev []byte
+	for n > 0 {
+		n--
+		rev = append(rev, byte('a'+n%26))
+		n /= 26
+	}
+	for i, j := 0, len(rev)-1; i < j; i, j = i+1, j-1 {
+		rev[i], rev[j] = rev[j], rev[i]
+	}
+	return string(rev)
+}
+
 // BuildData meratakan snapshot dokumen menjadi baris cetak siap digambar.
 func BuildData(doc *models.SphDocument, company CompanyInfo) *ExportData {
 	d := &ExportData{
@@ -148,6 +168,7 @@ func BuildData(doc *models.SphDocument, company CompanyInfo) *ExportData {
 		for j := range it.SubItems {
 			sb := &it.SubItems[j]
 			r := Row{
+				SubNo:         subLetter(j),
 				Name:          sb.NameSnapshot,
 				Description:   sb.DescriptionSnapshot,
 				Qty:           sb.Quantity,

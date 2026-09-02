@@ -17,7 +17,7 @@
 | 8 | Import Excel | ✅ Selesai |
 | 9 | Export (Excel + PDF) | ✅ Selesai |
 | 10 | Kolaborasi Real-Time LAN (Work Together) | ⬜ Belum |
-| 11 | Backup & Restore | ⬜ Belum |
+| 11 | Backup & Restore | ✅ Selesai |
 | 12 | Polish UI/UX | ⬜ Belum |
 | 13 | Release (build + push GitHub) | ⬜ Belum |
 
@@ -129,7 +129,7 @@
 - `SuggestMapping`: band header multi-baris (judul gabungan + sub-judul) dari kata kunci URAIAN/JML/SAT/JASA/MAT, skip baris indeks kolom; layout referensi SPH_KRI_OWA.xls (NO=1, URAIAN=2, JML=5, SAT=6, HARGA SATUAN=7, JASA=8, MAT=9, data mulai r10) terdeteksi otomatis.
 - `services/import_service.go`: ImportWorkItems satu transaksi — append ke kategori tujuan, sequence lanjut max+1, kode PEK-/SUB- auto, sub tanpa induk ditolak, audit BR-13 per entri, callback progress membatalkan → rollback penuh (BR-16); ValidateRows mengeblokir unknown belum diputuskan & baris bermasalah.
 - Binding `app_import.go` (PickImportFile/ListImportSheets/PreviewImportSheet/ParseImportRows/ValidateImportRows/RunWorkItemImport) + event progress Wails `import:progress`/`import:done`.
-- Halaman `ImportPage.vue` wizard 4 langkah menggantikan placeholder `/impor-ekspor`: file dialog → sheet & mapping editable (select kolom A..Z+, nameSpan, headerRows, mode nilai total, kategori tujuan) → pratinjau grid dengan penanda baris data & klasifikasi manual baris merah → ringkasan hasil; progress bar realtime.
+- Halaman `ImportPage.vue` wizard 4 langkah menggantikan placeholder `/import`: file dialog → sheet & mapping editable (select kolom A..Z+, nameSpan, headerRows, mode nilai total, kategori tujuan) → pratinjau grid dengan penanda baris data & klasifikasi manual baris merah → ringkasan hasil; progress bar realtime.
 - Test hijau: parser Gaya A/B & splitMarker & angka Indonesia, reader XLSX fixture excelize runtime + integrasi opsional file referensi asli (skip bila absen), service happy path/rollback/blokir/sub-tanpa-induk. Fixture dibuat via excelize saat runtime (tanpa binary testdata); dokumentasi `docs/import-excel.md`.
 - Pasca-ulasan (harga tidak muncul): layout referensi ternyata mencampur konvensi — banyak baris menaruh harga di kolom **HARGA SATUAN** dengan JASA/MAT kosong. Ditambahkan `UnitPriceCol` + `UnitPriceAs` pada `ColumnMapping`: fallback bila JASA & MATERIAL keduanya kosong, arah Jasa/Material dipilih di wizard; `SuggestMapping` mengenali header dua baris HARGA/SATUAN via teks gabungan band-kolom (referensi: UnitPriceCol=7 tanpa menelan kolom SAT=6). Test file asli kini mengaserti harga baris terdeteksi (Sensor Oli = 2.200.000) sebagai regresi permanen.
 
@@ -164,9 +164,17 @@
 
 **Scope:** backup manual, restore (konfirmasi → backup dulu → restore → validate → reload), auto backup (saat tutup + harian), retention 10, validasi file backup.
 
-**Test:** backup → modify → restore → verify.
+**Status: Selesai.** Bacaan lengkap: `docs/backup-restore.md`.
 
-**Acceptance:** restore aman (rollback jika gagal). Dokumentasi `docs/backup-restore.md`.
+- Paket `internal/backup`: snapshot `VACUUM INTO` (aman walau DB terbuka, WAL), daftar/retention, `integrity_check` + `foreign_key_check` + cek tabel inti saat validasi, ganti file database secara atomik, filter nama ketat (`SPH_Backup_YYYY-MM-DD_HHMMSS.db`).
+- `internal/services/backup_service.go`: backup manual (audit `BACKUP`), auto harian (paling banyak sekali/hari) + saat tutup, retention 10, hapus/validasi/resolve aman.
+- `app_backup.go`: binding `BackupNow`, `ListBackups`, `ImportBackup`, `DeleteBackup`, `OpenBackupFolder`, `RestoreBackup`, `QuitApp`. Restore = blokir saat room kolaborasi aktif → validasi file → safety backup → tutup DB → ganti file → audit `RESTORE` → spawn ulang exe → tutup aplikasi (reload aman). Import = dialog pilih `.db` → validasi → salin ke folder backup (audit `IMPORT`).
+- Auto backup: saat startup (cek harian), ticker 24 jam, dan saat penutupan; dilewati bila DB sudah ditutup (pasca-restore).
+- UI: halaman `/backup` (`BackupPage.vue`) — buat backup, buka folder, daftar, pulihkan & hapus dengan konfirmasi.
+
+**Test:** backup → modify → restore → verify (unit `internal/backup` + `internal/services`).
+
+**Acceptance:** restore aman (rollback jika gagal). Dokumentasi `docs/backup-restore.md` ✅.
 
 ## PHASE 12 — Polish
 

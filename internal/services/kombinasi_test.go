@@ -12,6 +12,7 @@ func kombinasiInput(customerID uint) SphSaveInput {
 	in := SphSaveInput{
 		Header: SphHeaderInput{
 			Date:        "2026-08-24",
+			Sequence:    "001",
 			CustomerID:  customerID,
 			ProjectName: "Docking KM Bahari",
 			Subject:     "Kombinasi Multi Pekerjaan",

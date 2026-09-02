@@ -144,6 +144,7 @@ export type SphItemInput = {
 
 export type SphHeaderInput = {
   date: string // "YYYY-MM-DD"
+  sequence: string // nomor urut SPH (diinput manual)
   customerId: number
   vesselId?: number
   projectName: string

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+	"sync"
 
 	"github.com/RizaldiP/sph-manager/internal/collaboration"
 	"github.com/RizaldiP/sph-manager/internal/config"
@@ -38,8 +39,11 @@ type App struct {
 	materials  *services.MaterialService
 	settings   *services.SettingsService
 	export     *services.ExportService
+	backup     *services.BackupService
 	collabMgr  *collaboration.Manager
 	masterSvc  *masterdata.Service
+
+	restoreMu sync.Mutex
 }
 
 func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
@@ -66,6 +70,7 @@ func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
 		materials:  services.NewMaterialService(db, lg),
 		settings:   settingsSvc,
 		export:     services.NewExportService(sphSvc, settingsSvc, lg),
+		backup:     services.NewBackupService(db, cfg.BackupDir, lg),
 		collabMgr:  collabMgr,
 		masterSvc:  masterSvc,
 	}
@@ -74,10 +79,17 @@ func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.wireCollab()
+	if _, err := a.backup.EnsureDaily(); err != nil {
+		a.log.Warn("backup harian saat mulai gagal", "error", err)
+	}
+	a.backup.StartAuto()
 	a.log.Info("aplikasi dimulai", "versi", appVersion, "database", a.cfg.DatabasePath)
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	if a.backup != nil {
+		a.backup.BackupOnShutdown()
+	}
 	if a.collabMgr != nil {
 		a.collabMgr.Shutdown("Aplikasi ditutup.")
 	}

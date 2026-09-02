@@ -49,6 +49,7 @@ func sampleSphInput(customerID uint) SphSaveInput {
 	return SphSaveInput{
 		Header: SphHeaderInput{
 			Date:        "2026-08-24",
+			Sequence:    "001",
 			CustomerID:  customerID,
 			ProjectName: "Docking KM Bahari",
 			Subject:     "Penawaran Repair PLC",
@@ -87,7 +88,7 @@ func TestSphCreateSnapshotAndNumbering(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create SPH gagal: %v", err)
 	}
-	if !strings.HasPrefix(d1.DocumentNumber, "SPH/GEI/VIII/2026/") {
+	if !strings.HasPrefix(d1.DocumentNumber, "001/SPH-GEI/VIII/2026") {
 		t.Errorf("nomor tidak sesuai format BR-07: %q", d1.DocumentNumber)
 	}
 	if d1.Status != models.StatusDraft || d1.Revision != 0 {
@@ -122,10 +123,22 @@ func TestSphCreateSnapshotAndNumbering(t *testing.T) {
 		t.Errorf("terbilang detail salah: %q", det.Terbilang)
 	}
 
-	// Nomor berurutan untuk dokumen kedua pada periode yang sama.
-	d2, _ := svc.Create(in)
-	if !strings.HasSuffix(d2.DocumentNumber, "002") || !strings.HasPrefix(d2.DocumentNumber, "SPH/GEI/VIII/2026/") {
-		t.Errorf("penomoran berurutan salah: %q lalu %q", d1.DocumentNumber, d2.DocumentNumber)
+	// Nomor urut diinput manual: dokumen kedua dengan urut berbeda pada periode sama.
+	in.Header.Sequence = "005"
+	d2, err := svc.Create(in)
+	if err != nil {
+		t.Fatalf("create SPH kedua gagal: %v", err)
+	}
+	if d2.DocumentNumber != "005/SPH-GEI/VIII/2026" {
+		t.Errorf("penomoran manual salah: %q", d2.DocumentNumber)
+	}
+
+	// Nomor urut yang sudah dipakai harus ditolak (BR-07).
+	in.Header.Sequence = "001"
+	if _, err := svc.Create(in); err == nil {
+		t.Error("nomor urut duplikat harus ditolak")
+	} else if !strings.Contains(err.Error(), "sudah dipakai") {
+		t.Errorf("pesan duplikat tidak ramah: %v", err)
 	}
 
 	// BR-01: ubah master → snapshot dokumen lama tetap.
@@ -282,7 +295,12 @@ func TestSphScopesStatsAndDeleteDraft(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create draft gagal: %v", err)
 	}
-	b, _ := svc.Create(sampleSphInput(cust.ID))
+	inB := sampleSphInput(cust.ID)
+	inB.Header.Sequence = "002"
+	b, err := svc.Create(inB)
+	if err != nil {
+		t.Fatalf("create kedua gagal: %v", err)
+	}
 	svc.SetStatus(b.ID, models.StatusReview)
 	svc.SetStatus(b.ID, models.StatusFinal)
 

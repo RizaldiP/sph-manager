@@ -188,8 +188,20 @@ function loadDebounced() {
 onMounted(() => {
   const scopes: Record<string, SphScope> = { all: '', draft: 'open', final: 'final' }
   store.scope = scopes[mode.value]
+  const q = route.query.q
+  if (q != null) store.search = String(q)
   void store.loadList()
 })
+
+// Pencarian dari header (TopBar) lewat /sph?q=… — berlaku juga saat sudah
+// berada di halaman daftar yang sama.
+watch(
+  () => route.query.q,
+  (q) => {
+    const next = q == null ? '' : String(q)
+    if (store.search !== next) store.search = next
+  }
+)
 
 // Ganti tab sidebar antar list → muat ulang dengan scope baru.
 watch(
@@ -199,7 +211,7 @@ watch(
     if (!['sph-list', 'sph-draft', 'sph-final'].includes(String(name))) return
     const scopes: Record<string, SphScope> = { 'sph-list': '', 'sph-draft': 'open', 'sph-final': 'final' }
     store.scope = scopes[String(name)]
-    store.search = ''
+    store.search = route.query.q == null ? '' : String(route.query.q)
     void store.loadList()
   }
 )

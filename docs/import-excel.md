@@ -4,7 +4,7 @@ Fitur import daftar pekerjaan dari file Excel ke Master Pekerjaan. Implementasi 
 
 ## Alur Wajib (FR-IE1)
 
-Import **wajib** melewati wizard 4 langkah di halaman `/impor-ekspor` (`ImportPage.vue`); tidak ada jalur import tanpa pratinjau:
+Import **wajib** melewati wizard 4 langkah di halaman `/import` (`ImportPage.vue`); tidak ada jalur import tanpa pratinjau:
 
 1. **Pilih File** — dialog hanya menerima `.xls` dan `.xlsx`.
 2. **Sheet & Mapping** — pilih sheet, kategori tujuan, dan pemetaan kolom; grid pratinjau menampilkan isi sheet.

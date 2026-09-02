@@ -64,7 +64,7 @@ func TestBuildExcelStructure(t *testing.T) {
 	if val != "Rp11,250,000" {
 		t.Errorf("total roll-up main point salah: %q", val)
 	}
-	if !strings.Contains(cell("C11"), "Inspection") || !strings.Contains(cell("C11"), "[bobot 40%]") {
+	if !strings.HasPrefix(cell("C11"), "a. Inspection") || !strings.Contains(cell("C11"), "[bobot 40%]") {
 		t.Errorf("sub point/bobot tidak tampil: %q", cell("C11"))
 	}
 

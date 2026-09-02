@@ -73,6 +73,7 @@ type SphItemInput struct {
 
 type SphHeaderInput struct {
 	Date        string `json:"date"` // "2006-01-02"
+	Sequence    string `json:"sequence"` // nomor urut SPH diinput manual (opsional saat update)
 	CustomerID  uint   `json:"customerId"`
 	VesselID    *uint  `json:"vesselId,omitempty"`
 	ProjectName string `json:"projectName"`
@@ -196,6 +197,38 @@ func (s *SphService) List(scope string, search string, limit int) ([]SphDocument
 		return nil, fmt.Errorf("gagal memuat daftar SPH")
 	}
 	return toSphViews(s.db, docs)
+}
+
+// SuggestNumber mengembalikan saran nomor urut (3 digit) untuk periode tanggal
+// tersebut, dipakai UI mengisi field "Nomor Urut" saat membuat SPH.
+func (s *SphService) SuggestNumber(date string) (string, error) {
+	t, err := time.ParseInLocation("2006-01-02", trim(date), time.Local)
+	if err != nil {
+		return "", NewValidationError("Format tanggal tidak valid.")
+	}
+	format, err := settingSphNumberFormat(s.db)
+	if err != nil {
+		return "", err
+	}
+	maxSeq, err := maxSequenceForFormat(s.db, format, t)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%03d", maxSeq+1), nil
+}
+
+// ComposeNumber merender nomor lengkap dari nomor urut manual + tanggal,
+// dipakai preview live di wizard (validasi tanpa menyimpan).
+func (s *SphService) ComposeNumber(seq, date string) (string, error) {
+	t, err := time.ParseInLocation("2006-01-02", trim(date), time.Local)
+	if err != nil {
+		return "", NewValidationError("Format tanggal tidak valid.")
+	}
+	format, err := settingSphNumberFormat(s.db)
+	if err != nil {
+		return "", err
+	}
+	return composeNumber(format, seq, t)
 }
 
 // Get mengembalikan dokumen lengkap (customer/kapal, item terurut, histori revisi)
@@ -397,7 +430,7 @@ func (s *SphService) Create(in SphSaveInput) (*SphDocumentView, error) {
 	}
 
 	err = s.db.Transaction(func(tx *gorm.DB) error {
-		number, err := generateDocumentNumber(tx, doc.Date)
+		number, err := manualDocumentNumber(tx, in.Header.Sequence, doc.Date)
 		if err != nil {
 			return err
 		}

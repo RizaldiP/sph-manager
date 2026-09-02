@@ -676,6 +676,22 @@ export namespace main {
 	        this.databasePath = source["databasePath"];
 	    }
 	}
+	export class RestoreResult {
+	    restarting: boolean;
+	    backup: string;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RestoreResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.restarting = source["restarting"];
+	        this.backup = source["backup"];
+	        this.message = source["message"];
+	    }
+	}
 
 }
 
@@ -1547,6 +1563,24 @@ export namespace models {
 
 export namespace services {
 	
+	export class BackupInfo {
+	    name: string;
+	    path: string;
+	    size: number;
+	    modified: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BackupInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.path = source["path"];
+	        this.size = source["size"];
+	        this.modified = source["modified"];
+	    }
+	}
 	export class CategoryView {
 	    id: number;
 	    code: string;
@@ -2002,6 +2036,7 @@ export namespace services {
 	
 	export class SphHeaderInput {
 	    date: string;
+	    sequence: string;
 	    customerId: number;
 	    vesselId?: number;
 	    projectName: string;
@@ -2019,6 +2054,7 @@ export namespace services {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.date = source["date"];
+	        this.sequence = source["sequence"];
 	        this.customerId = source["customerId"];
 	        this.vesselId = source["vesselId"];
 	        this.projectName = source["projectName"];

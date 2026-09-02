@@ -89,6 +89,7 @@ export interface OpPayload {
 
 export interface HeaderPatch {
   date: string
+  sequence?: string
   customerId: number
   vesselId?: number
   projectName: string
@@ -131,6 +132,7 @@ export interface CollabDefaults {
 
 export interface SphHeaderInput {
   date: string
+  sequence?: string
   customerId: number
   vesselId?: number
   projectName: string

@@ -167,7 +167,7 @@ const actions: QuickAction[] = [
   { label: 'Buat SPH', phase: '5', primary: true, to: '/sph/baru' },
   { label: 'Tambah Pekerjaan', phase: '3', to: '/pekerjaan' },
   { label: 'Tambah Template', phase: '4', to: '/pekerjaan/template' },
-  { label: 'Import Excel', phase: '8' }
+  { label: 'Import Excel', phase: '8', to: '/import' }
 ]
 
 onMounted(() => {

@@ -29,12 +29,6 @@
     <!-- Error -->
     <p v-if="collabStore.error" class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-[13px] text-red-700">{{ collabStore.error }}</p>
 
-    <!-- Chat -->
-    <CollabChatPanel v-if="collabStore.isLive" class="mb-4 max-w-2xl" />
-
-    <!-- Master Data -->
-    <MasterDataPanel v-if="collabStore.isLive" class="mb-4" />
-
     <!-- Discovered rooms -->
     <div class="rounded-xl border border-slate-200 bg-white p-5">
       <div class="mb-4 flex items-center justify-between">
@@ -44,13 +38,24 @@
         </button>
       </div>
 
-      <div v-if="!discovered.length" class="py-10 text-center">
-        <svg class="mx-auto mb-3 h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
-        </svg>
-        <p class="text-[13px] text-slate-400">Belum ada room ditemukan di jaringan ini.</p>
-        <p class="mt-1 text-xs text-slate-400">Mulai room baru atau gabung via IP manual.</p>
-        <p class="mt-2 text-[11px] text-slate-300">Tips: Pastikan kedua komputer di WiFi/LAN yang sama. Jika firewall memblokir, jalankan aplikasi sebagai Administrator.</p>
+      <div v-if="!discovered.length" class="py-10">
+        <div class="mx-auto max-w-lg text-center">
+          <svg class="mx-auto mb-3 h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
+          </svg>
+          <p class="text-[13px] text-slate-400">Belum ada room ditemukan di jaringan ini.</p>
+          <p class="mt-1 text-xs text-slate-400">Mencari room setiap 5 detik · Mulai room baru atau gabung via IP manual.</p>
+
+          <div class="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-left">
+            <p class="text-xs font-semibold text-amber-800">Room tidak terlihat? Kemungkinan penyebabnya:</p>
+            <ul class="mt-2 space-y-1.5 text-xs leading-relaxed text-amber-700">
+              <li>• <b>Host dan client berbeda subnet</b> — misalnya host pakai kabel LAN (192.168.0.x) sedangkan client WiFi (192.168.1.x). Discovery memakai broadcast yang tidak menembus subnet/VLAN.</li>
+              <li>• <b>Isolasi AP / guest mode aktif</b> di router atau access point — matikan "client isolation"/"AP isolation" agar client WiFi bisa menemukan perangkat lain.</li>
+              <li>• <b>Firewall memblokir</b> — coba jalankan aplikasi sebagai Administrator bila perlu.</li>
+            </ul>
+            <p class="mt-2 text-xs text-amber-800">Solusi cepat: klik <b>"Gabung via IP…"</b> di kanan atas, lalu isi IP host (lihat di toolbar host atau di ipconfig).</p>
+          </div>
+        </div>
       </div>
 
       <ul v-else class="divide-y divide-slate-100">
@@ -81,8 +86,6 @@ import PageHeader from '../components/PageHeader.vue'
 import CreateRoomDialog from '../components/collaboration/CreateRoomDialog.vue'
 import JoinDialog from '../components/collaboration/JoinDialog.vue'
 import JoinManualDialog from '../components/collaboration/JoinManualDialog.vue'
-import CollabChatPanel from '../components/collaboration/CollabChatPanel.vue'
-import MasterDataPanel from '../components/collaboration/MasterDataPanel.vue'
 import { useCollaborationStore } from '../stores/collaboration'
 import type { DiscoveredRoom } from '../types/collaboration'
 
@@ -148,7 +151,6 @@ onMounted(async () => {
   await collabStore.loadDefaults()
   await collabStore.startDiscovery()
   await refreshList()
-  await collabStore.refreshMasterInbox()
   refreshTimer = setInterval(refreshList, 5000)
 })
 

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/go-pdf/fpdf"
 )
 
 func TestPaginate(t *testing.T) {
@@ -89,5 +91,186 @@ func TestBuildPDFMultiPageBothOrientations(t *testing.T) {
 func TestIDNumberEdge(t *testing.T) {
 	if idNumber(7) != "7" || idNumber(70) != "70" {
 		t.Error("angka kecil salah format")
+	}
+}
+
+// wrapFixture membuat fpdf siap pakai untuk menguji helper wrap.
+func wrapFixture(t *testing.T) (*fpdf.Fpdf, func(string) string) {
+	t.Helper()
+	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf.SetFont("Helvetica", "", 9)
+	tr := pdf.UnicodeTranslatorFromDescriptor("")
+	return pdf, tr
+}
+
+func TestWrapTextLinesRespectsWidth(t *testing.T) {
+	pdf, tr := wrapFixture(t)
+	text := tr(strings.TrimSpace(strings.Repeat("kata ", 40)))
+	lines := wrapTextLines(pdf, text, 40)
+	if len(lines) < 2 {
+		t.Fatalf("teks panjang harus ter-wrap ke beberapa baris, dapat %d", len(lines))
+	}
+	for i, ln := range lines {
+		if strings.Contains(ln, " ") && pdf.GetStringWidth(ln) > 40 {
+			t.Errorf("baris %d melebihi lebar: %q = %.1fmm", i, ln, pdf.GetStringWidth(ln))
+		}
+	}
+	// gabungan harus tetap = jumlah kata semula
+	if got := strings.Join(strings.Fields(strings.Join(lines, " ")), " "); got != text {
+		t.Errorf("wrap mengubah isi teks:\ngot  %q\nwant %q", got, text)
+	}
+}
+
+func TestWrapTextLinesHardBreakAndEmpty(t *testing.T) {
+	pdf, tr := wrapFixture(t)
+	got := wrapTextLines(pdf, tr("Baris A\nBaris B"), 200)
+	if len(got) != 2 || got[0] != "Baris A" || got[1] != "Baris B" {
+		t.Errorf("hard break salah: %q", got)
+	}
+	if e := wrapTextLines(pdf, tr(""), 200); len(e) != 1 || e[0] != "" {
+		t.Errorf("teks kosong harus satu baris kosong: %q", e)
+	}
+}
+
+func TestSubLetter(t *testing.T) {
+	cases := []struct {
+		in   int
+		want string
+	}{
+		{0, "a"}, {1, "b"}, {24, "y"}, {25, "z"},
+		{26, "aa"}, {27, "ab"}, {51, "az"},
+	}
+	for _, c := range cases {
+		if got := subLetter(c.in); got != c.want {
+			t.Errorf("subLetter(%d) = %q, mau %q", c.in, got, c.want)
+		}
+	}
+	if subLetter(-1) != "" {
+		t.Error("indeks negatif harus string kosong")
+	}
+}
+
+func TestWrapUraianSubPrefix(t *testing.T) {
+	pdf, tr := wrapFixture(t)
+	g := newGeom(true)
+	sub := &Row{SubNo: "a", Name: "Bongkar pasang separator oli lama", Description: strings.Repeat("deskripsi lanjutan yang cukup panjang ", 8)}
+	lines := wrapUraian(pdf, tr, g, sub)
+	if len(lines) == 0 || !strings.HasPrefix(lines[0], "a. ") {
+		t.Fatalf("baris pertama harus diawali 'a. ', dapat %q", lines)
+	}
+	prefixW := pdf.GetStringWidth("a. ")
+	avail := g.wUraian - 2*pdfPad - indentOf(sub) - prefixW
+	for i, ln := range lines {
+		if i > 0 && strings.Contains(ln, " ") && pdf.GetStringWidth(ln) > avail+0.01 {
+			t.Errorf("baris lanjutan %d melebihi lebar valid: %q = %.1fmm (maks %.1f)", i, ln, pdf.GetStringWidth(ln), avail)
+		}
+	}
+	rest := strings.TrimPrefix(lines[0], "a. ")
+	if !strings.Contains(rest, "Bongkar") {
+		t.Error("isi teks sub point hilang setelah awalan huruf")
+	}
+	if strings.TrimSpace(rest) == "" {
+		t.Error("nama sub point kosong setelah awalan huruf")
+	}
+	// main point tidak boleh dapat awalan huruf
+	main := &Row{SubNo: "", Name: "Perbaikan Separator Oli"}
+	if l := wrapUraian(pdf, tr, g, main); l[0] != "Perbaikan Separator Oli" {
+		t.Errorf("main point berubah: %q", l)
+	}
+}
+
+func TestBuildPDFLongDescriptionTolerated(t *testing.T) {
+	base := fixtureSphDoc()
+	d := BuildData(base, sampleCompany())
+	long := strings.Repeat("deskripsi panjang tanpa spasi di dalam satu kata ", 60)
+	for i := range d.Rows {
+		d.Rows[i].Description = long
+	}
+	res, err := BuildPDF(d, PDFOptions{Landscape: true})
+	if err != nil {
+		t.Fatalf("BuildPDF deskripsi panjang gagal: %v", err)
+	}
+	if res.Pages < 1 || !bytes.HasPrefix(res.Bytes, []byte("%PDF-")) {
+		t.Errorf("output rusak: %d halaman", res.Pages)
+	}
+}
+
+func BenchmarkBuildPDFRows(b *testing.B) {
+	d := BuildData(fixtureSphDoc(), sampleCompany())
+	var rows []Row
+	for i := 0; i < 250; i++ {
+		rows = append(rows, d.Rows...)
+	}
+	d.Rows = rows
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := BuildPDF(d, PDFOptions{Landscape: true}); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// TestBuildPDFTableStaysWithinPaper: setiap halaman, baris tabel tidak boleh
+// melewati batas bawah pageH-pdfMargin (zona footer di pageH-9).
+func TestBuildPDFTableStaysWithinPaper(t *testing.T) {
+	for _, landscape := range []bool{false, true} {
+		d := BuildData(fixtureSphDoc(), sampleCompany())
+		extra := d.Rows
+		d.Rows = nil
+		for i := 0; i < 60; i++ {
+			d.Rows = append(d.Rows, extra...)
+		}
+
+		pdf := fpdf.New("P", "mm", "A4", "")
+		tr := pdf.UnicodeTranslatorFromDescriptor("")
+		g := newGeom(landscape)
+		kopH := kopHeight(pdf, tr, g, d)
+		headH := tableHeadHeight()
+
+		availFirst := g.usableH - kopH - headH - 2
+		availRest := g.usableH - headH - pindahanHeight() - 2
+		heights := make([]float64, len(d.Rows))
+		for i := range d.Rows {
+			heights[i] = rowHeightLines(len(wrapUraian(pdf, tr, g, &d.Rows[i])))
+		}
+		pages := paginate(heights, availFirst, availRest)
+
+		if len(pages) <= 1 {
+			t.Fatalf("landscape=%v harus multi-halaman", landscape)
+		}
+		limit := g.pageH - pdfMargin
+		for pi, page := range pages {
+			start := pdfMargin + 2 + headH + pindahanHeight()
+			if pi == 0 {
+				start = pdfMargin + kopH + 2 + headH
+			}
+			h := 0.0
+			for _, ri := range page {
+				h += heights[ri]
+			}
+			bottom := start + h
+			if bottom > limit+0.01 {
+				t.Errorf("landscape=%v halaman %d bottom=%.1fmm melewati batas %.1fmm", landscape, pi+1, bottom, limit)
+			}
+			if pi == 0 && len(page) == 0 {
+				t.Error("halaman 1 tidak memuat baris")
+			}
+		}
+	}
+}
+
+// TestRekapMovesToNewPageWhenFull: jika baris terakhir berakhir di batas bawah
+// tabel (halaman penuh), rekap+ttd harus dipindah agar tidak menyentuh footer.
+func TestRekapMovesToNewPageWhenFull(t *testing.T) {
+	pdf, tr := wrapFixture(t)
+	d := BuildData(fixtureSphDoc(), sampleCompany())
+	for _, landscape := range []bool{false, true} {
+		g := newGeom(landscape)
+		need := rekapHeight(pdf, tr, g, d) + signatureHeight(pdf, tr, g, d) + terbilangNotesHeight(pdf, tr, g, d) + 11
+		left := g.pageH - pdfFooterZone - (g.pageH - pdfMargin)
+		if left >= need {
+			t.Errorf("landscape=%v rekap harus pindah halaman saat penuh: sisa %.1f need %.1f", landscape, left, need)
+		}
 	}
 }

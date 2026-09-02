@@ -6,6 +6,10 @@ export function AssignTurns(arg1) {
   return window['go']['main']['App']['AssignTurns'](arg1);
 }
 
+export function BackupNow() {
+  return window['go']['main']['App']['BackupNow']();
+}
+
 export function BuildMasterDataPackage() {
   return window['go']['main']['App']['BuildMasterDataPackage']();
 }
@@ -20,6 +24,10 @@ export function ClearLogo() {
 
 export function CloseCollabRoom() {
   return window['go']['main']['App']['CloseCollabRoom']();
+}
+
+export function ComposeSphNumber(arg1, arg2) {
+  return window['go']['main']['App']['ComposeSphNumber'](arg1, arg2);
 }
 
 export function CreateCategory(arg1) {
@@ -64,6 +72,10 @@ export function CreateWorkItem(arg1) {
 
 export function DashboardStats() {
   return window['go']['main']['App']['DashboardStats']();
+}
+
+export function DeleteBackup(arg1) {
+  return window['go']['main']['App']['DeleteBackup'](arg1);
 }
 
 export function DeleteCategory(arg1) {
@@ -162,6 +174,10 @@ export function Health() {
   return window['go']['main']['App']['Health']();
 }
 
+export function ImportBackup() {
+  return window['go']['main']['App']['ImportBackup']();
+}
+
 export function InstallMasterData(arg1, arg2, arg3) {
   return window['go']['main']['App']['InstallMasterData'](arg1, arg2, arg3);
 }
@@ -172,6 +188,10 @@ export function JoinCollabRoom(arg1, arg2, arg3, arg4, arg5) {
 
 export function LeaveCollabRoom() {
   return window['go']['main']['App']['LeaveCollabRoom']();
+}
+
+export function ListBackups() {
+  return window['go']['main']['App']['ListBackups']();
 }
 
 export function ListCategories(arg1, arg2) {
@@ -222,6 +242,10 @@ export function MarkMasterInboxViewed(arg1) {
   return window['go']['main']['App']['MarkMasterInboxViewed'](arg1);
 }
 
+export function OpenBackupFolder() {
+  return window['go']['main']['App']['OpenBackupFolder']();
+}
+
 export function OpenExportFolder(arg1) {
   return window['go']['main']['App']['OpenExportFolder'](arg1);
 }
@@ -250,6 +274,10 @@ export function PreviewSphNumber(arg1) {
   return window['go']['main']['App']['PreviewSphNumber'](arg1);
 }
 
+export function QuitApp() {
+  return window['go']['main']['App']['QuitApp']();
+}
+
 export function RejectMasterData(arg1) {
   return window['go']['main']['App']['RejectMasterData'](arg1);
 }
@@ -276,6 +304,10 @@ export function ReorderWorkItems(arg1, arg2) {
 
 export function RequestEdit(arg1) {
   return window['go']['main']['App']['RequestEdit'](arg1);
+}
+
+export function RestoreBackup(arg1) {
+  return window['go']['main']['App']['RestoreBackup'](arg1);
 }
 
 export function RunWorkItemImport(arg1, arg2, arg3, arg4, arg5) {
@@ -336,6 +368,10 @@ export function StartDiscoveryListener() {
 
 export function StopDiscoveryListener() {
   return window['go']['main']['App']['StopDiscoveryListener']();
+}
+
+export function SuggestSphNumber(arg1) {
+  return window['go']['main']['App']['SuggestSphNumber'](arg1);
 }
 
 export function SyncPush(arg1) {

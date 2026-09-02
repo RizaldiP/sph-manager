@@ -25,6 +25,9 @@ const (
 	pdfLineH   = 4.3 // tinggi satu baris teks mm (Helvetica 9)
 	pdfMinRowH = 7.0 //
 	pdfPad     = 1.4 //
+
+	// pdfFooterZone jarak tepi bawah kertas ke baris atas footer (SetY(-9)).
+	pdfFooterZone = 9.0
 )
 
 type pdfGeom struct {
@@ -89,12 +92,17 @@ func BuildPDF(d *ExportData, opts PDFOptions) (*PDFResult, error) {
 	sigH := signatureHeight(pdf, tr, g, d)
 	rekapH := rekapHeight(pdf, tr, g, d)
 
+	wrapped := make([][]string, len(d.Rows))
 	heights := make([]float64, len(d.Rows))
 	for i := range d.Rows {
-		heights[i] = rowHeight(pdf, tr, g, &d.Rows[i])
+		wrapped[i] = wrapUraian(pdf, tr, g, &d.Rows[i])
+		heights[i] = rowHeightLines(len(wrapped[i]))
 	}
-	availFirst := g.usableH - kopH
-	availRest := g.usableH - headH - pindahanHeight()
+	// Kapasitas baris: badan tabel mulai setelah kop + gap 2mm + header tabel
+	// (headH), jadi avail harus mengurangi ketiganya agar baris tidak melewati
+	// batas bawah pageH-margin (footer berada di pageH-9).
+	availFirst := g.usableH - kopH - headH - 2
+	availRest := g.usableH - headH - pindahanHeight() - 2
 	pages := paginate(heights, availFirst, availRest)
 	carry := computeCarry(pages, d.Rows)
 
@@ -113,7 +121,7 @@ func BuildPDF(d *ExportData, opts PDFOptions) (*PDFResult, error) {
 			y += pindahanHeight()
 		}
 		for _, ri := range pages[pi] {
-			drawRow(pdf, tr, g, &d.Rows[ri], y, heights[ri])
+			drawRow(pdf, tr, g, &d.Rows[ri], y, heights[ri], wrapped[ri])
 			y += heights[ri]
 		}
 
@@ -121,8 +129,10 @@ func BuildPDF(d *ExportData, opts PDFOptions) (*PDFResult, error) {
 		if !last {
 			continue
 		}
-		need := rekapH + sigH + 6
-		if g.pageH-pdfMargin-y < need {
+		// Rekap + ttd harus selesai DI ATAS zona footer (9mm dari bawah, lokasi
+		// "Halaman x dari y"); include tinggi blok Terbilang/Catatan.
+		need := rekapH + sigH + terbilangNotesHeight(pdf, tr, g, d) + 11
+		if g.pageH-pdfFooterZone-y < need {
 			pdf.AddPage()
 			drawTableHead(pdf, g, pdf.GetY())
 			y = pdfMargin + headH
@@ -193,9 +203,9 @@ func computeCarry(pages [][]int, rows []Row) [][3]int64 {
 
 // ===== pengukuran tinggi =====
 
-func rowHeight(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, r *Row) float64 {
-	lines := uraianLineCount(pdf, tr, g, r)
-	h := float64(lines)*pdfLineH + 2*pdfPad
+// rowHeightLines menghitung tinggi baris dari jumlah baris hasil wrap.
+func rowHeightLines(n int) float64 {
+	h := float64(n)*pdfLineH + 2*pdfPad
 	if h < pdfMinRowH {
 		h = pdfMinRowH
 	}
@@ -210,16 +220,62 @@ func uraianText(r *Row) string {
 	return strings.Join(parts, "\n")
 }
 
-func uraianLineCount(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, r *Row) int {
-	pdf.SetFont("Helvetica", "", 9)
-	inner := g.wUraian - 2*pdfPad - indentOf(r)
-	lines := 0
-	for _, ln := range strings.Split(tr(uraianText(r)), "\n") {
-		n := len(pdf.SplitText(ln, inner))
-		lines += n
+// wrapTextLines membungkus teks menjadi baris selebar width. Lebar baris
+// diakumulasi inkremental per kata (satu GetStringWidth per kata) sehingga
+// biayanya O(panjang teks) — berbeda dari SplitText/MultiCell fpdf yang
+// mengukur ulang kalimat menumpuk dan menjadi lambat pada deskripsi panjang.
+func wrapTextLines(pdf *fpdf.Fpdf, text string, width float64) []string {
+	var out []string
+	sep := pdf.GetStringWidth(" ")
+	for _, seg := range strings.Split(text, "\n") {
+		words := strings.Fields(strings.TrimSpace(seg))
+		if len(words) == 0 {
+			out = append(out, "")
+			continue
+		}
+		line := words[0]
+		w := pdf.GetStringWidth(words[0])
+		for _, word := range words[1:] {
+			ww := pdf.GetStringWidth(word)
+			if w+sep+ww <= width {
+				line += " " + word
+				w += sep + ww
+			} else {
+				out = append(out, line)
+				line = word
+				w = ww
+			}
+		}
+		out = append(out, line)
 	}
-	if lines < 1 {
-		lines = 1
+	return out
+}
+
+// subPrefixOf awalan huruf sub point ("a.") atau kosong untuk main point.
+func subPrefixOf(r *Row) string {
+	if r.SubNo == "" {
+		return ""
+	}
+	return r.SubNo + "."
+}
+
+// wrapUraian menghitung baris tampil kolom Uraian satu baris data; hasilnya
+// dipakai bersama untuk pengukuran tinggi dan penggambaran (satu kali wrap).
+// Sub point diberi awalan huruf ("a.") di baris pertama dan baris lanjutan
+// ter-wrap di lebar tersisa agar kalimat panjang sejajar batas teks (hang).
+func wrapUraian(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, r *Row) []string {
+	pdf.SetFont("Helvetica", "", 9)
+	avail := g.wUraian - 2*pdfPad - indentOf(r)
+	prefix := subPrefixOf(r)
+	if prefix != "" {
+		avail -= pdf.GetStringWidth(prefix + " ")
+	}
+	lines := wrapTextLines(pdf, tr(uraianText(r)), avail)
+	if len(lines) == 0 {
+		lines = []string{""}
+	}
+	if prefix != "" && len(lines) > 0 {
+		lines[0] = prefix + " " + lines[0]
 	}
 	return lines
 }
@@ -304,7 +360,7 @@ func drawPindahan(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, y float64, 
 	pdf.SetY(y + h)
 }
 
-func drawRow(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, r *Row, y, h float64) {
+func drawRow(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, r *Row, y, h float64, lines []string) {
 	pdf.Rect(pdfMargin, y, g.totalW, h, "D")
 	vlines(pdf, g, y, h)
 
@@ -316,10 +372,21 @@ func drawRow(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, r *Row, y, h flo
 
 	// NO
 	putCell(pdf, tr, g.xNo, g.wNo, y, h, r.No, "C", false)
-	// URAIAN (multi-line)
+	// URAIAN (multi-line; baris sudah dihitung sekali di BuildPDF)
 	indent := indentOf(r)
-	pdf.SetXY(pdfMargin+g.xUraian+pdfPad+indent, y+pdfPad)
-	pdf.MultiCell(g.wUraian-indent-2*pdfPad, pdfLineH, tr(uraianText(r)), "", "L", false)
+	x := pdfMargin + g.xUraian + pdfPad + indent
+	prefix := subPrefixOf(r)
+	prefixW := 0.0
+	if prefix != "" {
+		prefixW = pdf.GetStringWidth(prefix + " ")
+		pdf.SetXY(x, y+pdfPad)
+		pdf.CellFormat(prefixW, pdfLineH, tr(prefix), "", 0, "L", false, 0, "")
+	}
+	w := g.wUraian - indent - 2*pdfPad
+	for i, ln := range lines {
+		pdf.SetXY(x+prefixW, y+pdfPad+float64(i)*pdfLineH)
+		pdf.CellFormat(w-prefixW, pdfLineH, ln, "", 0, "L", false, 0, "")
+	}
 	// angka
 	putCell(pdf, tr, g.xQty, g.wQty, y, h, qtyText(r.Qty), "C", false)
 	putCell(pdf, tr, g.xSat, g.wSat, y, h, tr(strings.TrimSpace(r.Unit)), "C", false)
@@ -538,6 +605,23 @@ func drawTerbilangNotes(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, d *Ex
 		pdf.SetFont("Helvetica", "", 9)
 	}
 	return y
+}
+
+// terbilangNotesHeight mengukur tinggi blok Terbilang + Catatan (konsisten
+// dengan drawTerbilangNotes) untuk keputusan pemindahan rekap ke halaman baru.
+func terbilangNotesHeight(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, d *ExportData) float64 {
+	h := 0.0
+	if tb := d.Document.Terbilang; tb != "" {
+		pdf.SetFont("Helvetica", "I", 9)
+		text := tr("Terbilang : " + tb + ".")
+		h += float64(len(pdf.SplitText(text, g.totalW)))*pdfLineH + 1
+	}
+	if n := d.Document.Notes; n != "" {
+		pdf.SetFont("Helvetica", "", 8.5)
+		text := tr("Catatan: " + n)
+		h += float64(len(pdf.SplitText(text, g.totalW)))*pdfLineH + 1
+	}
+	return h
 }
 
 func signatureHeight(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, d *ExportData) float64 {

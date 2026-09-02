@@ -116,12 +116,16 @@ func (s *SettingsService) Get() (*SettingsView, error) {
 		return nil, fmt.Errorf("gagal memuat pengaturan")
 	}
 	def := defaultSettings()
+	f := pick(m, keySphNumberFormat, def.SphNumberFormat)
+	if f == oldDefaultSphNumberFormat {
+		f = def.SphNumberFormat
+	}
 	v := &SettingsView{
 		CompanyName:       pick(m, keyCompanyName, def.CompanyName),
 		CompanyCity:       pick(m, keyCompanyCity, def.CompanyCity),
 		CompanyAddress:    pick(m, keyCompanyAddress, ""),
 		LogoPath:          pick(m, keyLogoPath, ""),
-		SphNumberFormat:   pick(m, keySphNumberFormat, def.SphNumberFormat),
+		SphNumberFormat:   f,
 		SignerName:        pick(m, keySignerName, def.SignerName),
 		SignerPosition:    pick(m, keySignerPosition, def.SignerPosition),
 		DefaultNotes:      pick(m, keyDefaultNotes, ""),
@@ -246,11 +250,7 @@ func (s *SettingsService) PreviewNumber(format string) (string, error) {
 	if !strings.Contains(format, "{SEQ}") {
 		return "", NewValidationError("Format nomor SPH harus memuat placeholder {SEQ}.")
 	}
-	prefix := buildNumberPrefix(format, time.Now())
-	if prefix == "" {
-		return "", NewValidationError("Format nomor SPH tidak valid.")
-	}
-	return prefix + fmt.Sprintf("%03d", 1), nil
+	return composeNumber(format, "001", time.Now())
 }
 
 // CollabPortOrDefault membaca port WebSocket Work Together dari settings

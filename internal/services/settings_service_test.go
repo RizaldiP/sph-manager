@@ -21,7 +21,7 @@ func TestSettingsDefaultsAndGetUpdate(t *testing.T) {
 	if def.CompanyName != "PT. Ganesha Energi Indonesia" {
 		t.Errorf("nama perusahaan default salah: %q", def.CompanyName)
 	}
-	if def.SphNumberFormat != "SPH/GEI/{ROMAN}/{YYYY}/{SEQ}" {
+	if def.SphNumberFormat != "{SEQ}/SPH-GEI/{ROMAN}/{YYYY}" {
 		t.Errorf("format default salah: %q", def.SphNumberFormat)
 	}
 	if def.SignerName != "Matawai" || def.SignerPosition != "Direktur" {
@@ -76,8 +76,8 @@ func TestSettingsValidation(t *testing.T) {
 	if !strings.Contains(pv, "/2026/") && !strings.Contains(pv, "/") {
 		t.Errorf("preview aneh: %q", pv)
 	}
-	if !strings.HasSuffix(pv, "001") {
-		t.Errorf("preview harus berakhiran 001: %q", pv)
+	if !strings.HasPrefix(pv, "001/") {
+		t.Errorf("preview harus diawali 001: %q", pv)
 	}
 	if _, err := svc.PreviewNumber("TANPA-SEQ"); err == nil {
 		t.Error("preview tanpa {SEQ} harus ditolak")

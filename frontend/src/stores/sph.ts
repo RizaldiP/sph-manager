@@ -91,8 +91,8 @@ export const useSphStore = defineStore('sph', () => {
     return ExportSphPdf(id, orientation) as unknown as Promise<string>
   }
 
-  function openExportFolder(path: string) {
-    OpenExportFolder(path)
+  async function openExportFolder(path: string) {
+    await OpenExportFolder(path)
   }
 
   // ===== dashboard =====

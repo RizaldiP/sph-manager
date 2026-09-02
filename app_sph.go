@@ -21,6 +21,18 @@ func (a *App) DashboardStats() (*services.DashboardStats, error) {
 
 func (a *App) Terbilang(total int64) string { return services.Terbilang(total) }
 
+// ===== penomoran manual (BR-07) =====
+
+// SuggestSphNumber mengembalikan saran nomor urut 3 digit untuk periode tanggal.
+func (a *App) SuggestSphNumber(date string) (string, error) {
+	return a.sph.SuggestNumber(date)
+}
+
+// ComposeSphNumber merender nomor SPH lengkap dari nomor urut manual + tanggal.
+func (a *App) ComposeSphNumber(seq string, date string) (string, error) {
+	return a.sph.ComposeNumber(seq, date)
+}
+
 // ===== create / update / delete =====
 
 func (a *App) CreateSph(in services.SphSaveInput) (*services.SphDocumentView, error) {

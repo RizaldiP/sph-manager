@@ -109,7 +109,7 @@ const sections: NavSection[] = [
   {
     title: 'Lainnya',
     items: [
-      { label: 'Import / Export', to: '/impor-ekspor', icon: icons.transfer },
+      { label: 'Import', to: '/import', icon: icons.transfer },
       { label: 'Work Together', to: '/work-together', icon: icons.users },
       { label: 'Backup', to: '/backup', icon: icons.shield },
       { label: 'Pengaturan', to: '/pengaturan', icon: icons.cog }
