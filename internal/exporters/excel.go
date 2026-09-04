@@ -296,6 +296,10 @@ func writeRows(f *excelize.File, d *ExportData, start int, st *xlStyles) (int, e
 		nameCell := it.Name
 		if it.SubNo != "" {
 			nameCell = it.SubNo + ". " + nameCell
+			// sub point pada blok dgn main point terisi: rincian masuk uraian
+			if it.EmptyNumbers && it.Qty > 0 {
+				nameCell += qtyUnitSuffix(it.Qty, it.Unit)
+			}
 		}
 		nameLines := wrappedLines(nameCell, uraianWidth)
 		descText := joinDesc(it.Description, it.WeightNote)
@@ -319,11 +323,21 @@ func writeRows(f *excelize.File, d *ExportData, start int, st *xlStyles) (int, e
 		}
 		_ = f.SetCellValue(xlSheet, "B"+itoa(r), it.No)
 		_ = f.SetCellValue(xlSheet, "C"+itoa(r), uraian)
-		_ = f.SetCellValue(xlSheet, "F"+itoa(r), qtyValue(it.Qty))
-		_ = f.SetCellValue(xlSheet, "G"+itoa(r), it.Unit)
 
 		_ = f.SetCellStyle(xlSheet, "B"+itoa(r), "B"+itoa(r), bodyStyle)
 		_ = f.SetCellStyle(xlSheet, "C"+itoa(r), "C"+itoa(r), textStyle)
+
+		// kolom angka dikosongkan untuk baris bertipe EmptyNumbers
+		if it.EmptyNumbers {
+			_ = f.SetCellStyle(xlSheet, "F"+itoa(r), "G"+itoa(r), bodyStyle)
+			_ = f.SetCellStyle(xlSheet, "H"+itoa(r), "H"+itoa(r), bodyStyle)
+			_ = f.SetCellStyle(xlSheet, "I"+itoa(r), "K"+itoa(r), bodyStyle)
+			r++
+			continue
+		}
+
+		_ = f.SetCellValue(xlSheet, "F"+itoa(r), qtyValue(it.Qty))
+		_ = f.SetCellValue(xlSheet, "G"+itoa(r), it.Unit)
 		_ = f.SetCellStyle(xlSheet, "F"+itoa(r), "G"+itoa(r), bodyStyle)
 		if it.UnitPrice > 0 {
 			_ = f.SetCellValue(xlSheet, "H"+itoa(r), it.UnitPrice)
@@ -398,6 +412,11 @@ func writeTerbilangNotes(f *excelize.File, d *ExportData, start int, st *xlStyle
 		_ = f.SetCellValue(xlSheet, "B"+itoa(r), "Terbilang : "+d.Document.Terbilang+".")
 		_ = f.SetRowHeight(xlSheet, r, float64(wrappedLines("Terbilang : "+d.Document.Terbilang+".", 100)*12+8))
 		r++
+		// Baris kosong sebagai ruang tersendiri sebelum catatan SPH.
+		if d.Document.Notes != "" {
+			_ = f.SetRowHeight(xlSheet, r, 12)
+			r++
+		}
 	}
 	if n := d.Document.Notes; n != "" {
 		_ = f.MergeCell(xlSheet, "B"+itoa(r), "K"+itoa(r))
@@ -411,6 +430,9 @@ func terbilangNoteRows(d *ExportData) int {
 	n := 0
 	if d.Document.Terbilang != "" {
 		n++
+		if d.Document.Notes != "" {
+			n++
+		}
 	}
 	if d.Document.Notes != "" {
 		n++

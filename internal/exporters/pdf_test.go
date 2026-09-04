@@ -155,27 +155,62 @@ func TestWrapUraianSubPrefix(t *testing.T) {
 	g := newGeom(true)
 	sub := &Row{SubNo: "a", Name: "Bongkar pasang separator oli lama", Description: strings.Repeat("deskripsi lanjutan yang cukup panjang ", 8)}
 	lines := wrapUraian(pdf, tr, g, sub)
-	if len(lines) == 0 || !strings.HasPrefix(lines[0], "a. ") {
-		t.Fatalf("baris pertama harus diawali 'a. ', dapat %q", lines)
+	if len(lines) == 0 {
+		t.Fatalf("wrapUraian menghasilkan 0 baris")
 	}
+	// prefix "a." digambar terpisah oleh drawRow; wrapUraian hanya menghitung
+	// baris teks tanpa prefix agar tidak terjadi overflow atau penomoran ganda.
 	prefixW := pdf.GetStringWidth("a. ")
 	avail := g.wUraian - 2*pdfPad - indentOf(sub) - prefixW
 	for i, ln := range lines {
-		if i > 0 && strings.Contains(ln, " ") && pdf.GetStringWidth(ln) > avail+0.01 {
-			t.Errorf("baris lanjutan %d melebihi lebar valid: %q = %.1fmm (maks %.1f)", i, ln, pdf.GetStringWidth(ln), avail)
+		if strings.Contains(ln, " ") && pdf.GetStringWidth(ln) > avail+0.01 {
+			t.Errorf("baris %d melebihi lebar valid: %q = %.1fmm (maks %.1f)", i, ln, pdf.GetStringWidth(ln), avail)
 		}
 	}
-	rest := strings.TrimPrefix(lines[0], "a. ")
-	if !strings.Contains(rest, "Bongkar") {
-		t.Error("isi teks sub point hilang setelah awalan huruf")
+	if !strings.Contains(lines[0], "Bongkar") {
+		t.Error("isi teks sub point hilang")
 	}
-	if strings.TrimSpace(rest) == "" {
-		t.Error("nama sub point kosong setelah awalan huruf")
+	if strings.TrimSpace(lines[0]) == "" {
+		t.Error("nama sub point kosong")
 	}
-	// main point tidak boleh dapat awalan huruf
+	// main point tidak boleh dikurangi lebarnya (prefix = 0)
 	main := &Row{SubNo: "", Name: "Perbaikan Separator Oli"}
 	if l := wrapUraian(pdf, tr, g, main); l[0] != "Perbaikan Separator Oli" {
 		t.Errorf("main point berubah: %q", l)
+	}
+}
+
+// TestUraianTextQtyUnitSuffix: sub point EmptyNumbers menampilkan "(qty satuan)",
+// main point dan sub point normal tetap tanpa akhiran tersebut.
+func TestUraianTextQtyUnitSuffix(t *testing.T) {
+	sub := &Row{SubNo: "a", Name: "Bongkar pasang", EmptyNumbers: true, Qty: 1, Unit: "giat"}
+	got := uraianText(sub)
+	if got != "Bongkar pasang (1 giat)" {
+		t.Errorf("sub EmptyNumbers uraian = %q", got)
+	}
+
+	// qty 0 -> tanpa akhiran
+	zero := &Row{SubNo: "a", Name: "Bongkar pasang", EmptyNumbers: true, Qty: 0, Unit: "giat"}
+	if got := uraianText(zero); got != "Bongkar pasang" {
+		t.Errorf("sub qty 0 uraian = %q", got)
+	}
+
+	// sub normal (bukan EmptyNumbers) tidak boleh dapat akhiran
+	normal := &Row{SubNo: "a", Name: "Bongkar pasang", Qty: 1, Unit: "giat"}
+	if got := uraianText(normal); got != "Bongkar pasang" {
+		t.Errorf("sub normal uraian = %q", got)
+	}
+
+	// main point tidak boleh dapat akhiran
+	main := &Row{No: "1", Name: "Perbaikan", EmptyNumbers: true, Qty: 1, Unit: "unit"}
+	if got := uraianText(main); got != "Perbaikan" {
+		t.Errorf("main EmptyNumbers uraian = %q", got)
+	}
+
+	// deskripsi tetap menyusul di baris berikutnya
+	withDesc := &Row{SubNo: "a", Name: "Bongkar", EmptyNumbers: true, Qty: 2, Unit: "ls", Description: "rincian pekerjaan"}
+	if got := uraianText(withDesc); got != "Bongkar (2 ls)\nrincian pekerjaan" {
+		t.Errorf("sub + desc uraian = %q", got)
 	}
 }
 
@@ -271,6 +306,119 @@ func TestRekapMovesToNewPageWhenFull(t *testing.T) {
 		left := g.pageH - pdfFooterZone - (g.pageH - pdfMargin)
 		if left >= need {
 			t.Errorf("landscape=%v rekap harus pindah halaman saat penuh: sisa %.1f need %.1f", landscape, left, need)
+		}
+	}
+}
+
+// TestPageBodyStart memastikan posisi awal badan tabel konsisten dgn BuildPDF.
+func TestPageBodyStart(t *testing.T) {
+	g := newGeom(true)
+	kopH := 40.0
+	headH := tableHeadHeight()
+	if got := pageBodyStart(g, kopH, 0); got != pdfMargin+2+headH+kopH {
+		t.Errorf("halaman 1 body start = %.1f", got)
+	}
+	if got := pageBodyStart(g, kopH, 1); got != pdfMargin+2+headH+pindahanHeight() {
+		t.Errorf("halaman 2+ body start = %.1f", got)
+	}
+}
+
+// TestMoveTailRows memindahkan hingga n baris terakhir ke halaman penutup baru.
+func TestMoveTailRows(t *testing.T) {
+	pages := [][]int{{0, 1, 2, 3, 4, 5}}
+	moved := moveTailRows(pages, 3)
+	if len(moved) != 2 {
+		t.Fatalf("harus jadi 2 halaman, dapat %d: %v", len(moved), moved)
+	}
+	if len(moved[0]) != 3 || len(moved[1]) != 3 {
+		t.Fatalf("pembagian salah: %v", moved)
+	}
+	if moved[1][0] != 3 || moved[1][2] != 5 {
+		t.Errorf("baris pindah salah: %v", moved[1])
+	}
+
+	// bila isi halaman terakhir < n dan habis dipindah, halaman kosong dibuang
+	small := [][]int{{0, 1, 2}}
+	r := moveTailRows(small, 3)
+	if len(r) != 1 || len(r[0]) != 3 {
+		t.Fatalf("halaman kosong harus dibuang: %v", r)
+	}
+
+	more := [][]int{{0, 1}, {2, 3, 4, 5}}
+	r2 := moveTailRows(more, 3)
+	if len(r2) != 3 || len(r2[1]) != 1 || len(r2[2]) != 3 {
+		t.Fatalf("pindah dari halaman tengah salah: %v", r2)
+	}
+	if r2[2][0] != 3 || r2[2][2] != 5 {
+		t.Errorf("isi halaman penutup salah: %v", r2[2])
+	}
+}
+
+// TestBackfillKeepsLastPageNonEmpty: bila rekap terpaksa pindah halaman karena
+// halaman data terakhir penuh, backfill harus memindahkan beberapa baris uraian
+// ke halaman penutup agar lembar terakhir tidak kosong.
+func TestBackfillKeepsLastPageNonEmpty(t *testing.T) {
+	for _, landscape := range []bool{false, true} {
+		d := BuildData(fixtureSphDoc(), sampleCompany())
+		// deskripsi panjang agar baris tinggi -> halaman cepat penuh sehingga
+		// rekap tak muat di halaman data terakhir (memicu backfill).
+		for i := range d.Rows {
+			d.Rows[i].Description = strings.Repeat("deskripsi panjang kata demi kata yang cukup banyak ", 12)
+		}
+		extra := d.Rows
+		d.Rows = nil
+		for i := 0; i < 40; i++ {
+			d.Rows = append(d.Rows, extra...)
+		}
+
+		pdf := fpdf.New("P", "mm", "A4", "")
+		tr := pdf.UnicodeTranslatorFromDescriptor("")
+		g := newGeom(landscape)
+		kopH := kopHeight(pdf, tr, g, d)
+		headH := tableHeadHeight()
+		availFirst := g.usableH - kopH - headH - 2
+		availRest := g.usableH - headH - pindahanHeight() - 2
+		heights := make([]float64, len(d.Rows))
+		for i := range d.Rows {
+			heights[i] = rowHeightLines(len(wrapUraian(pdf, tr, g, &d.Rows[i])))
+		}
+		pages := paginate(heights, availFirst, availRest)
+
+		need := rekapHeight(pdf, tr, g, d) + signatureHeight(pdf, tr, g, d) + terbilangNotesHeight(pdf, tr, g, d) + 11
+		lastPI := len(pages) - 1
+		lastEndY := pageBodyStart(g, kopH, lastPI) + sumRowHeights(pages[lastPI], heights)
+		if g.pageH-pdfFooterZone-lastEndY >= need {
+			t.Logf("landscape=%v rekap muat di halaman data, lewati", landscape)
+			continue
+		}
+
+		before := len(pages[lastPI])
+		pages = moveTailRows(pages, 3)
+		afterLast := len(pages[len(pages)-1])
+		want := 3
+		if before < 3 {
+			want = before
+		}
+		if afterLast != want {
+			t.Errorf("landscape=%v halaman penutup harus %d baris, dapat %d", landscape, want, afterLast)
+		}
+
+		// total baris harus tetap (tidak hilang/doppel)
+		total := 0
+		for _, p := range pages {
+			total += len(p)
+		}
+		if total != len(heights) {
+			t.Errorf("landscape=%v total baris berubah: %d != %d", landscape, total, len(heights))
+		}
+
+		// BuildPDF dgn data yg sama tetap valid & lintas halaman
+		res, err := BuildPDF(d, PDFOptions{Landscape: landscape})
+		if err != nil {
+			t.Fatalf("landscape=%v BuildPDF gagal: %v", landscape, err)
+		}
+		if res.Pages <= 1 || !strings.HasPrefix(string(res.Bytes[:5]), "%PDF-") {
+			t.Errorf("landscape=%v output tidak valid: %d halaman", landscape, res.Pages)
 		}
 	}
 }

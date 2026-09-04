@@ -141,3 +141,68 @@ func TestWrappedLinesAndNumbers(t *testing.T) {
 		t.Error("qtyText salah")
 	}
 }
+
+// TestQtyUnitSuffix memeriksa format akhiran "(qty satuan)" sub point gaya uraian.
+func TestQtyUnitSuffix(t *testing.T) {
+	cases := []struct {
+		q    float64
+		unit string
+		want string
+	}{
+		{1, "giat", " (1 giat)"},
+		{2, "set", " (2 set)"},
+		{1, "", " (1)"},
+		{1.5, "ls", " (1,5 ls)"},
+		{0, "giat", ""},
+		{-1, "giat", ""},
+	}
+	for _, c := range cases {
+		if got := qtyUnitSuffix(c.q, c.unit); got != c.want {
+			t.Errorf("qtyUnitSuffix(%v,%q) = %q, mau %q", c.q, c.unit, got, c.want)
+		}
+	}
+}
+
+// TestMarkEmptyNumberRows memeriksa aturan per-blok: main point terisi ->
+// sub point EmptyNumbers; main point tanpa nilai -> main point EmptyNumbers.
+func TestMarkEmptyNumberRows(t *testing.T) {
+	// blok 1: main terisi (qty>0 & price>0) → sub point EmptyNumbers
+	// blok 2: main tanpa nilai → main EmptyNumbers, sub normal
+	rows := []Row{
+		{No: "1", Name: "Main Terisi", Bold: true, Qty: 1, UnitPrice: 100},
+		{SubNo: "a", Name: "sub1", Bold: false, Qty: 1, UnitPrice: 100},
+		{SubNo: "b", Name: "sub2", Bold: false, Qty: 2, UnitPrice: 50},
+		{No: "2", Name: "Main Kosong", Bold: true, Qty: 1, UnitPrice: 0},
+		{SubNo: "a", Name: "sub3", Bold: false, Qty: 1, UnitPrice: 300},
+	}
+	markEmptyNumberRows(rows)
+
+	if rows[0].EmptyNumbers {
+		t.Error("main point terisi tidak boleh EmptyNumbers")
+	}
+	if !rows[1].EmptyNumbers || !rows[2].EmptyNumbers {
+		t.Errorf("sub point pada main terisi harus EmptyNumbers: %+v %+v", rows[1], rows[2])
+	}
+	if !rows[3].EmptyNumbers {
+		t.Error("main point tanpa nilai harus EmptyNumbers")
+	}
+	if rows[4].EmptyNumbers {
+		t.Error("sub point pada main tanpa nilai tidak boleh EmptyNumbers")
+	}
+}
+
+// TestEmptyNumbersAppliedViaBuildData: fixture memicu kedua blok terisi/tdk.
+func TestEmptyNumbersAppliedViaBuildData(t *testing.T) {
+	d := BuildData(fixtureSphDoc(), sampleCompany())
+	// main 1: qty=2 & unitprice=5.500.000 → terisi; sub a & b jadi EmptyNumbers
+	if d.Rows[0].EmptyNumbers {
+		t.Error("main 1 (terisi) tidak boleh EmptyNumbers")
+	}
+	if !d.Rows[1].EmptyNumbers || !d.Rows[2].EmptyNumbers {
+		t.Errorf("sub a/b main1 harus EmptyNumbers: %+v %+v", d.Rows[1], d.Rows[2])
+	}
+	// main 2: Wiring Check qty=1 unitprice=0 → tidak terisi → EmptyNumbers
+	if !d.Rows[3].EmptyNumbers {
+		t.Error("main 2 (tanpa harga) harus EmptyNumbers")
+	}
+}

@@ -5,6 +5,7 @@ package exporters
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/RizaldiP/sph-manager/internal/models"
@@ -43,6 +44,12 @@ type DocumentInfo struct {
 // Main point menampilkan nilai ROLL-UP (termasuk seluruh sub point-nya,
 // sama seperti tampilan detail aplikasi); sub point menjorok dengan
 // rincian nilainya sendiri.
+//
+// EmptyNumbers menandai baris yang kolom angkanya (JML, SAT, Harga Satuan,
+// JASA, MAT, JML-total) sengaja dikosongkan dan hanya menampilkan No + Uraian:
+//   - main point tanpa nilai → kolom angka dikosongkan;
+//   - sub point pada blok dgn main point terisi → nilainya masuk ke uraian
+//     ("(qty satuan)") dan semua kolom angka dikosongkan.
 type Row struct {
 	No            string  // nomor main point ("1"); kosong untuk sub point
 	SubNo         string  // huruf sub point ("a"); kosong untuk main point
@@ -56,6 +63,7 @@ type Row struct {
 	MaterialTotal int64   //
 	Total         int64   //
 	Bold          bool    //
+	EmptyNumbers  bool    // kolom angka dikosongkan (lihat catatan di atas)
 }
 
 // ExportData sumber tunggal generator Excel dan PDF.
@@ -184,5 +192,49 @@ func BuildData(doc *models.SphDocument, company CompanyInfo) *ExportData {
 			d.Rows = append(d.Rows, r)
 		}
 	}
+	markEmptyNumberRows(d.Rows)
 	return d
+}
+
+// markEmptyNumberRows mengoleskan flag EmptyNumbers pada baris sesuai aturan
+// tampilan per blok (main point + sub point-nya yang berurutan):
+//
+//   - Main point terisi bila Qty>0 DAN UnitPrice>0. Saat terisi, seluruh sub
+//     point-nya memakai gaya "rincian masuk uraian" → kolom angka dikosongkan.
+//   - Bila main point tidak terisi, kolom angka main point itu sendiri yang
+//     dikosongkan (hanya No + Uraian tampil); sub point tampil normal di kolom.
+func markEmptyNumberRows(rows []Row) {
+	i := 0
+	for i < len(rows) {
+		if !rows[i].Bold {
+			i++
+			continue
+		}
+		main := &rows[i]
+		filled := main.Qty > 0 && main.UnitPrice > 0
+		if !filled {
+			main.EmptyNumbers = true
+		}
+		i++
+		for i < len(rows) && !rows[i].Bold {
+			if filled {
+				rows[i].EmptyNumbers = true
+			}
+			i++
+		}
+	}
+}
+
+// qtyUnitSuffix membentuk akhiran "(qty satuan)" untuk sub point yang memakai
+// gaya uraian (main point terisi). Bila qty <= 0 akhiran kosong; bila unit
+// tidak diisi menjadi "(qty)".
+func qtyUnitSuffix(q float64, unit string) string {
+	if q <= 0 {
+		return ""
+	}
+	s := qtyText(q)
+	if u := strings.TrimSpace(unit); u != "" {
+		s += " " + u
+	}
+	return " (" + s + ")"
 }
