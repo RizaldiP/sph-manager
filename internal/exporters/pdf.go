@@ -3,6 +3,7 @@ package exporters
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -720,10 +721,21 @@ func signatureHeight(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, d *Expor
 	return 42.0
 }
 
-// drawSignature blok ttd kanan bawah (kota/tanggal, perusahaan, ruang, nama, jabatan).
+// drawSignature menggambar blok ttd kanan bawah (kota/tanggal, perusahaan,
+// ruang, nama, jabatan) plus stempel & tanda tangan (PNG transparan) pada
+// posisi hasil editor; bila belum diatur, dipakai posisi otomatis.
 func drawSignature(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, d *ExportData, y float64) {
 	const blockW = 78.0
 	x := pdfMargin + g.totalW - blockW
+
+	// Gambar tanda tangan & stempel ditempel di zona ttd. Gambar rusak/gagal
+	// dibaca tidak boleh membatalkan export (pola logo).
+	func() {
+		defer func() { _ = recover() }()
+		drawSignatureImage(pdf, x, y, d)
+		drawStampImage(pdf, x, y, d)
+	}()
+
 	dateLine := FormatDateID(d.Document.Date)
 	if d.Company.City != "" {
 		dateLine = d.Company.City + ", " + dateLine
@@ -738,6 +750,102 @@ func drawSignature(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, d *ExportD
 	pdf.SetFont("Helvetica", "", 10)
 	pdf.CellFormat(blockW, 5.5, tr(d.Company.SignerPosition), "", 2, "C", false, 0, "")
 	pdf.SetY(y + 34)
+}
+
+// effectiveSignPos mengembalikan posisi default (otomatis) bila belum diatur.
+func effectiveSignPos(c *CompanyInfo) (x, y, size float64) {
+	if c.SignatureSize > 0 {
+		return clampFrac(c.SignaturePosX), clampFrac(c.SignaturePosY), clampFrac(c.SignatureSize)
+	}
+	// default: terpusat, tepat di atas baris nama (mirip perilaku lama)
+	return 0.5, 0.19, 0.30
+}
+
+// effectiveStampPos serupa utk stempel (menimpa area tanda tangan).
+func effectiveStampPos(c *CompanyInfo) (x, y, size float64) {
+	if c.StampSize > 0 {
+		return clampFrac(c.StampPosX), clampFrac(c.StampPosY), clampFrac(c.StampSize)
+	}
+	return 0.5, 0.21, 0.32
+}
+
+func clampFrac(v float64) float64 {
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
+}
+
+// drawSignatureImage menggambar tanda tangan (PNG) pada posisi manual atau
+// default; proporsi dipertahankan dan dibatasi lebar blok.
+func drawSignatureImage(pdf *fpdf.Fpdf, x0, y float64, d *ExportData) {
+	if d.Company.SignaturePath == "" {
+		return
+	}
+	fx, fy, fw := effectiveSignPos(&d.Company)
+	placeImage(pdf, d.Company.SignaturePath, x0, y, fx, fy, fw)
+}
+
+// drawStampImage menggambar stempel (PNG) pada posisi manual atau default.
+func drawStampImage(pdf *fpdf.Fpdf, x0, y float64, d *ExportData) {
+	if d.Company.StampPath == "" {
+		return
+	}
+	fx, fy, fw := effectiveStampPos(&d.Company)
+	placeImage(pdf, d.Company.StampPath, x0, y, fx, fy, fw)
+}
+
+// placeImage menggambar PNG pada (x0+fx*W, y+fy*H) dgn lebar fw*W (tinggi
+// mengikuti rasio aspek), dibatasi agar tidak melewati kotak blok.
+func placeImage(pdf *fpdf.Fpdf, path string, x0, y, fx, fy, fw float64) {
+	if !fileExists(path) {
+		return
+	}
+	defer func() { _ = recover() }()
+	info := pdf.RegisterImageOptions(path, fpdf.ImageOptions{ReadDpi: false, ImageType: "png"})
+	if info == nil {
+		return
+	}
+	iw, ih := info.Width(), info.Height()
+	if iw <= 0 || ih <= 0 {
+		return
+	}
+	blockW, blockH := SignatureBlockW, SignatureBlockH
+	fw = clampFrac(fw)
+	if fw <= 0 {
+		fw = 0.30
+	}
+	w := fw * blockW
+	h := w * ih / iw
+	// jaga agar gambar tak lebih tinggi dari blok
+	if h > blockH {
+		h = blockH
+		w = h * iw / ih
+	}
+	ix := x0 + clampFrac(fx)*blockW
+	iy := y + clampFrac(fy)*blockH
+	// pastikan masih dalam kotak
+	if ix < x0 {
+		ix = x0
+	}
+	if ix+w > x0+blockW {
+		ix = x0 + blockW - w
+	}
+	if iy < y {
+		iy = y
+	}
+	if iy+h > y+blockH {
+		iy = y + blockH - h
+	}
+	pdf.Image(path, ix, iy, w, h, false, "", 0, "")
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
 
 // ===== util format =====

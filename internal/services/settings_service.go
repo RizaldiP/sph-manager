@@ -18,6 +18,14 @@ const (
 	keyCompanyCity     = "company_city"
 	keyCompanyAddress  = "company_address"
 	keyLogoPath        = "logo_path"
+	keyStampPath       = "stamp_path"
+	keySignaturePath   = "signature_path"
+	keyStampPosX       = "stamp_pos_x"
+	keyStampPosY       = "stamp_pos_y"
+	keyStampSize       = "stamp_size"
+	keySignPosX        = "signature_pos_x"
+	keySignPosY        = "signature_pos_y"
+	keySignSize        = "signature_size"
 	keySphNumberFormat = "sph_number_format"
 	keySignerName      = "signer_name"
 	keySignerPosition  = "signer_position"
@@ -47,6 +55,14 @@ type SettingsView struct {
 	CompanyCity       string `json:"companyCity"`
 	CompanyAddress    string `json:"companyAddress"`
 	LogoPath          string `json:"logoPath"`
+	StampPath         string `json:"stampPath"`
+	SignaturePath     string `json:"signaturePath"`
+	StampPosX         float64 `json:"stampPosX"`
+	StampPosY         float64 `json:"stampPosY"`
+	StampSize         float64 `json:"stampSize"`
+	SignaturePosX     float64 `json:"signaturePosX"`
+	SignaturePosY     float64 `json:"signaturePosY"`
+	SignatureSize     float64 `json:"signatureSize"`
 	SphNumberFormat   string `json:"sphNumberFormat"`
 	SignerName        string `json:"signerName"`
 	SignerPosition    string `json:"signerPosition"`
@@ -109,6 +125,19 @@ func pick(m map[string]string, key, def string) string {
 	return def
 }
 
+// pickPos membaca nilai posisi/ukuran (fraksi 0-1) dari string; bila bukan
+// angka valid dalam rentang [0,1], dipakai nilai default.
+func pickPos(s string, def float64) float64 {
+	if s == "" {
+		return def
+	}
+	f, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
+	if err != nil || f < 0 || f > 1 {
+		return def
+	}
+	return f
+}
+
 func (s *SettingsService) Get() (*SettingsView, error) {
 	m, err := s.loadMap()
 	if err != nil {
@@ -125,6 +154,14 @@ func (s *SettingsService) Get() (*SettingsView, error) {
 		CompanyCity:       pick(m, keyCompanyCity, def.CompanyCity),
 		CompanyAddress:    pick(m, keyCompanyAddress, ""),
 		LogoPath:          pick(m, keyLogoPath, ""),
+		StampPath:         pick(m, keyStampPath, ""),
+		SignaturePath:     pick(m, keySignaturePath, ""),
+		StampPosX:         pickPos(m[keyStampPosX], 0.50),
+		StampPosY:         pickPos(m[keyStampPosY], 0.40),
+		StampSize:         pickPos(m[keyStampSize], 0.45),
+		SignaturePosX:     pickPos(m[keySignPosX], 0.50),
+		SignaturePosY:     pickPos(m[keySignPosY], 0.18),
+		SignatureSize:     pickPos(m[keySignSize], 0.30),
 		SphNumberFormat:   f,
 		SignerName:        pick(m, keySignerName, def.SignerName),
 		SignerPosition:    pick(m, keySignerPosition, def.SignerPosition),
@@ -239,6 +276,91 @@ func (s *SettingsService) SetLogo(path string) (*SettingsView, error) {
 		return nil, fmt.Errorf("gagal menyimpan logo")
 	}
 	return s.Get()
+}
+
+// SetStamp menyimpan path stempel hasil upload (dipakai generator PDF).
+func (s *SettingsService) SetStamp(path string) (*SettingsView, error) {
+	return s.setImagePath(keyStampPath, path, "Stempel perusahaan")
+}
+
+// SetSignature menyimpan path tanda tangan hasil upload (dipakai generator PDF).
+func (s *SettingsService) SetSignature(path string) (*SettingsView, error) {
+	return s.setImagePath(keySignaturePath, path, "Tanda tangan")
+}
+
+// setImagePath menyimpan path gambar ke setting dengan audit; path kosong
+// berarti menghapus gambar.
+func (s *SettingsService) setImagePath(key, path, label string) (*SettingsView, error) {
+	path = trim(path)
+	if len(path) > 500 {
+		return nil, NewValidationError("Path gambar terlalu panjang.")
+	}
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		if err := repositories.SetSetting(tx, key, path); err != nil {
+			return err
+		}
+		desc := label + " diperbarui"
+		if path == "" {
+			desc = label + " dihapus"
+		}
+		return s.audit.Write(tx, "UPDATE", "settings", 0, desc)
+	})
+	if err != nil {
+		if isFriendly(err) {
+			return nil, err
+		}
+		s.log.Error("gagal menyimpan gambar", "key", key, "error", err)
+		return nil, fmt.Errorf("gagal menyimpan gambar")
+	}
+	return s.Get()
+}
+
+// SetStampPosition menyimpan posisi & ukuran stempel (fraksi 0-1 thd blok ttd).
+func (s *SettingsService) SetStampPosition(x, y, size float64) (*SettingsView, error) {
+	return s.setPosition("Stempel", keyStampPosX, keyStampPosY, keyStampSize, x, y, size)
+}
+
+// SetSignaturePosition menyimpan posisi & ukuran tanda tangan (fraksi 0-1).
+func (s *SettingsService) SetSignaturePosition(x, y, size float64) (*SettingsView, error) {
+	return s.setPosition("Tanda tangan", keySignPosX, keySignPosY, keySignSize, x, y, size)
+}
+
+// setPosition menyimpan tiga nilai fraksi posisi/ukuran (x, y, size) yg
+// di-clamp ke rentang [0,1], beserta catatan audit.
+func (s *SettingsService) setPosition(label, kx, ky, ks string, x, y, size float64) (*SettingsView, error) {
+	x = clamp01(x)
+	y = clamp01(y)
+	size = clamp01(size)
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		pairs := []struct{ key, value string }{
+			{kx, strconv.FormatFloat(x, 'f', -1, 64)},
+			{ky, strconv.FormatFloat(y, 'f', -1, 64)},
+			{ks, strconv.FormatFloat(size, 'f', -1, 64)},
+		}
+		for _, p := range pairs {
+			if err := repositories.SetSetting(tx, p.key, p.value); err != nil {
+				return err
+			}
+		}
+		return s.audit.Write(tx, "UPDATE", "settings", 0, label+" diatur ulang posisinya")
+	})
+	if err != nil {
+		if isFriendly(err) {
+			return nil, err
+		}
+		s.log.Error("gagal menyimpan posisi", "label", label, "error", err)
+		return nil, fmt.Errorf("gagal menyimpan posisi %s", label)	}
+	return s.Get()
+}
+
+func clamp01(v float64) float64 {
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
 }
 
 // PreviewNumber merender format dengan tanggal hari ini dan contoh urut 001.

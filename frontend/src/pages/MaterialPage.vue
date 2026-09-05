@@ -91,7 +91,8 @@
 
     <!-- Form material -->
     <AppModal v-model="formOpen" :title="editing ? 'Edit Material' : 'Tambah Material'">
-      <form class="space-y-3.5" @submit.prevent="submit">
+      <form class="space-y-3.5" @submit.prevent="submit" @keydown.ctrl.enter.prevent="submit">
+        <p v-if="savedNote" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-700">{{ savedNote }}</p>
         <div>
           <label class="mb-1 block text-[13px] font-medium text-slate-600">Nama <span class="text-red-500">*</span></label>
           <input
@@ -204,6 +205,14 @@ const editing = ref<MaterialView | null>(null)
 const form = reactive(emptyMaterial())
 const formError = ref('')
 const busy = ref(false)
+const savedNote = ref('')
+
+let savedNoteTimer: ReturnType<typeof setTimeout> | null = null
+function flashSaved() {
+  savedNote.value = '✓ Data material tersimpan.'
+  if (savedNoteTimer) clearTimeout(savedNoteTimer)
+  savedNoteTimer = setTimeout(() => (savedNote.value = ''), 3000)
+}
 
 function openForm(m?: MaterialView) {
   formError.value = ''
@@ -218,11 +227,14 @@ async function submit() {
   try {
     if (editing.value) {
       await store.update(editing.value.id, form)
+      formOpen.value = false
     } else {
       await store.create(form)
+      Object.assign(form, emptyMaterial())
+      formError.value = ''
+      flashSaved()
     }
     await store.load()
-    formOpen.value = false
   } catch (e) {
     formError.value = errorMessage(e)
   } finally {

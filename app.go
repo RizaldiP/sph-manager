@@ -12,6 +12,7 @@ import (
 	"github.com/RizaldiP/sph-manager/internal/database"
 	"github.com/RizaldiP/sph-manager/internal/masterdata"
 	"github.com/RizaldiP/sph-manager/internal/services"
+	"github.com/RizaldiP/sph-manager/internal/sharebackup"
 	"gorm.io/gorm"
 )
 
@@ -42,6 +43,8 @@ type App struct {
 	backup     *services.BackupService
 	collabMgr  *collaboration.Manager
 	masterSvc  *masterdata.Service
+	share      *sharebackup.Service
+	sharePath  string
 
 	restoreMu sync.Mutex
 }
@@ -71,6 +74,7 @@ func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {
 		settings:   settingsSvc,
 		export:     services.NewExportService(sphSvc, settingsSvc, lg),
 		backup:     services.NewBackupService(db, cfg.BackupDir, lg),
+		share:      sharebackup.NewService(db, lg),
 		collabMgr:  collabMgr,
 		masterSvc:  masterSvc,
 	}

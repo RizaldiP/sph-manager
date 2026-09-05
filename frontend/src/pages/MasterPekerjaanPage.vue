@@ -293,7 +293,8 @@
 
     <!-- Modal form pekerjaan -->
     <AppModal v-model="wiFormOpen" :title="editingWi ? 'Edit Pekerjaan' : 'Tambah Pekerjaan'" size="lg">
-      <form class="grid grid-cols-2 gap-x-4 gap-y-3.5" @submit.prevent="submitWiForm">
+      <form class="grid grid-cols-2 gap-x-4 gap-y-3.5" @submit.prevent="submitWiForm" @keydown.ctrl.enter.prevent="submitWiForm">
+        <p v-if="wiSavedNote" class="col-span-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-700">{{ wiSavedNote }}</p>
         <div class="col-span-2">
           <label class="mb-1 block text-[13px] font-medium text-slate-600">Kategori <span class="text-red-500">*</span></label>
           <select
@@ -356,7 +357,8 @@
 
     <!-- Modal form sub-pekerjaan -->
     <AppModal v-model="subFormOpen" :title="editingSub ? 'Edit Sub-Pekerjaan' : 'Tambah Sub-Pekerjaan'">
-      <form class="space-y-3.5" @submit.prevent="submitSubForm">
+      <form class="space-y-3.5" @submit.prevent="submitSubForm" @keydown.ctrl.enter.prevent="submitSubForm">
+        <p v-if="subSavedNote" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-700">{{ subSavedNote }}</p>
         <div>
           <label class="mb-1 block text-[13px] font-medium text-slate-600">Nama <span class="text-red-500">*</span></label>
           <input v-model="subForm.name" type="text" required maxlength="300" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
@@ -629,6 +631,15 @@ const wiFormOpen = ref(false)
 const editingWi = ref<WorkItemView | null>(null)
 const wiForm = ref(emptyWorkItem())
 const wiFormError = ref('')
+const wiSavedNote = ref('')
+
+let savedNoteTimer: ReturnType<typeof setTimeout> | null = null
+function flashSaved(target: 'wi' | 'sub', text: string) {
+  const note = target === 'wi' ? wiSavedNote : subSavedNote
+  note.value = text
+  if (savedNoteTimer) clearTimeout(savedNoteTimer)
+  savedNoteTimer = setTimeout(() => (note.value = ''), 3000)
+}
 
 function openCreateWi() {
   editingWi.value = null
@@ -671,7 +682,14 @@ async function submitWiForm() {
       saved = await store.createWorkItem(payload)
     }
     applyDetail(saved)
-    wiFormOpen.value = false
+    if (editingWi.value) {
+      wiFormOpen.value = false
+    } else {
+      wiForm.value = emptyWorkItem(store.wiCategoryId)
+      pickedWiMaterial.value = null
+      wiFormError.value = ''
+      flashSaved('wi', '✓ Data pekerjaan tersimpan.')
+    }
     await Promise.all([store.loadWorkItems(), store.loadCategories()])
   } catch (e) {
     wiFormError.value = errorMessage(e)
@@ -747,6 +765,7 @@ const subFormOpen = ref(false)
 const editingSub = ref<WorkSubItem | null>(null)
 const subForm = ref(emptySubItem())
 const subFormError = ref('')
+const subSavedNote = ref('')
 
 function openCreateSub() {
   if (expandedId.value === null) return
@@ -791,7 +810,14 @@ async function submitSubForm() {
       saved = await store.createSubItem(payload)
     }
     applyDetail(saved)
-    subFormOpen.value = false
+    if (editingSub.value) {
+      subFormOpen.value = false
+    } else {
+      subForm.value = emptySubItem(expandedId.value ?? 0)
+      pickedSubMaterial.value = null
+      subFormError.value = ''
+      flashSaved('sub', '✓ Data sub-pekerjaan tersimpan.')
+    }
     await store.loadWorkItems()
   } catch (e) {
     subFormError.value = errorMessage(e)

@@ -38,8 +38,16 @@ func (s *ExportService) ExportData(id uint) (*exporters.ExportData, error) {
 		City:           view.CompanyCity,
 		Address:        view.CompanyAddress,
 		LogoPath:       view.LogoPath,
+		StampPath:      view.StampPath,
+		SignaturePath:  view.SignaturePath,
 		SignerName:     view.SignerName,
 		SignerPosition: view.SignerPosition,
+		StampPosX:      view.StampPosX,
+		StampPosY:      view.StampPosY,
+		StampSize:      view.StampSize,
+		SignaturePosX:  view.SignaturePosX,
+		SignaturePosY:  view.SignaturePosY,
+		SignatureSize:  view.SignatureSize,
 	})
 	return data, nil
 }

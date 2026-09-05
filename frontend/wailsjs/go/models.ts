@@ -733,6 +733,56 @@ export namespace main {
 	        this.message = source["message"];
 	    }
 	}
+	export class ShareBackupCreateResult {
+	    path: string;
+	    items: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ShareBackupCreateResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.items = source["items"];
+	    }
+	}
+	export class ShareBackupPreview {
+	    path: string;
+	    deviceName: string;
+	    createdAt: string;
+	    counts: sharebackup.SectionCounts;
+	
+	    static createFrom(source: any = {}) {
+	        return new ShareBackupPreview(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.deviceName = source["deviceName"];
+	        this.createdAt = source["createdAt"];
+	        this.counts = this.convertValues(source["counts"], sharebackup.SectionCounts);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 
@@ -2105,6 +2155,14 @@ export namespace services {
 	    companyCity: string;
 	    companyAddress: string;
 	    logoPath: string;
+	    stampPath: string;
+	    signaturePath: string;
+	    stampPosX: number;
+	    stampPosY: number;
+	    stampSize: number;
+	    signaturePosX: number;
+	    signaturePosY: number;
+	    signatureSize: number;
 	    sphNumberFormat: string;
 	    signerName: string;
 	    signerPosition: string;
@@ -2122,6 +2180,14 @@ export namespace services {
 	        this.companyCity = source["companyCity"];
 	        this.companyAddress = source["companyAddress"];
 	        this.logoPath = source["logoPath"];
+	        this.stampPath = source["stampPath"];
+	        this.signaturePath = source["signaturePath"];
+	        this.stampPosX = source["stampPosX"];
+	        this.stampPosY = source["stampPosY"];
+	        this.stampSize = source["stampSize"];
+	        this.signaturePosX = source["signaturePosX"];
+	        this.signaturePosY = source["signaturePosY"];
+	        this.signatureSize = source["signatureSize"];
 	        this.sphNumberFormat = source["sphNumberFormat"];
 	        this.signerName = source["signerName"];
 	        this.signerPosition = source["signerPosition"];
@@ -2358,6 +2424,99 @@ export namespace services {
 	        this.subItemCount = source["subItemCount"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+
+}
+
+export namespace sharebackup {
+	
+	export class SectionInstallResult {
+	    added: number;
+	    skipped: number;
+	    codeGenerated: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SectionInstallResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.added = source["added"];
+	        this.skipped = source["skipped"];
+	        this.codeGenerated = source["codeGenerated"];
+	    }
+	}
+	export class InstallSummary {
+	    categories: SectionInstallResult;
+	    workItems: SectionInstallResult;
+	    subItems: SectionInstallResult;
+	    templates: SectionInstallResult;
+	    customers: SectionInstallResult;
+	    vessels: SectionInstallResult;
+	    materials: SectionInstallResult;
+	    sph: SectionInstallResult;
+	    templateItemsAdded: number;
+	    templateItemsMissed: number;
+	    sphItemsUnlinked: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new InstallSummary(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.categories = this.convertValues(source["categories"], SectionInstallResult);
+	        this.workItems = this.convertValues(source["workItems"], SectionInstallResult);
+	        this.subItems = this.convertValues(source["subItems"], SectionInstallResult);
+	        this.templates = this.convertValues(source["templates"], SectionInstallResult);
+	        this.customers = this.convertValues(source["customers"], SectionInstallResult);
+	        this.vessels = this.convertValues(source["vessels"], SectionInstallResult);
+	        this.materials = this.convertValues(source["materials"], SectionInstallResult);
+	        this.sph = this.convertValues(source["sph"], SectionInstallResult);
+	        this.templateItemsAdded = source["templateItemsAdded"];
+	        this.templateItemsMissed = source["templateItemsMissed"];
+	        this.sphItemsUnlinked = source["sphItemsUnlinked"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SectionCounts {
+	    sph: number;
+	    workItems: number;
+	    categories: number;
+	    templates: number;
+	    customers: number;
+	    materials: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SectionCounts(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sph = source["sph"];
+	        this.workItems = source["workItems"];
+	        this.categories = source["categories"];
+	        this.templates = source["templates"];
+	        this.customers = source["customers"];
+	        this.materials = source["materials"];
 	    }
 	}
 

@@ -17,8 +17,20 @@ type CompanyInfo struct {
 	City           string
 	Address        string
 	LogoPath       string // kosong bila belum ada logo
+	StampPath      string // PNG stempel (transparan); dirender di blok ttd PDF
+	SignaturePath  string // PNG tanda tangan; dirender di blok ttd PDF
 	SignerName     string
 	SignerPosition string
+
+	// Posisi & ukuran (fraksi 0-1 thd kotak blok ttd 78x42mm) hasil editor.
+	// Konvensi: x/y adalah posisi pojok kiri-atas gambar, size adalah lebar
+	// (fraksi lebar blok); tinggi mengikuti rasio aspek PNG.
+	StampPosX     float64
+	StampPosY     float64
+	StampSize     float64
+	SignaturePosX float64
+	SignaturePosY float64
+	SignatureSize float64
 }
 
 // DocumentInfo identitas dokumen SPH yang dicetak.
@@ -65,6 +77,15 @@ type Row struct {
 	Bold          bool    //
 	EmptyNumbers  bool    // kolom angka dikosongkan (lihat catatan di atas)
 }
+
+// SignatureBlockW/H dimensi kotak referensi blok tanda tangan (mm) di PDF
+// (78 x 42). Posisi & ukuran ttd/stempel disimpan sebagai fraksi (0-1)
+// terhadap kotak ini; Excel memetakan fraksi yg sama ke area ttd-nya
+// masing-masing sehingga editor konsisten di PDF & Excel.
+const (
+	SignatureBlockW = 78.0
+	SignatureBlockH = 42.0
+)
 
 // ExportData sumber tunggal generator Excel dan PDF.
 type ExportData struct {

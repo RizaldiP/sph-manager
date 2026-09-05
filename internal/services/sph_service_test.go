@@ -1,9 +1,11 @@
 package services
 
 import (
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -48,7 +50,7 @@ func TestTerbilangConversion(t *testing.T) {
 func sampleSphInput(customerID uint) SphSaveInput {
 	return SphSaveInput{
 		Header: SphHeaderInput{
-			Date:        "2026-08-24",
+			Date:        time.Now().Format("2006-01-02"),
 			Sequence:    "001",
 			CustomerID:  customerID,
 			ProjectName: "Docking KM Bahari",
@@ -88,7 +90,8 @@ func TestSphCreateSnapshotAndNumbering(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create SPH gagal: %v", err)
 	}
-	if !strings.HasPrefix(d1.DocumentNumber, "001/SPH-GEI/VIII/2026") {
+	expectedSeq1 := fmt.Sprintf("001/SPH-GEI/%s/%04d", romanMonths[int(time.Now().Month())-1], time.Now().Year())
+	if !strings.HasPrefix(d1.DocumentNumber, expectedSeq1) {
 		t.Errorf("nomor tidak sesuai format BR-07: %q", d1.DocumentNumber)
 	}
 	if d1.Status != models.StatusDraft || d1.Revision != 0 {
@@ -129,7 +132,8 @@ func TestSphCreateSnapshotAndNumbering(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create SPH kedua gagal: %v", err)
 	}
-	if d2.DocumentNumber != "005/SPH-GEI/VIII/2026" {
+	expectedSeq2 := fmt.Sprintf("005/SPH-GEI/%s/%04d", romanMonths[int(time.Now().Month())-1], time.Now().Year())
+	if d2.DocumentNumber != expectedSeq2 {
 		t.Errorf("penomoran manual salah: %q", d2.DocumentNumber)
 	}
 

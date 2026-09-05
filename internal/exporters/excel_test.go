@@ -145,3 +145,52 @@ func TestBuildExcelEmptyAndNoLogo(t *testing.T) {
 		t.Errorf("judul default salah: %q", v)
 	}
 }
+
+// TestBuildExcelSignatureImages memastikan stempel & tanda tangan (PNG)
+// ditempel ke blok ttd Excel sesuai posisi editor.
+func TestBuildExcelSignatureImages(t *testing.T) {
+	dir := t.TempDir()
+	stamp := writeTestPNG(t, dir, "stamp.png", 200, 200)
+	sign := writeTestPNG(t, dir, "sign.png", 400, 100)
+
+	d := buildFixture()
+	d.Company.StampPath = stamp
+	d.Company.SignaturePath = sign
+	d.Company.StampPosX, d.Company.StampPosY, d.Company.StampSize = 0.5, 0.40, 0.45
+	d.Company.SignaturePosX, d.Company.SignaturePosY, d.Company.SignatureSize = 0.35, 0.18, 0.30
+
+	f, err := BuildExcel(d)
+	if err != nil {
+		t.Fatalf("BuildExcel dgn stempel/ttd gagal: %v", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	// cari baris nama penandatangan; gambar dianker pada "I"+start blok ttd,
+	// dan nama berada di baris ke-6 (index 5) dari blok tsb.
+	nameRow := 0
+	for r := 20; r <= 80; r++ {
+		if v, _ := f.GetCellValue("SPH", "I"+itoa(r)); v == "Matawai" {
+			nameRow = r
+			break
+		}
+	}
+	if nameRow == 0 {
+		t.Fatal("nama penandatangan tidak ditemukan")
+	}
+	anchor := "I" + itoa(nameRow-5)
+	pics, err := f.GetPictures("SPH", anchor)
+	if err != nil {
+		t.Fatalf("GetPictures gagal: %v", err)
+	}
+	if len(pics) != 2 {
+		t.Errorf("jumlah gambar terpasang di %s = %d, mau 2", anchor, len(pics))
+	}
+
+	// tanpa gambar: tidak boleh ada objek gambar
+	d2 := &ExportData{Company: sampleCompany()}
+	f2, _ := BuildExcel(d2)
+	defer func() { _ = f2.Close() }()
+	if p2, _ := f2.GetPictures("SPH", anchor); len(p2) != 0 {
+		t.Errorf("tanpa stempel/ttd tidak boleh ada gambar: %d", len(p2))
+	}
+}

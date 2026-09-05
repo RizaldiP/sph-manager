@@ -116,7 +116,8 @@
 
     <!-- Modal data template -->
     <AppModal v-model="formOpen" :title="editing ? 'Edit Template' : 'Tambah Template'">
-      <form class="space-y-3.5" @submit.prevent="submitForm">
+      <form class="space-y-3.5" @submit.prevent="submitForm" @keydown.ctrl.enter.prevent="submitForm">
+        <p v-if="savedNote" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-700">{{ savedNote }}</p>
         <div>
           <label class="mb-1 block text-[13px] font-medium text-slate-600">Kode</label>
           <input
@@ -332,6 +333,14 @@ const editing = ref<TemplateView | null>(null)
 const form = ref({ name: '', description: '', notes: '' })
 const formError = ref('')
 const saving = ref(false)
+const savedNote = ref('')
+
+let savedNoteTimer: ReturnType<typeof setTimeout> | null = null
+function flashSaved() {
+  savedNote.value = '✓ Data template tersimpan.'
+  if (savedNoteTimer) clearTimeout(savedNoteTimer)
+  savedNoteTimer = setTimeout(() => (savedNote.value = ''), 3000)
+}
 
 function openCreate() {
   editing.value = null
@@ -357,11 +366,14 @@ async function submitForm() {
   try {
     if (editing.value) {
       await store.updateTemplate(editing.value.id, form.value)
+      formOpen.value = false
     } else {
-      const created = await store.createTemplate(form.value)
-      await openItems(created)
+      await store.createTemplate(form.value)
+      form.value = { name: '', description: '', notes: '' }
+      formError.value = ''
+      flashSaved()
+      await store.loadTemplates()
     }
-    formOpen.value = false
   } catch (e) {
     formError.value = errorMessage(e)
   } finally {

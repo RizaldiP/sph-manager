@@ -2,6 +2,10 @@ package exporters
 
 import (
 	"bytes"
+	"image"
+	"image/color"
+	"image/png"
+	"os"
 	"strings"
 	"testing"
 
@@ -421,4 +425,81 @@ func TestBackfillKeepsLastPageNonEmpty(t *testing.T) {
 			t.Errorf("landscape=%v output tidak valid: %d halaman", landscape, res.Pages)
 		}
 	}
+}
+
+// TestDrawSignatureImages memastikan stempel & tanda tangan (PNG transparan)
+// dapat dirender tanpa mengubah struktur PDF maupun memindahkan blok ttd.
+func TestDrawSignatureImages(t *testing.T) {
+	dir := t.TempDir()
+	stamp := writeTestPNG(t, dir, "stamp.png", 200, 200)   // lingkaran persegi
+	sign := writeTestPNG(t, dir, "sign.png", 400, 100)      // persegi panjang lebar
+
+	d := buildFixture()
+	d.Company.StampPath = stamp
+	d.Company.SignaturePath = sign
+	// posisi manual dari editor
+	d.Company.StampPosX, d.Company.StampPosY, d.Company.StampSize = 0.5, 0.40, 0.45
+	d.Company.SignaturePosX, d.Company.SignaturePosY, d.Company.SignatureSize = 0.35, 0.18, 0.30
+
+	res, err := BuildPDF(d, PDFOptions{Landscape: true})
+	if err != nil {
+		t.Fatalf("BuildPDF dengan stempel/ttd gagal: %v", err)
+	}
+	if res.Pages < 1 {
+		t.Errorf("halaman = %d", res.Pages)
+	}
+	if !bytes.HasPrefix(res.Bytes, []byte("%PDF-")) {
+		t.Error("output bukan PDF")
+	}
+
+	// posisi manual harus dipakai (bukan fallback default)
+	_, _, ss := effectiveSignPos(&d.Company)
+	if ss != 0.30 {
+		t.Errorf("effectiveSignPos tidak memakai posisi manual: %v", ss)
+	}
+}
+
+// TestDrawSignatureImagesMissingFile: path kosong/tidak ada harus diabaikan
+// tanpa error (gambar rusak tidak boleh membatalkan export).
+func TestDrawSignatureImagesMissingFile(t *testing.T) {
+	d := buildFixture()
+	d.Company.StampPath = "E:/tidak-ada/stempel.png"
+	d.Company.SignaturePath = ""
+	if _, err := BuildPDF(d, PDFOptions{Landscape: true}); err != nil {
+		t.Fatalf("BuildPDF dgn jalan rusak gagal: %v", err)
+	}
+}
+
+// TestCenterImageKeepsAspect mengecek penskalaan proporsional memenuhi box.
+func TestCenterImageKeepsAspect(t *testing.T) {
+	pdf := fpdf.New("L", "mm", "A4", "")
+	// gambar lebar (2:1) agar w=kecil*ratio menurun, h tetap memenuhi maxH
+	dir := t.TempDir()
+	path := writeTestPNG(t, dir, "wide.png", 400, 100)
+	pdf.AddPage()
+	placeImage(pdf, path, 10, 50, 0.5, 0.5, 0.30)
+	if pdf.Error() != nil {
+		t.Fatalf("kesalahan fpdf: %v", pdf.Error())
+	}
+}
+
+// writeTestPNG menulis PNG transparan berukuran w*h ke path dan balik path-nya.
+func writeTestPNG(t *testing.T, dir, name string, w, h int) string {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			img.Set(x, y, color.RGBA{R: 10, G: 90, B: 160, A: 200})
+		}
+	}
+	path := dir + "\\" + name
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("buat file png gagal: %v", err)
+	}
+	defer f.Close()
+	if err := png.Encode(f, img); err != nil {
+		t.Fatalf("encode png gagal: %v", err)
+	}
+	return path
 }

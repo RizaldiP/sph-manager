@@ -6,6 +6,7 @@ import {masterdata} from '../models';
 import {models} from '../models';
 import {main} from '../models';
 import {importers} from '../models';
+import {sharebackup} from '../models';
 
 export function AssignTurns(arg1:Record<string, Array<string>>):Promise<void>;
 
@@ -19,6 +20,10 @@ export function ClearChatUnread():Promise<void>;
 
 export function ClearLogo():Promise<services.SettingsView>;
 
+export function ClearSignature():Promise<services.SettingsView>;
+
+export function ClearStamp():Promise<services.SettingsView>;
+
 export function CloseCollabRoom():Promise<void>;
 
 export function ComposeSphNumber(arg1:string,arg2:string):Promise<string>;
@@ -30,6 +35,8 @@ export function CreateCollabRoom(arg1:number,arg2:string,arg3:string):Promise<co
 export function CreateCustomer(arg1:models.Customer):Promise<services.CustomerView>;
 
 export function CreateMaterial(arg1:models.Material):Promise<models.Material>;
+
+export function CreateShareableBackup():Promise<main.ShareBackupCreateResult>;
 
 export function CreateSph(arg1:services.SphSaveInput):Promise<services.SphDocumentView>;
 
@@ -135,11 +142,17 @@ export function OpenBackupFolder():Promise<void>;
 
 export function OpenExportFolder(arg1:string):Promise<void>;
 
+export function OpenShareableBackup():Promise<main.ShareBackupPreview>;
+
 export function ParseImportRows(arg1:string,arg2:string,arg3:importers.ColumnMapping):Promise<Array<importers.PreviewRow>>;
 
 export function PickImportFile():Promise<string>;
 
 export function PickLogo():Promise<services.SettingsView>;
+
+export function PickSignature():Promise<services.SettingsView>;
+
+export function PickStamp():Promise<services.SettingsView>;
 
 export function PreviewImportSheet(arg1:string,arg2:string):Promise<importers.SheetPreview>;
 
@@ -165,6 +178,8 @@ export function RequestEdit(arg1:string):Promise<void>;
 
 export function RestoreBackup(arg1:string):Promise<main.RestoreResult>;
 
+export function RestoreShareableBackup(arg1:Array<string>):Promise<sharebackup.InstallSummary>;
+
 export function RunWorkItemImport(arg1:number,arg2:string,arg3:string,arg4:importers.ColumnMapping,arg5:Array<services.ConfirmRow>):Promise<services.ImportResult>;
 
 export function SendChatMessage(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
@@ -179,7 +194,11 @@ export function SetCustomerActive(arg1:number,arg2:boolean):Promise<void>;
 
 export function SetMaterialActive(arg1:number,arg2:boolean):Promise<void>;
 
+export function SetSignaturePosition(arg1:number,arg2:number,arg3:number):Promise<services.SettingsView>;
+
 export function SetSphStatus(arg1:number,arg2:string):Promise<void>;
+
+export function SetStampPosition(arg1:number,arg2:number,arg3:number):Promise<services.SettingsView>;
 
 export function SetSubItemActive(arg1:number,arg2:boolean):Promise<void>;
 
@@ -190,6 +209,10 @@ export function SetTemplateItems(arg1:number,arg2:Array<services.TemplateItemInp
 export function SetVesselActive(arg1:number,arg2:boolean):Promise<void>;
 
 export function SetWorkItemActive(arg1:number,arg2:boolean):Promise<void>;
+
+export function SignatureDataUrl():Promise<string>;
+
+export function StampDataUrl():Promise<string>;
 
 export function StartDiscoveryListener():Promise<void>;
 

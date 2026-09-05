@@ -2,6 +2,9 @@ package exporters
 
 import (
 	"fmt"
+	"image"
+	"math"
+	"os"
 	"strings"
 
 	"github.com/xuri/excelize/v2"
@@ -466,6 +469,91 @@ func writeSignature(f *excelize.File, d *ExportData, start int, st *xlStyles) {
 		_ = f.SetRowHeight(xlSheet, r, 15)
 		r++
 	}
+	// Stempel & tanda tangan ditempel pada posisi hasil editor (fraksi thd
+	// kotak blok ttd I:K, 7 baris). Pada Excel gambar dirender di atas sel,
+	// sesuai penempatan manual yg sama dengan PDF.
+	sx, sy, ss := effectiveStampPos(&d.Company)
+	excelPlaceImage(f, start, d.Company.StampPath, sx, sy, ss)
+	gx, gy, gs := effectiveSignPos(&d.Company)
+	excelPlaceImage(f, start, d.Company.SignaturePath, gx, gy, gs)
+}
+
+// excelPlaceImage menempelkan gambar PNG di dalam kotak blok ttd Excel
+// (kolom I–K mulai baris start, setinggi 7 baris). Posisi & lebar pakai
+// fraksi (0-1), konsisten dengan PDF.
+func excelPlaceImage(f *excelize.File, start int, path string, fx, fy, fw float64) {
+	if path == "" || !fileExists(path) {
+		return
+	}
+	defer func() { _ = recover() }() // gambar rusak tidak boleh membatalkan export
+
+	src, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	cfg, _, cerr := image.DecodeConfig(src)
+	_ = src.Close()
+	if cerr != nil || cfg.Width <= 0 || cfg.Height <= 0 {
+		return
+	}
+
+	blockW := float64(colWidthPix(f, "I") + colWidthPix(f, "J") + colWidthPix(f, "K"))
+	blockH := 0.0
+	for i := 0; i < 7; i++ {
+		blockH += float64(rowHeightPix(f, start+i))
+	}
+	fw = clampFrac(fw)
+	if fw <= 0 {
+		fw = 0.30
+	}
+	w := fw * blockW
+	h := w * float64(cfg.Height) / float64(cfg.Width)
+	if h > blockH {
+		h = blockH
+		w = h * float64(cfg.Width) / float64(cfg.Height)
+	}
+	ix := clampFrac(fx) * blockW
+	if ix+w > blockW {
+		ix = blockW - w
+	}
+	if ix < 0 {
+		ix = 0
+	}
+	iy := clampFrac(fy) * blockH
+	if iy+h > blockH {
+		iy = blockH - h
+	}
+	if iy < 0 {
+		iy = 0
+	}
+
+	yes := true
+	_ = f.AddPicture(xlSheet, "I"+itoa(start), path, &excelize.GraphicOptions{
+		OffsetX:     int(ix),
+		OffsetY:     int(iy),
+		ScaleX:      w / float64(cfg.Width),
+		ScaleY:      h / float64(cfg.Height),
+		PrintObject: &yes,
+	})
+}
+
+// colWidthPix lebar kolom dalam piksel (rumus Excel: int(w*8+0.5)).
+func colWidthPix(f *excelize.File, col string) int {
+	w, err := f.GetColWidth(xlSheet, col)
+	if err != nil || w <= 0 {
+		w = 8.43
+	}
+	return int(w*8 + 0.5)
+}
+
+// rowHeightPix tinggi baris dalam piksel (rumus Excel: ceil(4/3.4*h)); h=0
+// dibaca sebagai default 15pt.
+func rowHeightPix(f *excelize.File, row int) int {
+	h, err := f.GetRowHeight(xlSheet, row)
+	if err != nil || h <= 0 {
+		h = 15
+	}
+	return int(math.Ceil(4.0/3.4 * h))
 }
 
 // ===== util =====

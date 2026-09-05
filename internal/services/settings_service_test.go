@@ -118,3 +118,64 @@ func TestSettingsLogoAndAudit(t *testing.T) {
 		t.Errorf("audit log settings = %d, mau 2", count)
 	}
 }
+
+func TestSettingsStampAndSignature(t *testing.T) {
+	db := serviceDB(t)
+	svc := NewSettingsService(db, slog.Default())
+
+	stamp := filepath.Join(t.TempDir(), "stamp.png")
+	sign := filepath.Join(t.TempDir(), "sign.png")
+	for _, p := range []string{stamp, sign} {
+		if err := os.WriteFile(p, []byte("png"), 0644); err != nil {
+			t.Fatalf("fixture gambar gagal: %v", err)
+		}
+	}
+
+	if _, err := svc.SetStamp(stamp); err != nil {
+		t.Fatalf("set stempel gagal: %v", err)
+	}
+	if _, err := svc.SetSignature(sign); err != nil {
+		t.Fatalf("set ttd gagal: %v", err)
+	}
+	view, _ := svc.Get()
+	if view.StampPath != stamp {
+		t.Errorf("path stempel tidak tersimpan: %q", view.StampPath)
+	}
+	if view.SignaturePath != sign {
+		t.Errorf("path ttd tidak tersimpan: %q", view.SignaturePath)
+	}
+
+	if c, _ := svc.SetStamp(""); c.StampPath != "" {
+		t.Errorf("stempel harus kosong: %q", c.StampPath)
+	}
+	if c, _ := svc.SetSignature(""); c.SignaturePath != "" {
+		t.Errorf("ttd harus kosong: %q", c.SignaturePath)
+	}
+}
+
+func TestSettingsPosition(t *testing.T) {
+	db := serviceDB(t)
+	svc := NewSettingsService(db, slog.Default())
+
+	if v, err := svc.SetStampPosition(0.25, 0.40, 0.50); err != nil {
+		t.Fatalf("set posisi stempel gagal: %v", err)
+	} else if v.StampPosX != 0.25 || v.StampPosY != 0.40 || v.StampSize != 0.50 {
+		t.Errorf("posisi stempel tidak tersimpan: %+v", v)
+	}
+	if v, err := svc.SetSignaturePosition(0.10, 0.15, 0.30); err != nil {
+		t.Fatalf("set posisi ttd gagal: %v", err)
+	} else if v.SignaturePosX != 0.10 || v.SignaturePosY != 0.15 || v.SignatureSize != 0.30 {
+		t.Errorf("posisi ttd tidak tersimpan: %+v", v)
+	}
+
+	// reload dari DB
+	view, _ := svc.Get()
+	if view.StampPosX != 0.25 || view.StampSize != 0.50 || view.SignaturePosY != 0.15 {
+		t.Errorf("reload posisi salah: %+v", view)
+	}
+
+	// nilai di luar batas harus di-clamp
+	if v, _ := svc.SetStampPosition(1.5, -0.2, 5); v.StampPosX != 1 || v.StampPosY != 0 || v.StampSize != 1 {
+		t.Errorf("clamp posisi gagal: %+v", v)
+	}
+}

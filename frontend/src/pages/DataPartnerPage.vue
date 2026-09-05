@@ -116,7 +116,8 @@
 
     <!-- Form customer -->
     <AppModal v-model="customerOpen" :title="editingCustomer ? 'Edit Customer' : 'Tambah Customer'" size="lg">
-      <form class="grid grid-cols-1 gap-3.5 md:grid-cols-2" @submit.prevent="submitCustomer">
+      <form class="grid grid-cols-1 gap-3.5 md:grid-cols-2" @submit.prevent="submitCustomer" @keydown.ctrl.enter.prevent="submitCustomer">
+        <p v-if="customerSavedNote" class="md:col-span-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-700">{{ customerSavedNote }}</p>
         <div class="md:col-span-2">
           <label class="mb-1 block text-[13px] font-medium text-slate-600">Nama <span class="text-red-500">*</span></label>
           <input
@@ -206,7 +207,8 @@
 
     <!-- Form kapal -->
     <AppModal v-model="vesselOpen" :title="editingVessel ? 'Edit Kapal' : `Tambah Kapal — ${vesselCustomer?.name ?? ''}`">
-      <form class="space-y-3.5" @submit.prevent="submitVessel">
+      <form class="space-y-3.5" @submit.prevent="submitVessel" @keydown.ctrl.enter.prevent="submitVessel">
+        <p v-if="vesselSavedNote" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-700">{{ vesselSavedNote }}</p>
         <div>
           <label class="mb-1 block text-[13px] font-medium text-slate-600">Nama Kapal <span class="text-red-500">*</span></label>
           <input
@@ -305,6 +307,16 @@ const editingCustomer = ref<CustomerView | null>(null)
 const customerForm = reactive(emptyCustomer())
 const formError = ref('')
 const busy = ref(false)
+const customerSavedNote = ref('')
+const vesselSavedNote = ref('')
+
+let savedNoteTimer: ReturnType<typeof setTimeout> | null = null
+function flashSaved(target: 'customer' | 'vessel', text: string) {
+  const note = target === 'customer' ? customerSavedNote : vesselSavedNote
+  note.value = text
+  if (savedNoteTimer) clearTimeout(savedNoteTimer)
+  savedNoteTimer = setTimeout(() => (note.value = ''), 3000)
+}
 
 function openCustomerForm(c?: CustomerView) {
   formError.value = ''
@@ -319,11 +331,14 @@ async function submitCustomer() {
   try {
     if (editingCustomer.value) {
       await store.updateCustomer(editingCustomer.value.id, customerForm)
+      customerOpen.value = false
     } else {
       await store.createCustomer(customerForm)
+      Object.assign(customerForm, emptyCustomer())
+      formError.value = ''
+      flashSaved('customer', '✓ Data customer tersimpan.')
     }
     await store.load()
-    customerOpen.value = false
   } catch (e) {
     formError.value = errorMessage(e)
   } finally {
@@ -362,11 +377,14 @@ async function submitVessel() {
   try {
     if (editingVessel.value) {
       await store.updateVessel(editingVessel.value.id, vesselForm)
+      vesselOpen.value = false
     } else {
       await store.createVessel(vesselForm)
+      Object.assign(vesselForm, emptyVessel(vesselCustomer.value?.id ?? 0))
+      formError.value = ''
+      flashSaved('vessel', '✓ Data kapal tersimpan.')
     }
     await store.load()
-    vesselOpen.value = false
   } catch (e) {
     formError.value = errorMessage(e)
   } finally {

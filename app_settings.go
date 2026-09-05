@@ -30,10 +30,30 @@ func (a *App) PreviewSphNumber(format string) (string, error) {
 // PickLogo membuka dialog pilih gambar, menyalinnya ke folder data aplikasi,
 // lalu menyimpan path-nya di settings. Batal memilih = tidak ada perubahan.
 func (a *App) PickLogo() (*services.SettingsView, error) {
+	return a.pickAsset("logo", "Logo", a.settings.SetLogo, ".png", ".jpg", ".jpeg")
+}
+
+// PickStamp membuka dialog pilih gambar stempel (PNG, mempertahankan
+// transparansi), menyalinnya ke folder data aplikasi, lalu menyimpan path-nya.
+func (a *App) PickStamp() (*services.SettingsView, error) {
+	return a.pickAsset("stamp", "Stempel", a.settings.SetStamp, ".png")
+}
+
+// PickSignature membuka dialog pilih gambar tanda tangan (PNG), menyalinnya
+// ke folder data aplikasi, lalu menyimpan path-nya.
+func (a *App) PickSignature() (*services.SettingsView, error) {
+	return a.pickAsset("signature", "Tanda tangan", a.settings.SetSignature, ".png")
+}
+
+// pickAsset alur umum upload gambar pengaturan: dialog pilih file, validasi
+// ekstensi & ukuran, salin ke AssetsDir/<name><ext>, lalu simpan path-nya.
+// set menyimpan path hasil upload; ekstensi / PNG dikontrol pemanggil.
+func (a *App) pickAsset(name, label string, set func(string) (*services.SettingsView, error), allowedExt ...string) (*services.SettingsView, error) {
+	extLabel := strings.Join(allowedExt, ";")
 	src, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Pilih File Logo",
+		Title:  "Pilih File " + label,
 		Filters: []runtime.FileFilter{
-			{DisplayName: "Gambar (*.png;*.jpg;*.jpeg)", Pattern: "*.png;*.jpg;*.jpeg"},
+			{DisplayName: "Gambar (*" + strings.Join(allowedExt, ";*") + ")", Pattern: "*" + strings.Join(allowedExt, ";*")},
 		},
 	})
 	if err != nil {
@@ -44,28 +64,37 @@ func (a *App) PickLogo() (*services.SettingsView, error) {
 	}
 
 	ext := strings.ToLower(filepath.Ext(src))
-	switch ext {
-	case ".png", ".jpg", ".jpeg":
-	default:
-		return nil, services.NewValidationError("Format logo harus PNG atau JPG.")
+	ok := false
+	for _, e := range allowedExt {
+		if ext == e {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return nil, services.NewValidationError("Format %s harus: %s.", label, extLabel)
 	}
 	if info, ierr := os.Stat(src); ierr != nil || info.IsDir() {
-		return nil, services.NewValidationError("File logo tidak dapat dibaca.")
+		return nil, services.NewValidationError("File %s tidak dapat dibaca.", label)
 	}
 	if info, _ := os.Stat(src); info.Size() > 5*1024*1024 {
-		return nil, services.NewValidationError("Ukuran logo maksimal 5 MB.")
+		return nil, services.NewValidationError("Ukuran %s maksimal 5 MB.", label)
 	}
 
 	if err := os.MkdirAll(a.cfg.AssetsDir, 0755); err != nil {
 		a.log.Error("gagal menyiapkan folder assets", "error", err)
-		return nil, fmt.Errorf("gagal menyimpan logo")
+		return nil, fmt.Errorf("gagal menyimpan %s", label)
 	}
-	dest := filepath.Join(a.cfg.AssetsDir, "logo"+ext)
+	dest := filepath.Join(a.cfg.AssetsDir, name+ext)
 	if err := copyFile(src, dest); err != nil {
-		a.log.Error("gagal menyalin logo", "sumber", src, "error", err)
-		return nil, fmt.Errorf("gagal menyimpan logo")
+		a.log.Error("gagal menyalin file", "sumber", src, "error", err)
+		return nil, fmt.Errorf("gagal menyimpan %s", label)
 	}
-	return a.settings.SetLogo(dest)
+	view, serr := set(dest)
+	if serr != nil {
+		return nil, serr
+	}
+	return view, nil
 }
 
 func (a *App) ClearLogo() (*services.SettingsView, error) {
@@ -79,6 +108,38 @@ func (a *App) ClearLogo() (*services.SettingsView, error) {
 	return a.settings.SetLogo("")
 }
 
+func (a *App) ClearStamp() (*services.SettingsView, error) {
+	view, err := a.settings.Get()
+	if err != nil {
+		return nil, err
+	}
+	if view.StampPath != "" {
+		_ = os.Remove(view.StampPath)
+	}
+	return a.settings.SetStamp("")
+}
+
+func (a *App) ClearSignature() (*services.SettingsView, error) {
+	view, err := a.settings.Get()
+	if err != nil {
+		return nil, err
+	}
+	if view.SignaturePath != "" {
+		_ = os.Remove(view.SignaturePath)
+	}
+	return a.settings.SetSignature("")
+}
+
+// SetStampPosition menyimpan posisi & ukuran stempel (fraksi 0-1) dari editor.
+func (a *App) SetStampPosition(x, y, size float64) (*services.SettingsView, error) {
+	return a.settings.SetStampPosition(x, y, size)
+}
+
+// SetSignaturePosition menyimpan posisi & ukuran tanda tangan (fraksi 0-1).
+func (a *App) SetSignaturePosition(x, y, size float64) (*services.SettingsView, error) {
+	return a.settings.SetSignaturePosition(x, y, size)
+}
+
 // LogoDataUrl mengembalikan logo sebagai data URL untuk pratinjau di UI;
 // string kosong bila belum ada logo.
 func (a *App) LogoDataUrl() (string, error) {
@@ -86,14 +147,37 @@ func (a *App) LogoDataUrl() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if view.LogoPath == "" {
+	return dataURLFor(view.LogoPath)
+}
+
+// StampDataUrl mengembalikan stempel sebagai data URL untuk pratinjau di UI.
+func (a *App) StampDataUrl() (string, error) {
+	view, err := a.settings.Get()
+	if err != nil {
+		return "", err
+	}
+	return dataURLFor(view.StampPath)
+}
+
+// SignatureDataUrl mengembalikan tanda tangan sebagai data URL untuk pratinjau.
+func (a *App) SignatureDataUrl() (string, error) {
+	view, err := a.settings.Get()
+	if err != nil {
+		return "", err
+	}
+	return dataURLFor(view.SignaturePath)
+}
+
+// dataURLFor mengubah path gambar menjadi data URL; kosong bila path kosong.
+func dataURLFor(path string) (string, error) {
+	if path == "" {
 		return "", nil
 	}
-	data, err := os.ReadFile(view.LogoPath)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", nil
 	}
-	ext := strings.ToLower(filepath.Ext(view.LogoPath))
+	ext := strings.ToLower(filepath.Ext(path))
 	mime := "image/png"
 	if ext == ".jpg" || ext == ".jpeg" {
 		mime = "image/jpeg"

@@ -152,11 +152,10 @@
               </div>
               <button
                 type="button"
-                :disabled="items.some((it) => it.workItemId === wi.id)"
-                class="shrink-0 rounded-md bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                class="shrink-0 rounded-md bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brand-700"
                 @click="addFromWorkItem(wi)"
               >
-                {{ items.some((it) => it.workItemId === wi.id) ? 'Sudah ada' : '+ Tambah' }}
+                + Tambah<span v-if="addedCount(wi)"> ({{ addedCount(wi) }}×)</span>
               </button>
             </li>
             <li v-if="!filteredWorkItems.length" class="px-4 py-6 text-center text-[13px] italic text-slate-400">Tidak ada pekerjaan aktif yang cocok.</li>
@@ -356,10 +355,15 @@
                   <label class="mb-1 block text-xs font-medium text-slate-500">Jasa</label>
                   <input v-model.number="sub.serviceUnitPrice" type="number" min="0" class="row-input" :disabled="!canEditSection('subitems') || isSectionLockedByOther('subitems')" />
                 </div>
-                <div class="md:col-span-2 flex items-center justify-between gap-2">
-                  <input v-model.number="sub.materialUnitPrice" type="number" min="0" title="Harga material" class="row-input" :disabled="!canEditSection('subitems') || isSectionLockedByOther('subitems')" />
-                  <button type="button" title="Pilih dari master material" class="shrink-0 rounded px-1.5 py-1.5 text-xs font-semibold text-brand-600 transition-colors hover:bg-brand-50" @click="openPick(activeItemIdx, sIdx)">⌕</button>
-                  <button type="button" class="shrink-0 rounded px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" @click="removeSubItem(activeItem, sIdx)">✕</button>
+                <div class="md:col-span-2">
+                  <label class="mb-1 flex items-center justify-between text-xs font-medium text-slate-500">
+                    Material
+                    <button type="button" title="Pilih dari master material" class="rounded px-1 text-[11px] font-semibold leading-none text-brand-600 transition-colors hover:bg-brand-50" @click="openPick(activeItemIdx, sIdx)">⌕</button>
+                  </label>
+                  <div class="flex items-center gap-2">
+                    <input v-model.number="sub.materialUnitPrice" type="number" min="0" class="row-input" :disabled="!canEditSection('subitems') || isSectionLockedByOther('subitems')" />
+                    <button type="button" class="shrink-0 rounded px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" @click="removeSubItem(activeItem, sIdx)">✕</button>
+                  </div>
                 </div>
               </template>
             </div>
@@ -992,8 +996,11 @@ watch(
 const todayLabel = computed(() => new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }))
 
 // ===== aksi =====
+function addedCount(wi: WorkItemView): number {
+  return items.value.filter((it) => it.workItemId === wi.id).length
+}
+
 async function addFromWorkItem(wi: WorkItemView) {
-  if (items.value.some((it) => it.workItemId === wi.id)) return
   try {
     const detail = await masterStore.getWorkItemDetail(wi.id)
     items.value.push({

@@ -114,7 +114,8 @@
 
     <!-- Modal form kategori -->
     <AppModal v-model="formOpen" :title="editing ? 'Edit Kategori' : 'Tambah Kategori'">
-      <form class="space-y-3.5" @submit.prevent="submitForm">
+      <form class="space-y-3.5" @submit.prevent="submitForm" @keydown.ctrl.enter.prevent="submitForm">
+        <p v-if="savedNote" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-700">{{ savedNote }}</p>
         <div>
           <label class="mb-1 block text-[13px] font-medium text-slate-600">Kode</label>
           <input
@@ -202,6 +203,14 @@ const editing = ref<CategoryView | null>(null)
 const form = ref({ code: '', name: '', description: '' })
 const formError = ref('')
 const saving = ref(false)
+const savedNote = ref('')
+
+let savedNoteTimer: ReturnType<typeof setTimeout> | null = null
+function flashSaved() {
+  savedNote.value = '✓ Data kategori tersimpan.'
+  if (savedNoteTimer) clearTimeout(savedNoteTimer)
+  savedNoteTimer = setTimeout(() => (savedNote.value = ''), 3000)
+}
 
 const deleteOpen = ref(false)
 const deleteTarget = ref<CategoryView | null>(null)
@@ -245,10 +254,14 @@ async function submitForm() {
   try {
     if (editing.value) {
       await store.updateCategory(editing.value.id, form.value)
+      formOpen.value = false
     } else {
       await store.createCategory(form.value)
+      form.value = { code: '', name: '', description: '' }
+      formError.value = ''
+      flashSaved()
+      await store.loadCategories()
     }
-    formOpen.value = false
   } catch (e) {
     formError.value = errorMessage(e)
   } finally {

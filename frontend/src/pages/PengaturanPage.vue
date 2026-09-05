@@ -93,6 +93,82 @@
         </div>
       </section>
 
+      <!-- Stempel & tanda tangan -->
+      <section class="rounded-xl border border-slate-200 bg-white p-5">
+        <h2 class="mb-4 text-sm font-semibold text-slate-800">Stempel & Tanda Tangan</h2>
+        <p v-if="assetError" class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">{{ assetError }}</p>
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+            <h3 class="mb-1 text-[13px] font-semibold text-slate-700">Stempel Perusahaan</h3>
+            <p class="mb-3 text-xs text-slate-400">PNG dengan latar transparan, dirender pada blok tanda tangan dokumen export.</p>
+            <div class="flex items-start gap-3">
+              <div class="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-300 bg-white">
+                <img v-if="stampDataUrl" :src="stampDataUrl" alt="Stempel" class="max-h-full max-w-full object-contain" />
+                <span v-else class="px-2 text-center text-xs text-slate-400">Belum ada stempel</span>
+              </div>
+              <div class="min-w-0 flex-1 space-y-2">
+                <div class="flex flex-wrap gap-2">
+                  <button type="button" class="rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60" :disabled="assetBusy || saving" @click="pickStamp">
+                    {{ assetBusy ? 'Memproses…' : 'Pilih Stempel…' }}
+                  </button>
+                  <button v-if="stampDataUrl" type="button" class="rounded-lg px-3 py-1.5 text-[13px] font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60" :disabled="assetBusy || saving" @click="clearStamp">
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 space-y-3">
+              <div>
+                <label class="mb-1 flex justify-between text-xs font-medium text-slate-500"><span>Posisi Horizontal</span><span>{{ pct(form.stampPosX) }}</span></label>
+                <input v-model.number="form.stampPosX" type="range" min="0" max="1" step="0.01" class="w-full accent-brand-600" @change="saveStampPosition" />
+              </div>
+              <div>
+                <label class="mb-1 flex justify-between text-xs font-medium text-slate-500"><span>Posisi Vertikal</span><span>{{ pct(form.stampPosY) }}</span></label>
+                <input v-model.number="form.stampPosY" type="range" min="0" max="1" step="0.01" class="w-full accent-brand-600" @change="saveStampPosition" />
+              </div>
+              <div>
+                <label class="mb-1 flex justify-between text-xs font-medium text-slate-500"><span>Ukuran</span><span>{{ pct(form.stampSize) }}</span></label>
+                <input v-model.number="form.stampSize" type="range" min="0.1" max="1" step="0.01" class="w-full accent-brand-600" @change="saveStampPosition" />
+              </div>
+            </div>
+          </div>
+          <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+            <h3 class="mb-1 text-[13px] font-semibold text-slate-700">Tanda Tangan</h3>
+            <p class="mb-3 text-xs text-slate-400">PNG transparan hasil digitalisasi ttd, dirender tepat di atas baris nama penandatangan.</p>
+            <div class="flex items-start gap-3">
+              <div class="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-300 bg-white">
+                <img v-if="signatureDataUrl" :src="signatureDataUrl" alt="Tanda tangan" class="max-h-full max-w-full object-contain" />
+                <span v-else class="px-2 text-center text-xs text-slate-400">Belum ada ttd</span>
+              </div>
+              <div class="min-w-0 flex-1 space-y-2">
+                <div class="flex flex-wrap gap-2">
+                  <button type="button" class="rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60" :disabled="assetBusy || saving" @click="pickSignature">
+                    {{ assetBusy ? 'Memproses…' : 'Pilih Tanda Tangan…' }}
+                  </button>
+                  <button v-if="signatureDataUrl" type="button" class="rounded-lg px-3 py-1.5 text-[13px] font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60" :disabled="assetBusy || saving" @click="clearSignature">
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 space-y-3">
+              <div>
+                <label class="mb-1 flex justify-between text-xs font-medium text-slate-500"><span>Posisi Horizontal</span><span>{{ pct(form.signaturePosX) }}</span></label>
+                <input v-model.number="form.signaturePosX" type="range" min="0" max="1" step="0.01" class="w-full accent-brand-600" @change="saveSignaturePosition" />
+              </div>
+              <div>
+                <label class="mb-1 flex justify-between text-xs font-medium text-slate-500"><span>Posisi Vertikal</span><span>{{ pct(form.signaturePosY) }}</span></label>
+                <input v-model.number="form.signaturePosY" type="range" min="0" max="1" step="0.01" class="w-full accent-brand-600" @change="saveSignaturePosition" />
+              </div>
+              <div>
+                <label class="mb-1 flex justify-between text-xs font-medium text-slate-500"><span>Ukuran</span><span>{{ pct(form.signatureSize) }}</span></label>
+                <input v-model.number="form.signatureSize" type="range" min="0.1" max="1" step="0.01" class="w-full accent-brand-600" @change="saveSignaturePosition" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Catatan default -->
       <section class="rounded-xl border border-slate-200 bg-white p-5">
         <h2 class="mb-4 text-sm font-semibold text-slate-800">Catatan Default Dokumen</h2>
@@ -100,7 +176,7 @@
       </section>
 
       <div class="flex justify-end pb-2">
-        <button type="submit" class="rounded-lg bg-brand-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-60" :disabled="saving || logoBusy">
+        <button type="submit" class="rounded-lg bg-brand-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-60" :disabled="saving || logoBusy || assetBusy">
           {{ saving ? 'Menyimpan…' : 'Simpan Pengaturan' }}
         </button>
       </div>
@@ -114,7 +190,20 @@ import PageHeader from '../components/PageHeader.vue'
 import { useSettingsStore } from '../stores/settings'
 import { errorMessage } from '../utils/format'
 import { emptySettings, type SettingsView } from '../types/settings'
-import { PreviewSphNumber, PickLogo, ClearLogo, LogoDataUrl } from '../../wailsjs/go/main/App'
+import {
+  PreviewSphNumber,
+  PickLogo,
+  ClearLogo,
+  LogoDataUrl,
+  PickStamp,
+  ClearStamp,
+  StampDataUrl,
+  PickSignature,
+  ClearSignature,
+  SignatureDataUrl,
+  SetStampPosition,
+  SetSignaturePosition
+} from '../../wailsjs/go/main/App'
 
 const store = useSettingsStore()
 
@@ -129,6 +218,11 @@ const logoDataUrl = ref('')
 const logoBusy = ref(false)
 const logoError = ref('')
 
+const stampDataUrl = ref('')
+const signatureDataUrl = ref('')
+const assetBusy = ref(false)
+const assetError = ref('')
+
 const numberPreview = ref('')
 const numberError = ref('')
 let previewTimer: ReturnType<typeof setTimeout> | null = null
@@ -139,14 +233,34 @@ onMounted(async () => {
   await store.load()
   Object.assign(form, store.settings)
   loadedOnce.value = true
-  await Promise.all([loadLogo(), refreshPreview()])
+  await Promise.all([loadLogo(), loadStamp(), loadSignature(), refreshPreview()])
 })
+
+function pct(v: number) {
+  return `${Math.round((v || 0) * 100)}%`
+}
 
 async function loadLogo() {
   try {
     logoDataUrl.value = await LogoDataUrl()
   } catch {
     logoDataUrl.value = ''
+  }
+}
+
+async function loadStamp() {
+  try {
+    stampDataUrl.value = await StampDataUrl()
+  } catch {
+    stampDataUrl.value = ''
+  }
+}
+
+async function loadSignature() {
+  try {
+    signatureDataUrl.value = await SignatureDataUrl()
+  } catch {
+    signatureDataUrl.value = ''
   }
 }
 
@@ -184,19 +298,17 @@ async function submit() {
   }
   saving.value = true
   try {
-    const payload: SettingsView = {
+    const view = (await store.save({
       companyName: form.companyName,
       companyCity: form.companyCity,
       companyAddress: form.companyAddress,
-      logoPath: form.logoPath,
       sphNumberFormat: form.sphNumberFormat,
       signerName: form.signerName,
       signerPosition: form.signerPosition,
       defaultNotes: form.defaultNotes,
       collabPort: form.collabPort ?? 48765,
       collabDisplayName: form.collabDisplayName ?? ''
-    }
-    const view = (await store.save(payload)) as unknown as SettingsView
+    })) as unknown as SettingsView
     Object.assign(form, view)
     saved.value = true
     await refreshPreview()
@@ -234,6 +346,90 @@ async function removeLogo() {
     logoError.value = errorMessage(e)
   } finally {
     logoBusy.value = false
+  }
+}
+
+async function pickStamp() {
+  assetError.value = ''
+  assetBusy.value = true
+  try {
+    const view = (await PickStamp()) as unknown as SettingsView | null
+    if (view) {
+      Object.assign(form, view)
+      await loadStamp()
+    }
+  } catch (e) {
+    assetError.value = errorMessage(e)
+  } finally {
+    assetBusy.value = false
+  }
+}
+
+async function clearStamp() {
+  assetError.value = ''
+  assetBusy.value = true
+  try {
+    const view = (await ClearStamp()) as unknown as SettingsView
+    Object.assign(form, view)
+    stampDataUrl.value = ''
+  } catch (e) {
+    assetError.value = errorMessage(e)
+  } finally {
+    assetBusy.value = false
+  }
+}
+
+async function pickSignature() {
+  assetError.value = ''
+  assetBusy.value = true
+  try {
+    const view = (await PickSignature()) as unknown as SettingsView | null
+    if (view) {
+      Object.assign(form, view)
+      await loadSignature()
+    }
+  } catch (e) {
+    assetError.value = errorMessage(e)
+  } finally {
+    assetBusy.value = false
+  }
+}
+
+async function clearSignature() {
+  assetError.value = ''
+  assetBusy.value = true
+  try {
+    const view = (await ClearSignature()) as unknown as SettingsView
+    Object.assign(form, view)
+    signatureDataUrl.value = ''
+  } catch (e) {
+    assetError.value = errorMessage(e)
+  } finally {
+    assetBusy.value = false
+  }
+}
+
+async function saveStampPosition() {
+  if (assetBusy.value || saving.value) return
+  try {
+    const view = (await SetStampPosition(form.stampPosX, form.stampPosY, form.stampSize)) as unknown as SettingsView
+    form.stampPosX = view.stampPosX
+    form.stampPosY = view.stampPosY
+    form.stampSize = view.stampSize
+  } catch (e) {
+    assetError.value = errorMessage(e)
+  }
+}
+
+async function saveSignaturePosition() {
+  if (assetBusy.value || saving.value) return
+  try {
+    const view = (await SetSignaturePosition(form.signaturePosX, form.signaturePosY, form.signatureSize)) as unknown as SettingsView
+    form.signaturePosX = view.signaturePosX
+    form.signaturePosY = view.signaturePosY
+    form.signatureSize = view.signatureSize
+  } catch (e) {
+    assetError.value = errorMessage(e)
   }
 }
 </script>

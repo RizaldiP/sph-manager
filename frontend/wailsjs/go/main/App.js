@@ -26,6 +26,14 @@ export function ClearLogo() {
   return window['go']['main']['App']['ClearLogo']();
 }
 
+export function ClearSignature() {
+  return window['go']['main']['App']['ClearSignature']();
+}
+
+export function ClearStamp() {
+  return window['go']['main']['App']['ClearStamp']();
+}
+
 export function CloseCollabRoom() {
   return window['go']['main']['App']['CloseCollabRoom']();
 }
@@ -48,6 +56,10 @@ export function CreateCustomer(arg1) {
 
 export function CreateMaterial(arg1) {
   return window['go']['main']['App']['CreateMaterial'](arg1);
+}
+
+export function CreateShareableBackup() {
+  return window['go']['main']['App']['CreateShareableBackup']();
 }
 
 export function CreateSph(arg1) {
@@ -258,6 +270,10 @@ export function OpenExportFolder(arg1) {
   return window['go']['main']['App']['OpenExportFolder'](arg1);
 }
 
+export function OpenShareableBackup() {
+  return window['go']['main']['App']['OpenShareableBackup']();
+}
+
 export function ParseImportRows(arg1, arg2, arg3) {
   return window['go']['main']['App']['ParseImportRows'](arg1, arg2, arg3);
 }
@@ -268,6 +284,14 @@ export function PickImportFile() {
 
 export function PickLogo() {
   return window['go']['main']['App']['PickLogo']();
+}
+
+export function PickSignature() {
+  return window['go']['main']['App']['PickSignature']();
+}
+
+export function PickStamp() {
+  return window['go']['main']['App']['PickStamp']();
 }
 
 export function PreviewImportSheet(arg1, arg2) {
@@ -318,6 +342,10 @@ export function RestoreBackup(arg1) {
   return window['go']['main']['App']['RestoreBackup'](arg1);
 }
 
+export function RestoreShareableBackup(arg1) {
+  return window['go']['main']['App']['RestoreShareableBackup'](arg1);
+}
+
 export function RunWorkItemImport(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['RunWorkItemImport'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -346,8 +374,16 @@ export function SetMaterialActive(arg1, arg2) {
   return window['go']['main']['App']['SetMaterialActive'](arg1, arg2);
 }
 
+export function SetSignaturePosition(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetSignaturePosition'](arg1, arg2, arg3);
+}
+
 export function SetSphStatus(arg1, arg2) {
   return window['go']['main']['App']['SetSphStatus'](arg1, arg2);
+}
+
+export function SetStampPosition(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetStampPosition'](arg1, arg2, arg3);
 }
 
 export function SetSubItemActive(arg1, arg2) {
@@ -368,6 +404,14 @@ export function SetVesselActive(arg1, arg2) {
 
 export function SetWorkItemActive(arg1, arg2) {
   return window['go']['main']['App']['SetWorkItemActive'](arg1, arg2);
+}
+
+export function SignatureDataUrl() {
+  return window['go']['main']['App']['SignatureDataUrl']();
+}
+
+export function StampDataUrl() {
+  return window['go']['main']['App']['StampDataUrl']();
 }
 
 export function StartDiscoveryListener() {

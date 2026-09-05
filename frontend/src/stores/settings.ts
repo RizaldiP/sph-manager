@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { GetSettings, UpdateSettings } from '../../wailsjs/go/main/App'
-import type { SettingsView } from '../types/settings'
+import type { SettingsInput, SettingsView } from '../types/settings'
 import { emptySettings } from '../types/settings'
 
 // Store domain Pengaturan aplikasi (FR-U4).
@@ -22,7 +22,7 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
-  function save(payload: SettingsView) {
+  function save(payload: SettingsInput) {
     return UpdateSettings(payload) as unknown as Promise<SettingsView>
   }
 
