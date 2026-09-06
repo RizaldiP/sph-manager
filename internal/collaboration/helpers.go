@@ -72,17 +72,27 @@ func statusLabelID(status string) string {
 	}
 }
 
-// localIPs mengembalikan daftar IPv4 address aktif pada mesin ini
-// (kecuali loopback 127.x dan link-local 169.254.x).
-func localIPs() []string {
+// ifaceIPv4 menggambarkan satu alamat IPv4 pada interface jaringan aktif.
+type ifaceIPv4 struct {
+	ip    net.IP
+	ipnet *net.IPNet
+}
+
+// listIPv4Interfaces mengembalikan alamat IPv4 semua interface non-virtual yang
+// aktif (bukan loopback, bukan APIPA/link-local). dipakai untuk broadcast
+// discovery, daftar IP host (toolbar), dan penapisan adapter virtual
+// (Docker/WSL/VMware/VirtualBox/Hyper-V/dll.) yang tidak dapat dijangkau client.
+func listIPv4Interfaces() []ifaceIPv4 {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil
 	}
-	var ips []string
-	seen := map[string]bool{}
+	var out []ifaceIPv4
 	for _, iface := range ifaces {
 		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		if isVirtualIface(iface) {
 			continue
 		}
 		addrs, err := iface.Addrs()
@@ -94,14 +104,74 @@ func localIPs() []string {
 			if !ok || ipnet.IP.To4() == nil {
 				continue
 			}
-			ip4 := ipnet.IP.To4().String()
-			if strings.HasPrefix(ip4, "127.") || strings.HasPrefix(ip4, "169.254.") {
+			ip := ipnet.IP.To4()
+			if ip.IsUnspecified() {
 				continue
 			}
-			if !seen[ip4] {
-				seen[ip4] = true
-				ips = append(ips, ip4)
+			if ip[0] == 127 || (ip[0] == 169 && ip[1] == 254) {
+				continue
 			}
+			out = append(out, ifaceIPv4{ip: append(net.IP(nil), ip...), ipnet: ipnet})
+		}
+	}
+	return out
+}
+
+// isVirtualIface menandai adapter jaringan virtual (WSL, Hyper-V, Docker,
+// VMware, VirtualBox, NPcap loopback, VPN, WiFi-Direct/ICS) agar tidak dipakai
+// untuk broadcast maupun ditampilkan sebagai IP host yang dapat dijangkau.
+func isVirtualIface(iface net.Interface) bool {
+	name := strings.ToLower(iface.Name)
+	for _, m := range []string{
+		"vethernet", "wsl", "docker", "vmnet", "vmware", "virtualbox", "vbox",
+		"tailscale", "zerotier", "hamachi", "npcap", "loopback", "kvm",
+		"default switch", "microsoft wi-fi direct", "tap-windows", "p-tap",
+		"utun", "tun", "tap", "bluetooth",
+	} {
+		if strings.Contains(name, m) {
+			return true
+		}
+	}
+	// Windows menamai adapter virtual ICS/WiFi-Direct memakai akhiran "*" atau "#".
+	if strings.Contains(name, "*") || strings.Contains(name, "#") {
+		return true
+	}
+	hw := strings.ToLower(iface.HardwareAddr.String())
+	hw = strings.ReplaceAll(hw, ":", "")
+	if hw == "" {
+		return true
+	}
+	for _, o := range []string{
+		"00155d", // WSL / Hyper-V
+		"0003ff", // Hyper-V
+		"005056", // VMware ESX
+		"000569", // VMware
+		"000c29", // VMware
+		"080027", // VirtualBox
+		"0a0027", // VirtualBox
+		"0242",   // Docker
+		"00163e", // Xen
+		"525400", // QEMU
+		"001c42", // Parallels
+	} {
+		if strings.HasPrefix(hw, o) {
+			return true
+		}
+	}
+	return false
+}
+
+// localIPs mengembalikan daftar IPv4 address aktif yang benar-benar dapat
+// dijangkau (interface fisik saja; loopback 127.x, link-local 169.254.x, dan
+// adapter virtual dibuang).
+func localIPs() []string {
+	var ips []string
+	seen := map[string]bool{}
+	for _, ii := range listIPv4Interfaces() {
+		ip4 := ii.ip.String()
+		if !seen[ip4] {
+			seen[ip4] = true
+			ips = append(ips, ip4)
 		}
 	}
 	return ips

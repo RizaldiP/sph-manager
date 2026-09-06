@@ -7,7 +7,7 @@ import {
   StartDiscoveryListener,
   StopDiscoveryListener,
   ListDiscoveredRooms,
-  JoinCollabRoom,
+  JoinCollabRoomMulti,
   LeaveCollabRoom,
   SendCollabOp,
   GetCollabSession,
@@ -141,10 +141,14 @@ export const useCollaborationStore = defineStore('collaboration', () => {
   }
 
   async function joinRoom(hostIP: string, port: number, accessCode: string, roomCode: string, displayName: string) {
+    return joinRoomMulti([hostIP], port, accessCode, roomCode, displayName)
+  }
+
+  async function joinRoomMulti(hostIPs: string[], port: number, accessCode: string, roomCode: string, displayName: string) {
     loading.value = true
     error.value = ''
     try {
-      await JoinCollabRoom(hostIP, port, accessCode, roomCode, displayName)
+      await JoinCollabRoomMulti(hostIPs, port, accessCode, roomCode, displayName)
       await refreshSession()
     } catch (e) {
       error.value = String(e)
@@ -380,6 +384,7 @@ export const useCollaborationStore = defineStore('collaboration', () => {
     createRoom,
     closeRoom,
     joinRoom,
+    joinRoomMulti,
     leaveRoom,
     sendOp,
     assignTurns,

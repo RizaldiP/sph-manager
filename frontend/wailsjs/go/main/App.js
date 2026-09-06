@@ -202,6 +202,10 @@ export function JoinCollabRoom(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['JoinCollabRoom'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function JoinCollabRoomMulti(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['JoinCollabRoomMulti'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function LeaveCollabRoom() {
   return window['go']['main']['App']['LeaveCollabRoom']();
 }

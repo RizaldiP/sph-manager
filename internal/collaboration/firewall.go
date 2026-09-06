@@ -30,6 +30,7 @@ func EnsureFirewallRules(tcpPort, udpPort int, log *slog.Logger) string {
 			"action=allow",
 			"protocol="+fmt.Sprintf("%s", protocol),
 			"localport="+fmt.Sprintf("%d", port),
+			"profile=any",
 			"enable=yes",
 		)
 		out, err := cmd.CombinedOutput()
@@ -38,7 +39,7 @@ func EnsureFirewallRules(tcpPort, udpPort int, log *slog.Logger) string {
 				"rule", name, "error", err, "output", string(out))
 			warnings = append(warnings, name)
 		} else {
-			log.Info("firewall rule siap", "rule", name, "port", port)
+			log.Info("firewall rule siap", "rule", name, "port", port, "profile", "any")
 		}
 	}
 
@@ -47,7 +48,9 @@ func EnsureFirewallRules(tcpPort, udpPort int, log *slog.Logger) string {
 
 	if len(warnings) > 0 {
 		return "Firewall rules belum aktif. Jalankan aplikasi sebagai Administrator untuk " +
-			"mengizinkan koneksi jaringan, atau buka port secara manual."
+			"mengizinkan koneksi jaringan, atau izinkan \"SPH Manager\" pada prompt " +
+			"Windows untuk jaringan Private DAN Public (penting bila client memakai WiFi " +
+			"yang biasanya diklasifikasikan Windows sebagai jaringan Public)."
 	}
 	return ""
 }

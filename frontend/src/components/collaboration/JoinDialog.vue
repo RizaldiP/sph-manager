@@ -60,13 +60,32 @@ async function doJoin() {
   busy.value = true
   pageError.value = ''
   try {
-    await collabStore.joinRoom(
-      props.room.hostIP,
-      props.room.port,
-      accessCode.value.trim(),
-      '',
-      displayName.value.trim()
-    )
+    const seen = new Set<string>()
+    const candidateIPs: string[] = []
+    for (const ip of [props.room.hostIP, ...(props.room.hostIPs ?? [])]) {
+      const trimmed = (ip ?? '').trim()
+      if (trimmed && !seen.has(trimmed)) {
+        seen.add(trimmed)
+        candidateIPs.push(trimmed)
+      }
+    }
+    if (candidateIPs.length === 1 && candidateIPs[0] === props.room.hostIP) {
+      await collabStore.joinRoom(
+        props.room.hostIP,
+        props.room.port,
+        accessCode.value.trim(),
+        '',
+        displayName.value.trim()
+      )
+    } else {
+      await collabStore.joinRoomMulti(
+        candidateIPs,
+        props.room.port,
+        accessCode.value.trim(),
+        '',
+        displayName.value.trim()
+      )
+    }
     emit('update:modelValue', false)
     emit('joined')
   } catch (e) {

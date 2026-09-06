@@ -95,6 +95,13 @@
       </template>
 
       <p v-if="copied" class="mt-2 text-center text-[11px] font-medium text-emerald-600">Tersalin!</p>
+
+      <div v-if="snap.room.hostIPs && snap.room.hostIPs.length > 1" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-700">
+        Host terhubung lewat beberapa interface sekaligus (kabel LAN + WiFi). Bila client tidak bisa
+        terhubung: izinkan "SPH Manager" untuk jaringan <b>Private dan Public</b> di Windows Firewall
+        (jalankan sebagai Administrator bila perlu), lalu pastikan client memakai salah satu IP di atas
+        yang berada di subnet yang sama.
+      </div>
     </div>
 
     <!-- Connection status -->

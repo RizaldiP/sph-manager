@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,7 +18,8 @@ import (
 
 // clientParams adalah konfigurasi koneksi keluar ke room host.
 type clientParams struct {
-	addr        string
+	addr        string   // alamat primer (ip:port) untuk pesan/log
+	addrs       []string // semua kandidat alamat (ip:port) yang pernah/bisa dicoba
 	displayName string
 	deviceName  string
 	accessCode  string
@@ -51,13 +53,14 @@ func (s *connSession) kill() {
 type Client struct {
 	p clientParams
 
-	mu       sync.Mutex
+mu       sync.Mutex
 	session  *connSession
 	clientID string // identitas dari host; dipertahankan lintas reconnect
 	status   string
 	lastErr  string
-	fatal    bool // true bila tidak perlu reconnect lagi (auth salah / room tutup)
+	fatal    bool    // true bila tidak perlu reconnect lagi (auth salah / room tutup)
 	fatalErr string
+	lastGoodAddr string // IP host yang terakhir berhasil, untuk reconnect cepat
 
 	stopCh   chan struct{}
 	stopOnce sync.Once
@@ -70,6 +73,23 @@ func newClient(p clientParams) (*Client, error) {
 	if p.addr == "" {
 		return nil, services.NewValidationError("Alamat host kosong.")
 	}
+	if len(p.addrs) == 0 {
+		p.addrs = []string{p.addr}
+	}
+	seen := map[string]bool{}
+	addrs := make([]string, 0, len(p.addrs))
+	for _, a := range p.addrs {
+		a = strings.TrimSpace(a)
+		if a == "" || seen[a] {
+			continue
+		}
+		seen[a] = true
+		addrs = append(addrs, a)
+	}
+	if len(addrs) == 0 {
+		addrs = []string{p.addr}
+	}
+	p.addrs = addrs
 	return &Client{
 		p:           p,
 		status:      ConnDisconnected,
@@ -92,7 +112,9 @@ func (c *Client) StartAndWaitReady(timeout time.Duration) error {
 	case <-time.After(timeout):
 		c.p.log.Warn("join timeout", "addr", c.p.addr, "timeout", timeout)
 		return fmt.Errorf("host di %s tidak merespons permintaan join (%s). "+
-			"Kemungkinan firewall memblokir port. Izinkan SPH Manager pada jaringan privat.",
+			"Kemungkinan firewall memblokir port: izinkan \"SPH Manager\" untuk jaringan "+
+			"Private DAN Public (termasuk WiFi), atau nonaktifkan isolasi AP/client di router, "+
+			"lalu pastikan host dan client berada di subnet yang sama.",
 			c.p.addr, timeout)
 	case <-c.stopCh:
 		return fmt.Errorf("koneksi dibatalkan.")
@@ -244,23 +266,64 @@ func joinErrorMessage(ep ErrorPayload) string {
 	return "Host menolak permintaan join."
 }
 
-// connect membuka koneksi TCP/WebSocket baru.
+// connect membuka koneksi TCP/WebSocket baru ke host. Bila ada beberapa IP
+// kandidat (misal host multihomed: kabel LAN + WiFi), tiap IP dicoba sampai
+// salah satunya berhasil. IP yang terakhir sukses dipinjam lebih dulu agar
+// reconnect tidak mengulang seluruh daftar.
 func (c *Client) connect() (*connSession, error) {
-	d := net.Dialer{Timeout: c.p.cfg.DialTimeout}
-	dialer := websocket.Dialer{
-		NetDialContext: d.DialContext,
-		ReadBufferSize: 4096,
+	dial := func(addr string) (*connSession, error) {
+		d := net.Dialer{Timeout: c.p.cfg.DialTimeout}
+		dialer := websocket.Dialer{
+			NetDialContext: d.DialContext,
+			ReadBufferSize: 4096,
+		}
+		conn, _, err := dialer.DialContext(context.Background(), "ws://"+addr+"/ws", http.Header{})
+		if err != nil {
+			c.p.log.Warn("connect gagal", "addr", addr, "error", err)
+			return nil, err
+		}
+		conn.SetReadLimit(maxMessageSize)
+		return &connSession{conn: conn, dead: make(chan struct{})}, nil
 	}
-	conn, _, err := dialer.DialContext(context.Background(), c.wsURL(), http.Header{})
-	if err != nil {
-		c.p.log.Warn("connect gagal", "addr", c.p.addr, "error", err)
-		return nil, &clientErr{msg: fmt.Sprintf(
-			"gagal terhubung ke %s: %s. Periksa: 1) IP dan port benar, "+
-				"2) room host masih aktif, 3) firewall Windows mengizinkan aplikasi pada jaringan privat.",
-			c.p.addr, err.Error())}
+
+	c.mu.Lock()
+	var candidates []string
+	seen := map[string]bool{}
+	if c.lastGoodAddr != "" {
+		candidates = append(candidates, c.lastGoodAddr)
+		seen[c.lastGoodAddr] = true
 	}
-	conn.SetReadLimit(maxMessageSize)
-	return &connSession{conn: conn, dead: make(chan struct{})}, nil
+	for _, a := range c.p.addrs {
+		if !seen[a] {
+			candidates = append(candidates, a)
+			seen[a] = true
+		}
+	}
+	c.mu.Unlock()
+
+	if len(candidates) == 0 {
+		return nil, &clientErr{msg: "alamat host kosong."}
+	}
+
+	var lastErr error
+	for _, addr := range candidates {
+		s, err := dial(addr)
+		if err == nil {
+			c.mu.Lock()
+			c.lastGoodAddr = addr
+			c.mu.Unlock()
+			c.p.log.Info("berhasil terhubung ke host", "addr", addr)
+			return s, nil
+		}
+		lastErr = err
+	}
+
+	c.p.log.Warn("semua kandidat alamat host gagal", "candidates", candidates)
+	return nil, &clientErr{msg: fmt.Sprintf(
+		"gagal terhubung ke host %s: %s. Periksa: 1) IP dan port benar, "+
+			"2) room host masih aktif, 3) firewall Windows mengizinkan aplikasi pada jaringan "+
+			"Private dan Public (WiFi), 4) host dan client berada di subnet yang sama tanpa isolasi AP.",
+		strings.Join(candidates, ", "), lastErr.Error())}
 }
 
 // sendJoinOn mengirim JOIN_REQUEST pada sesi tertentu.

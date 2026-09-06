@@ -66,6 +66,7 @@ export interface DiscoveredRoom {
   documentNumber: string
   projectName: string
   hostIP: string
+  hostIPs?: string[]
   hostName: string
   port: number
   users: number

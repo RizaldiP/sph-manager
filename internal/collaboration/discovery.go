@@ -2,31 +2,54 @@ package collaboration
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
 // announcePacket: muatan UDP yang di-broadcast host saat room aktif.
+// HostIPs berisi semua alamat IP host yang reachable, sehingga client bisa
+// mencoba IP selain source address paket (penting saat host punya banyak
+// interface aktif: kabel LAN + WiFi sekaligus).
 type announcePacket struct {
-	RoomID         string `json:"roomId"`
-	RoomName       string `json:"roomName"`
-	DocumentNumber string `json:"documentNumber"`
-	ProjectName    string `json:"projectName"`
-	HostName       string `json:"hostName"`
-	WSPort         int    `json:"port"`
-	Users          int    `json:"users"`
-	Status         string `json:"status,omitempty"`
+	RoomID         string   `json:"roomId"`
+	RoomName       string   `json:"roomName"`
+	DocumentNumber string   `json:"documentNumber"`
+	ProjectName    string   `json:"projectName"`
+	HostName       string   `json:"hostName"`
+	WSPort         int      `json:"port"`
+	Users          int      `json:"users"`
+	HostIPs        []string `json:"hostIPs,omitempty"`
+	Status         string   `json:"status,omitempty"`
 }
 
 // ===== Announcer (sisi host) =====
 
+// announceTarget: satu tujuan broadcast beserta source IP socket pengirim.
+// srcIP kosong berarti memakai socket wildcard (untuk broadcast global).
+type announceTarget struct {
+	srcIP string
+	dst   *net.UDPAddr
+}
+
+// announceConn: satu socket UDP yang mengirim ke satu alamat broadcast.
+type announceConn struct {
+	conn  *net.UDPConn
+	dst   *net.UDPAddr
+	srcIP string
+}
+
 // Announcer menyiarkan paket room secara periodik ke alamat broadcast interface.
+// Setiap interface IPv4 fisik/aktif mendapat socket sendiri yang dibind ke IP
+// interface tersebut, sehingga (a) tiap subnet pasti menerima paket dari
+// interface-nya dan (b) source address paket selalu IP yang benar-benar
+// reachable — bukan IP interface default-route yang kebetulan dipilih OS.
 type Announcer struct {
-	conn     *net.UDPConn
-	dests    []*net.UDPAddr
+	anns     []*announceConn
 	interval time.Duration
 	packet   atomic.Value // announcePacket
 	log      *slog.Logger
@@ -35,31 +58,17 @@ type Announcer struct {
 	stopOnce sync.Once
 }
 
-// startAnnouncer menyiapkan socket broadcast; pengiriman berjalan pada goroutine.
-// Menggunakan ListenUDP (unconnected) agar SO_BROADCAST bisa diset sebelum
-// pengiriman pertama ke alamat broadcast.
+// startAnnouncer menyiapkan socket-socket broadcast; pengiriman di goroutine.
 func startAnnouncer(port int, interval time.Duration, log *slog.Logger) (*Announcer, error) {
-	addr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
-	conn, err := net.ListenUDP("udp4", addr)
+	anns, err := newAnnounceConns(port, log)
 	if err != nil {
 		return nil, err
 	}
-
-	// Set SO_BROADCAST agar Windows mengizinkan pengiriman ke alamat broadcast.
-	if sc, err := conn.SyscallConn(); err == nil {
-		_ = sc.Control(func(fd uintptr) {
-			setBroadcast(fd)
-		})
+	if len(anns) == 0 {
+		log.Warn("tidak ada interface IPv4 aktif untuk broadcast discovery (join manual tetap bisa)")
 	}
-
-	dests := addIfaceBroadcasts(port)
-	if len(dests) <= 1 {
-		log.Warn("hanya broadcast global 255.255.255.255, directed broadcast tidak ditemukan")
-	}
-
 	a := &Announcer{
-		conn:     conn,
-		dests:    dests,
+		anns:     anns,
 		interval: interval,
 		log:      log,
 		stopCh:   make(chan struct{}),
@@ -69,44 +78,54 @@ func startAnnouncer(port int, interval time.Duration, log *slog.Logger) (*Announ
 	return a, nil
 }
 
-// addIfaceBroadcasts mengembalikan daftar alamat broadcast: global 255.255.255.255
-// ditambah directed broadcast tiap interface IPv4 aktif.
-func addIfaceBroadcasts(port int) []*net.UDPAddr {
-	dests := []*net.UDPAddr{{IP: net.IPv4(255, 255, 255, 255), Port: port}}
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return dests
-	}
-	for _, iface := range ifaces {
-		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagBroadcast == 0 {
-			continue
+// newAnnounceConns membuka satu socket UDP per target broadcast, masing-masing
+// dibind ke IP interface terkait agar source address terjamin benar.
+func newAnnounceConns(port int, log *slog.Logger) ([]*announceConn, error) {
+	targets := buildAnnounceTargets(port)
+	var out []*announceConn
+	for _, t := range targets {
+		var bindsrc net.IP
+		if t.srcIP != "" {
+			bindsrc = net.ParseIP(t.srcIP)
 		}
-		addrs, err := iface.Addrs()
+		conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: bindsrc, Port: 0})
 		if err != nil {
+			log.Warn("gagal membuka socket broadcast", "src", t.srcIP, "error", err)
 			continue
 		}
-		for _, addr := range addrs {
-			ipnet, ok := addr.(*net.IPNet)
-			if !ok || ipnet.IP.To4() == nil {
-				continue
-			}
-			broadcast := broadcastOf(ipnet)
-			if broadcast == nil {
-				continue
-			}
-			dup := false
-			for _, d := range dests {
-				if d.IP.Equal(broadcast) {
-					dup = true
-					break
-				}
-			}
-			if !dup {
-				dests = append(dests, &net.UDPAddr{IP: broadcast, Port: port})
-			}
+		// Set SO_BROADCAST agar Windows mengizinkan pengiriman ke alamat broadcast.
+		if sc, err := conn.SyscallConn(); err == nil {
+			_ = sc.Control(func(fd uintptr) {
+				setBroadcast(fd)
+			})
 		}
+		out = append(out, &announceConn{conn: conn, dst: t.dst, srcIP: t.srcIP})
 	}
-	return dests
+	if len(out) == 0 && len(targets) > 0 {
+		return nil, fmt.Errorf("gagal membuka socket UDP broadcast")
+	}
+	return out, nil
+}
+
+// buildAnnounceTargets mengembalikan daftar target broadcast: global 255.255.255.255
+// ditambah directed broadcast tiap interface IPv4 non-virtual aktif.
+func buildAnnounceTargets(port int) []announceTarget {
+	targets := []announceTarget{{srcIP: "", dst: &net.UDPAddr{IP: net.IPv4(255, 255, 255, 255), Port: port}}}
+	seen := map[string]bool{}
+	for _, ii := range listIPv4Interfaces() {
+		broadcast := broadcastOf(ii.ipnet)
+		if broadcast == nil {
+			continue
+		}
+		src := ii.ip.String()
+		key := src + "|" + broadcast.String()
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		targets = append(targets, announceTarget{srcIP: src, dst: &net.UDPAddr{IP: broadcast, Port: port}})
+	}
+	return targets
 }
 
 func broadcastOf(ipnet *net.IPNet) net.IP {
@@ -129,8 +148,8 @@ func (a *Announcer) sendPacket(p announcePacket) {
 	if err != nil {
 		return
 	}
-	for _, d := range a.dests {
-		_, _ = a.conn.WriteToUDP(b, d)
+	for _, ac := range a.anns {
+		_, _ = ac.conn.WriteToUDP(b, ac.dst)
 	}
 }
 
@@ -154,9 +173,9 @@ func (a *Announcer) loop() {
 			a.log.Warn("gagal marshal announce packet", "error", err)
 			return
 		}
-		for _, d := range a.dests {
-			if _, wErr := a.conn.WriteToUDP(b, d); wErr != nil {
-				a.log.Warn("gagal broadcast discovery", "dest", d.IP.String(), "error", wErr)
+		for _, ac := range a.anns {
+			if _, wErr := ac.conn.WriteToUDP(b, ac.dst); wErr != nil {
+				a.log.Warn("gagal broadcast discovery", "dest", ac.dst.IP.String(), "src", ac.srcIP, "error", wErr)
 			}
 		}
 	}
@@ -184,7 +203,9 @@ func (a *Announcer) Stop() {
 				}
 			}
 		}
-		_ = a.conn.Close()
+		for _, ac := range a.anns {
+			_ = ac.conn.Close()
+		}
 	})
 }
 
@@ -267,17 +288,15 @@ func (l *Listener) readLoop() {
 		if p.WSPort <= 0 {
 			continue
 		}
-		hostIP := ""
-		if addr != nil {
-			hostIP = addr.IP.String()
-		}
+		hostIPs, primary := candidatesFromAnnounce(p, addr)
 		l.mu.Lock()
 		l.rooms[p.RoomID] = DiscoveredRoom{
 			RoomID:         p.RoomID,
 			RoomName:       p.RoomName,
 			DocumentNumber: p.DocumentNumber,
 			ProjectName:    p.ProjectName,
-			HostIP:         hostIP,
+			HostIP:         primary,
+			HostIPs:        hostIPs,
 			HostName:       p.HostName,
 			Port:           p.WSPort,
 			Users:          p.Users,
@@ -285,6 +304,47 @@ func (l *Listener) readLoop() {
 		}
 		l.mu.Unlock()
 	}
+}
+
+// candidatesFromAnnounce mengembalikan daftar IP host yang akan dicoba client:
+// source address paket (bila valid) lebih dulu, lalu daftar HostIPs dari payload.
+// Menoleransi source 0.0.0.0 dan membuang IP loopback/link-local/tidak valid.
+func candidatesFromAnnounce(p announcePacket, addr *net.UDPAddr) ([]string, string) {
+	seen := map[string]bool{}
+	var out []string
+	add := func(s string) {
+		s = strings.TrimSpace(s)
+		ip := net.ParseIP(s)
+		if ip == nil || ip.To4() == nil {
+			return
+		}
+		ip = ip.To4()
+		if ip.IsLoopback() || ip.IsUnspecified() {
+			return
+		}
+		if ip[0] == 169 && ip[1] == 254 {
+			return
+		}
+		key := ip.String()
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		out = append(out, key)
+	}
+	src := ""
+	if addr != nil && addr.IP != nil {
+		src = addr.IP.String()
+	}
+	add(src)
+	for _, s := range p.HostIPs {
+		add(s)
+	}
+	primary := ""
+	if len(out) > 0 {
+		primary = out[0]
+	}
+	return out, primary
 }
 
 func (l *Listener) pruneLoop(interval time.Duration) {

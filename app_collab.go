@@ -67,6 +67,23 @@ func (a *App) JoinCollabRoom(hostIP string, port int, accessCode, roomCode, disp
 	return err
 }
 
+// JoinCollabRoomMulti join ke room via beberapa IP kandidat host sekaligus
+// (hasil discovery). Client mencoba tiap IP sampai salah satunya berhasil —
+// penting saat host terhubung kabel LAN + WiFi sekaligus di subnet sama.
+func (a *App) JoinCollabRoomMulti(hostIPs []string, port int, accessCode, roomCode, displayName string) error {
+	if strings.TrimSpace(displayName) == "" {
+		displayName = a.settings.CollabDisplayNameOrDefault()
+	}
+	a.log.Info("JoinCollabRoomMulti dipanggil", "hostIPs", hostIPs, "port", port)
+	err := a.collabMgr.JoinMulti(hostIPs, port, displayName, accessCode, roomCode)
+	if err != nil {
+		a.log.Warn("JoinCollabRoomMulti gagal", "error", err, "hostIPs", hostIPs, "port", port)
+	} else {
+		a.log.Info("JoinCollabRoomMulti berhasil", "hostIPs", hostIPs, "port", port)
+	}
+	return err
+}
+
 // LeaveCollabRoom keluar dari room yang sedang diikuti.
 func (a *App) LeaveCollabRoom() error { return a.collabMgr.LeaveClientSession() }
 

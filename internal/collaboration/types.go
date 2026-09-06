@@ -79,6 +79,7 @@ type DiscoveredRoom struct {
 	DocumentNumber string    `json:"documentNumber"`
 	ProjectName    string    `json:"projectName"`
 	HostIP         string    `json:"hostIP"`
+	HostIPs        []string  `json:"hostIPs,omitempty"`
 	HostName       string    `json:"hostName"`
 	Port           int       `json:"port"`
 	Users          int       `json:"users"`

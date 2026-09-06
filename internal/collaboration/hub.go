@@ -319,15 +319,33 @@ func (m *Manager) CloseHostedRoom(reason string) error {
 
 // Join menghubungkan aplikasi ini sebagai client ke room host di LAN.
 func (m *Manager) Join(hostIP string, port int, displayName, accessCode, roomCode string) error {
-	ip := strings.TrimSpace(hostIP)
-	displayName = sanitizeIdentity(displayName)
-	accessCode = strings.TrimSpace(accessCode)
-	if ip == "" {
+	return m.JoinMulti([]string{hostIP}, port, displayName, accessCode, roomCode)
+}
+
+// JoinMulti sama seperti Join tetapi untuk satu atau lebih IP kandidat host.
+// Client mencoba tiap IP secara berurutan sampai salah satunya berhasil
+// terhubung — penting saat host punya banyak interface (kabel LAN + WiFi)
+// dan hasil discovery memberi daftar HostIPs.
+func (m *Manager) JoinMulti(hostIPs []string, port int, displayName, accessCode, roomCode string) error {
+	ips := make([]string, 0, len(hostIPs))
+	for _, raw := range hostIPs {
+		ip := strings.TrimSpace(raw)
+		if ip == "" {
+			continue
+		}
+		if parsed := net.ParseIP(ip); parsed != nil {
+			ip = parsed.String()
+		}
+		ips = append(ips, ip)
+	}
+	if len(ips) == 0 {
 		return services.NewValidationError("IP host wajib diisi (contoh 192.168.1.10).")
 	}
 	if port < 1024 || port > 65535 {
 		return services.NewValidationError("Port harus di antara 1024 dan 65535.")
 	}
+	displayName = sanitizeIdentity(displayName)
+	accessCode = strings.TrimSpace(accessCode)
 	if displayName == "" {
 		displayName = m.cfg.DeviceName
 	}
@@ -345,8 +363,14 @@ func (m *Manager) Join(hostIP string, port int, displayName, accessCode, roomCod
 		return services.NewConflictError("Sudah terhubung ke sebuah room. Keluar terlebih dulu bila ingin pindah.")
 	}
 
+	addrs := make([]string, len(ips))
+	for i, ip := range ips {
+		addrs[i] = net.JoinHostPort(ip, fmt.Sprintf("%d", port))
+	}
+
 	c, err := newClient(clientParams{
-		addr:        net.JoinHostPort(ip, fmt.Sprintf("%d", port)),
+		addr:        addrs[0],
+		addrs:       addrs,
 		displayName: displayName,
 		deviceName:  m.cfg.DeviceName,
 		accessCode:  accessCode,
@@ -1085,6 +1109,7 @@ func (r *Room) publishAnnounceLocked() {
 		HostName:       r.info.HostName,
 		WSPort:         r.info.Port,
 		Users:          len(r.info.Participants),
+		HostIPs:        r.info.HostIPs,
 	})
 }
 

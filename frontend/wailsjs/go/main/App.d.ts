@@ -108,6 +108,8 @@ export function InstallMasterData(arg1:string,arg2:string,arg3:Record<string, st
 
 export function JoinCollabRoom(arg1:string,arg2:number,arg3:string,arg4:string,arg5:string):Promise<void>;
 
+export function JoinCollabRoomMulti(arg1:Array<string>,arg2:number,arg3:string,arg4:string,arg5:string):Promise<void>;
+
 export function LeaveCollabRoom():Promise<void>;
 
 export function ListBackups():Promise<Array<services.BackupInfo>>;

@@ -55,6 +55,7 @@ export namespace collaboration {
 	    documentNumber: string;
 	    projectName: string;
 	    hostIP: string;
+	    hostIPs?: string[];
 	    hostName: string;
 	    port: number;
 	    users: number;
@@ -72,6 +73,7 @@ export namespace collaboration {
 	        this.documentNumber = source["documentNumber"];
 	        this.projectName = source["projectName"];
 	        this.hostIP = source["hostIP"];
+	        this.hostIPs = source["hostIPs"];
 	        this.hostName = source["hostName"];
 	        this.port = source["port"];
 	        this.users = source["users"];
