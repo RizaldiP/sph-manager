@@ -33,6 +33,7 @@ const (
 	keyCollabPort      = "collab_port"
 	keyCollabName      = "collab_display_name"
 	keyMasterDataMax   = "masterdata_max_package_size"
+	keyUpdateSource    = "update_source_url"
 )
 
 // DefaultCollabPort adalah port WebSocket Work Together bila tidak dikonfigurasi.
@@ -69,6 +70,7 @@ type SettingsView struct {
 	DefaultNotes      string `json:"defaultNotes"`
 	CollabPort        int    `json:"collabPort"`
 	CollabDisplayName string `json:"collabDisplayName"`
+	UpdateSourceURL   string `json:"updateSourceUrl"`
 }
 
 // SettingsInput: payload pembaruan dari UI.
@@ -82,6 +84,7 @@ type SettingsInput struct {
 	DefaultNotes      string `json:"defaultNotes"`
 	CollabPort        int    `json:"collabPort"`
 	CollabDisplayName string `json:"collabDisplayName"`
+	UpdateSourceURL   string `json:"updateSourceUrl"`
 }
 
 func defaultSettings() SettingsView {
@@ -168,6 +171,7 @@ func (s *SettingsService) Get() (*SettingsView, error) {
 		DefaultNotes:      pick(m, keyDefaultNotes, ""),
 		CollabPort:        def.CollabPort,
 		CollabDisplayName: pick(m, keyCollabName, ""),
+		UpdateSourceURL:   pick(m, keyUpdateSource, ""),
 	}
 	if p, err := strconv.Atoi(strings.TrimSpace(m[keyCollabPort])); err == nil && validCollabPort(p) {
 		v.CollabPort = p
@@ -212,6 +216,12 @@ func (s *SettingsService) validate(in *SettingsInput) error {
 	if len(trim(in.CollabDisplayName)) > 100 {
 		return NewValidationError("Nama tampilan kolaborasi maksimal 100 karakter.")
 	}
+	if len(trim(in.UpdateSourceURL)) > 500 {
+		return NewValidationError("Link Google Drive update maksimal 500 karakter.")
+	}
+	if src := trim(in.UpdateSourceURL); src != "" && !strings.Contains(src, "drive.google.com") {
+		return NewValidationError("Link Google Drive update tidak valid. Gunakan link berbagi file di drive.google.com.")
+	}
 	return nil
 }
 
@@ -234,6 +244,7 @@ func (s *SettingsService) Update(in *SettingsInput) (*SettingsView, error) {
 			{keyDefaultNotes, trim(in.DefaultNotes)},
 			{keyCollabPort, strconv.Itoa(port)},
 			{keyCollabName, trim(in.CollabDisplayName)},
+			{keyUpdateSource, trim(in.UpdateSourceURL)},
 		}
 		for _, p := range pairs {
 			if err := repositories.SetSetting(tx, p.key, p.value); err != nil {

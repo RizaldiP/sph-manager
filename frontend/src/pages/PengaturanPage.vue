@@ -175,6 +175,57 @@
         <textarea v-model="form.defaultNotes" rows="3" maxlength="1000" placeholder="Contoh: Harga penawaran berlaku 30 hari kerja…" class="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"></textarea>
       </section>
 
+      <!-- Pembaruan software -->
+      <section class="rounded-xl border border-slate-200 bg-white p-5">
+        <h2 class="mb-4 text-sm font-semibold text-slate-800">Pembaruan Software</h2>
+        <div class="space-y-3">
+          <div>
+            <label class="mb-1 block text-[13px] font-medium text-slate-600">Link Google Drive File Aplikasi</label>
+            <input
+              v-model="form.updateSourceUrl"
+              type="url"
+              maxlength="500"
+              placeholder="https://drive.google.com/file/d/…/view?usp=sharing"
+              class="w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-[13px] outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+            />
+          </div>
+          <p class="text-xs text-slate-400">
+            Isi tautan Google Drive ke file aplikasi (.exe) bila ingin
+            memakai tautan berbeda dari bawaan. Biarkan kosong untuk memakai
+            tautan bawaan dari pengembang. Versi baru terdeteksi otomatis dari
+            isi file yang diunggah.
+          </p>
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              class="rounded-lg border border-slate-200 px-3.5 py-2 text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
+              :disabled="saving || logoBusy || assetBusy || appStore.updateBusy"
+              @click="checkUpdateNow"
+            >
+              {{ appStore.updateBusy ? 'Memeriksa…' : 'Periksa Update' }}
+            </button>
+            <p v-if="checkHint" class="text-xs text-amber-600">{{ checkHint }}</p>
+            <p v-else-if="appStore.updateStatus" class="text-xs" :class="appStore.updateStatus.hasUpdate ? 'text-brand-700' : 'text-emerald-700'">
+              <template v-if="appStore.updateStatus.hasUpdate">
+                Versi baru v{{ appStore.updateStatus.latestVersion }} tersedia (saat ini v{{ appStore.updateStatus.currentVersion }}).
+              </template>
+              <template v-else>
+                Aplikasi sudah versi terbaru (v{{ appStore.updateStatus.currentVersion }}).
+              </template>
+              <button
+                v-if="appStore.updateStatus.hasUpdate"
+                type="button"
+                class="ml-2 rounded-md border border-brand-200 px-2 py-0.5 text-[11px] font-medium text-brand-700 transition-colors hover:bg-brand-50"
+                @click="appStore.openUpdater()"
+              >
+                Pasang Sekarang
+              </button>
+            </p>
+            <p v-else-if="appStore.updateError" class="text-xs text-red-600">{{ appStore.updateError }}</p>
+          </div>
+        </div>
+      </section>
+
       <div class="flex justify-end pb-2">
         <button type="submit" class="rounded-lg bg-brand-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-60" :disabled="saving || logoBusy || assetBusy">
           {{ saving ? 'Menyimpan…' : 'Simpan Pengaturan' }}
@@ -188,6 +239,7 @@
 import { onMounted, reactive, ref, watch } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import { useSettingsStore } from '../stores/settings'
+import { useAppStore } from '../stores/app'
 import { errorMessage } from '../utils/format'
 import { emptySettings, type SettingsView } from '../types/settings'
 import {
@@ -206,6 +258,7 @@ import {
 } from '../../wailsjs/go/main/App'
 
 const store = useSettingsStore()
+const appStore = useAppStore()
 
 const loadedOnce = ref(false)
 const saved = ref(false)
@@ -227,6 +280,7 @@ const numberPreview = ref('')
 const numberError = ref('')
 let previewTimer: ReturnType<typeof setTimeout> | null = null
 
+const checkHint = ref('')
 const placeholders = ['{YYYY}', '{MM}', '{ROMAN}', '{SEQ}']
 
 onMounted(async () => {
@@ -285,6 +339,19 @@ function insertPlaceholder(t: string) {
   form.sphNumberFormat = (form.sphNumberFormat || '') + t
 }
 
+// checkUpdateNow memeriksa pembaruan; jika form berubah belum disimpan
+// peringatkan pengguna dulu agar link yang dipakai konsisten.
+async function checkUpdateNow() {
+  checkHint.value = ''
+  const current = (form.updateSourceUrl ?? '').trim()
+  const saved = (store.settings.updateSourceUrl ?? '').trim()
+  if (current !== saved) {
+    checkHint.value = 'Perubahan link belum disimpan. Klik "Simpan Pengaturan" terlebih dahulu, lalu periksa kembali.'
+    return
+  }
+  await appStore.checkUpdate()
+}
+
 async function submit() {
   formError.value = ''
   saved.value = false
@@ -307,7 +374,8 @@ async function submit() {
       signerPosition: form.signerPosition,
       defaultNotes: form.defaultNotes,
       collabPort: form.collabPort ?? 48765,
-      collabDisplayName: form.collabDisplayName ?? ''
+      collabDisplayName: form.collabDisplayName ?? '',
+      updateSourceUrl: form.updateSourceUrl ?? ''
     })) as unknown as SettingsView
     Object.assign(form, view)
     saved.value = true

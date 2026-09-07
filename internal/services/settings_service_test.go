@@ -53,6 +53,50 @@ func TestSettingsDefaultsAndGetUpdate(t *testing.T) {
 	}
 }
 
+func TestSettingsUpdateSource(t *testing.T) {
+	db := serviceDB(t)
+	svc := NewSettingsService(db, slog.Default())
+
+	link := "https://drive.google.com/file/d/ABCD123/view?usp=sharing"
+	upd, err := svc.Update(&SettingsInput{
+		CompanyName:     "PT. Uji Coba",
+		SphNumberFormat: "SPH/{YYYY}/{SEQ}",
+		UpdateSourceURL: link,
+	})
+	if err != nil {
+		t.Fatalf("update gagal: %v", err)
+	}
+	if upd.UpdateSourceURL != link {
+		t.Errorf("link update tidak tersimpan: %q", upd.UpdateSourceURL)
+	}
+
+	got, _ := svc.Get()
+	if got.UpdateSourceURL != link {
+		t.Errorf("link update tidak persisten: %q", got.UpdateSourceURL)
+	}
+}
+
+func TestSettingsUpdateSourceInvalid(t *testing.T) {
+	db := serviceDB(t)
+	svc := NewSettingsService(db, slog.Default())
+
+	if _, err := svc.Update(&SettingsInput{
+		CompanyName:     "PT. Uji Coba",
+		SphNumberFormat: "SPH/{YYYY}/{SEQ}",
+		UpdateSourceURL: "https://example.com/fake.json",
+	}); err == nil {
+		t.Error("link non-Drive harus ditolak")
+	}
+	long := "https://drive.google.com/file/d/" + strings.Repeat("x", 600) + "/view"
+	if _, err := svc.Update(&SettingsInput{
+		CompanyName:     "PT. Uji Coba",
+		SphNumberFormat: "SPH/{YYYY}/{SEQ}",
+		UpdateSourceURL: long,
+	}); err == nil {
+		t.Error("link >500 karakter harus ditolak")
+	}
+}
+
 func TestSettingsValidation(t *testing.T) {
 	db := serviceDB(t)
 	svc := NewSettingsService(db, slog.Default())

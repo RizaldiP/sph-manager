@@ -515,10 +515,7 @@ func drawKop(pdf *fpdf.Fpdf, tr func(string) string, g pdfGeom, d *ExportData) {
 	y := pdfMargin
 
 	if d.Company.LogoPath != "" {
-		func() {
-			defer func() { _ = recover() }() // gambar rusak tidak boleh membatalkan export
-			pdf.Image(d.Company.LogoPath, pdfMargin, y, logoBox, logoBox, false, "", 0, "")
-		}()
+		drawImageSafe(pdf, d.Company.LogoPath, pdfMargin, y, logoBox, logoBox)
 	}
 	tx := pdfMargin + logoBox + 4
 	pdf.SetXY(tx, y+1)
@@ -798,14 +795,35 @@ func drawStampImage(pdf *fpdf.Fpdf, x0, y float64, d *ExportData) {
 	placeImage(pdf, d.Company.StampPath, x0, y, fx, fy, fw)
 }
 
+// drawImageSafe menempatkan gambar logo tanpa membatalkan export bila file
+// hilang/rusak/format tak didukung. gofpdf meng-set error internal (bukan
+// panic) saat gambar tidak dapat dibaca, sehingga recover() saja tidak cukup;
+// error tersebut wajib dibersihkan agar Output() dokumen tetap berhasil.
+func drawImageSafe(pdf *fpdf.Fpdf, path string, x, y, w, h float64) {
+	if strings.TrimSpace(path) == "" || !fileExists(path) {
+		return
+	}
+	defer func() { _ = recover() }()
+	pdf.Image(path, x, y, w, h, false, "", 0, "")
+	if pdf.Err() {
+		pdf.ClearError()
+	}
+}
+
 // placeImage menggambar PNG pada (x0+fx*W, y+fy*H) dgn lebar fw*W (tinggi
-// mengikuti rasio aspek), dibatasi agar tidak melewati kotak blok.
+// mengikuti rasio aspek), dibatasi agar tidak melewati kotak blok. Gambar
+// rusak/format tak didukung dilewati: error gofpdf dibersihkan agar tidak
+// menggagalkan seluruh dokumen.
 func placeImage(pdf *fpdf.Fpdf, path string, x0, y, fx, fy, fw float64) {
 	if !fileExists(path) {
 		return
 	}
 	defer func() { _ = recover() }()
 	info := pdf.RegisterImageOptions(path, fpdf.ImageOptions{ReadDpi: false, ImageType: "png"})
+	if pdf.Err() {
+		pdf.ClearError()
+		return
+	}
 	if info == nil {
 		return
 	}
@@ -841,6 +859,9 @@ func placeImage(pdf *fpdf.Fpdf, path string, x0, y, fx, fy, fw float64) {
 		iy = y + blockH - h
 	}
 	pdf.Image(path, ix, iy, w, h, false, "", 0, "")
+	if pdf.Err() {
+		pdf.ClearError()
+	}
 }
 
 func fileExists(path string) bool {

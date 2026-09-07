@@ -5,7 +5,7 @@
 ## Status Ringkas
 
 | Fase | Nama | Status |
-|---|---|---|
+|---|---|---| 
 | 0 | Analisis & Dokumentasi | ✅ Selesai |
 | 1 | Foundation (Wails + Go + Vue + SQLite) | ✅ Selesai |
 | 2 | Database (migration + model) | ✅ Selesai |

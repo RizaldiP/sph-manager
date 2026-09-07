@@ -785,6 +785,24 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class UpdateStatus {
+	    currentVersion: string;
+	    latestVersion: string;
+	    hasUpdate: boolean;
+	    notes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.currentVersion = source["currentVersion"];
+	        this.latestVersion = source["latestVersion"];
+	        this.hasUpdate = source["hasUpdate"];
+	        this.notes = source["notes"];
+	    }
+	}
 
 }
 
@@ -2134,6 +2152,7 @@ export namespace services {
 	    defaultNotes: string;
 	    collabPort: number;
 	    collabDisplayName: string;
+	    updateSourceUrl: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new SettingsInput(source);
@@ -2150,6 +2169,7 @@ export namespace services {
 	        this.defaultNotes = source["defaultNotes"];
 	        this.collabPort = source["collabPort"];
 	        this.collabDisplayName = source["collabDisplayName"];
+	        this.updateSourceUrl = source["updateSourceUrl"];
 	    }
 	}
 	export class SettingsView {
@@ -2171,6 +2191,7 @@ export namespace services {
 	    defaultNotes: string;
 	    collabPort: number;
 	    collabDisplayName: string;
+	    updateSourceUrl: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new SettingsView(source);
@@ -2196,6 +2217,7 @@ export namespace services {
 	        this.defaultNotes = source["defaultNotes"];
 	        this.collabPort = source["collabPort"];
 	        this.collabDisplayName = source["collabDisplayName"];
+	        this.updateSourceUrl = source["updateSourceUrl"];
 	    }
 	}
 	

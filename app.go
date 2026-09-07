@@ -16,7 +16,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const appVersion = "0.10.0"
+const appVersion = "0.12.0"
 
 type HealthInfo struct {
 	Status       string `json:"status"`
@@ -47,6 +47,9 @@ type App struct {
 	sharePath  string
 
 	restoreMu sync.Mutex
+
+	updMu          sync.Mutex
+	updBackupReady bool
 }
 
 func NewApp(cfg *config.Config, db *gorm.DB, lg *slog.Logger) *App {

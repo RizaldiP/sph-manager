@@ -6,6 +6,10 @@ export function AssignTurns(arg1) {
   return window['go']['main']['App']['AssignTurns'](arg1);
 }
 
+export function BackupForUpdate() {
+  return window['go']['main']['App']['BackupForUpdate']();
+}
+
 export function BackupNow() {
   return window['go']['main']['App']['BackupNow']();
 }
@@ -16,6 +20,10 @@ export function BuildMasterDataPackage() {
 
 export function BuildMasterDataPackageFiltered(arg1) {
   return window['go']['main']['App']['BuildMasterDataPackageFiltered'](arg1);
+}
+
+export function CheckForUpdate() {
+  return window['go']['main']['App']['CheckForUpdate']();
 }
 
 export function ClearChatUnread() {
@@ -86,6 +94,10 @@ export function CreateWorkItem(arg1) {
   return window['go']['main']['App']['CreateWorkItem'](arg1);
 }
 
+export function CurrentVersion() {
+  return window['go']['main']['App']['CurrentVersion']();
+}
+
 export function DashboardStats() {
   return window['go']['main']['App']['DashboardStats']();
 }
@@ -132,6 +144,10 @@ export function DeleteWorkItem(arg1) {
 
 export function DeleteWorkItems(arg1) {
   return window['go']['main']['App']['DeleteWorkItems'](arg1);
+}
+
+export function DownloadAndApplyUpdate() {
+  return window['go']['main']['App']['DownloadAndApplyUpdate']();
 }
 
 export function DuplicateSph(arg1) {

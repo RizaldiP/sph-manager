@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"image/png"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -467,6 +468,52 @@ func TestDrawSignatureImagesMissingFile(t *testing.T) {
 	d.Company.SignaturePath = ""
 	if _, err := BuildPDF(d, PDFOptions{Landscape: true}); err != nil {
 		t.Fatalf("BuildPDF dgn jalan rusak gagal: %v", err)
+	}
+}
+
+// TestBuildPDFToleratesBrokenImages meregresi bug "gagal menyusun file PDF":
+// gofpdf meng-set error internal (bukan panic) saat gambar tidak dapat dibuka
+// (file hilang) atau tidak dapat diurai (bukan PNG / PNG interlaced / ekstensi
+// salah). Error tersebut harus dibersihkan agar satu logo/stempel/ttd yang
+// bermasalah tidak menggagalkan seluruh dokumen.
+func TestBuildPDFToleratesBrokenImages(t *testing.T) {
+	dir := t.TempDir()
+
+	badPNG := filepath.Join(dir, "logo.png")
+	if err := os.WriteFile(badPNG, []byte("ini bukan gambar png"), 0o644); err != nil {
+		t.Fatalf("tulis file png rusak gagal: %v", err)
+	}
+	missingLogo := filepath.Join(dir, "tidak-ada-logo.png")
+	missingSign := filepath.Join(dir, "tidak-ada-ttd.png")
+
+	scenarios := []struct {
+		name    string
+		company CompanyInfo
+	}{
+		{"logo rusak (file ada, bukan PNG)", CompanyInfo{LogoPath: badPNG}},
+		{"logo hilang", CompanyInfo{LogoPath: missingLogo}},
+		{"stempel hilang", CompanyInfo{StampPath: missingSign}},
+		{"stempel + ttd rusak", CompanyInfo{StampPath: badPNG, SignaturePath: badPNG}},
+	}
+	for _, sc := range scenarios {
+		for _, landscape := range []bool{true, false} {
+			d := buildFixture()
+			d.Company.Name = "PT. Ganesha Energi Indonesia"
+			d.Company.City = "Surabaya"
+			d.Company.SignerName = "Matawai"
+			d.Company.SignerPosition = "Direktur"
+			d.Company.LogoPath = sc.company.LogoPath
+			d.Company.StampPath = sc.company.StampPath
+			d.Company.SignaturePath = sc.company.SignaturePath
+
+			res, err := BuildPDF(d, PDFOptions{Landscape: landscape})
+			if err != nil {
+				t.Fatalf("%s (landscape=%v) harus tetap berhasil: %v", sc.name, landscape, err)
+			}
+			if res.Pages < 1 || !bytes.HasPrefix(res.Bytes, []byte("%PDF-")) {
+				t.Errorf("%s (landscape=%v) output tidak valid", sc.name, landscape)
+			}
+		}
 	}
 }
 

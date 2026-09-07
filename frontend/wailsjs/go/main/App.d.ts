@@ -3,18 +3,22 @@
 import {services} from '../models';
 import {collaboration} from '../models';
 import {masterdata} from '../models';
-import {models} from '../models';
 import {main} from '../models';
+import {models} from '../models';
 import {importers} from '../models';
 import {sharebackup} from '../models';
 
 export function AssignTurns(arg1:Record<string, Array<string>>):Promise<void>;
+
+export function BackupForUpdate():Promise<services.BackupInfo>;
 
 export function BackupNow():Promise<services.BackupInfo>;
 
 export function BuildMasterDataPackage():Promise<collaboration.MasterDataPackage>;
 
 export function BuildMasterDataPackageFiltered(arg1:masterdata.FilterSelection):Promise<collaboration.MasterDataPackage>;
+
+export function CheckForUpdate():Promise<main.UpdateStatus>;
 
 export function ClearChatUnread():Promise<void>;
 
@@ -50,6 +54,8 @@ export function CreateVessel(arg1:models.Vessel):Promise<models.Customer>;
 
 export function CreateWorkItem(arg1:models.WorkItem):Promise<models.WorkItem>;
 
+export function CurrentVersion():Promise<string>;
+
 export function DashboardStats():Promise<services.DashboardStats>;
 
 export function DeleteBackup(arg1:string):Promise<void>;
@@ -73,6 +79,8 @@ export function DeleteVessel(arg1:number):Promise<void>;
 export function DeleteWorkItem(arg1:number):Promise<void>;
 
 export function DeleteWorkItems(arg1:Array<number>):Promise<services.DeleteResult>;
+
+export function DownloadAndApplyUpdate():Promise<void>;
 
 export function DuplicateSph(arg1:number):Promise<services.SphDocumentView>;
 
