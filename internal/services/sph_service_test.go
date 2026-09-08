@@ -348,3 +348,63 @@ func TestSphScopesStatsAndDeleteDraft(t *testing.T) {
 		t.Errorf("draft tidak hilang dari daftar: %d", len(allAfter))
 	}
 }
+
+// Regresi: saat edit draft, perubahan customer/kapal harus benar-benar tersimpan.
+// Tanpa Omit(clause.Associations) pada repo.Update, GORM Save me-relink FK kembali ke
+// nilai relasi lama (customer_id/vessel_id ter-preload) sehingga perubahan hilang.
+func TestUpdateDraftChangeCustomerAndVessel(t *testing.T) {
+	db := serviceDB(t)
+	svc := NewSphService(db, slog.Default())
+
+	custA := seedSphCustomer(t, db)
+	custB := &models.Customer{Code: "CUS-002", Name: "PT Samudra Sakti"}
+	if err := db.Create(custB).Error; err != nil {
+		t.Fatalf("seed customer B gagal: %v", err)
+	}
+	mkVessel := func(cust *models.Customer, name string) *models.Vessel {
+		v := &models.Vessel{CustomerID: cust.ID, Name: name}
+		if err := db.Create(v).Error; err != nil {
+			t.Fatalf("seed kapal gagal: %v", err)
+		}
+		return v
+	}
+	vA := mkVessel(custA, "KM Bahari")
+	vB := mkVessel(custB, "KM Nusantara")
+
+	in := sampleSphInput(custA.ID)
+	in.Header.VesselID = &vA.ID
+	doc, err := svc.Create(in)
+	if err != nil {
+		t.Fatalf("create gagal: %v", err)
+	}
+
+	// Pindahkan ke customer B + kapal B.
+	in.Header.CustomerID = custB.ID
+	in.Header.VesselID = &vB.ID
+	if _, err := svc.UpdateDraft(doc.ID, in); err != nil {
+		t.Fatalf("update draft gagal: %v", err)
+	}
+	got, err := svc.Get(doc.ID)
+	if err != nil {
+		t.Fatalf("get gagal: %v", err)
+	}
+	if got.CustomerID != custB.ID {
+		t.Errorf("customer tidak tersimpan: got %d, mau %d", got.CustomerID, custB.ID)
+	}
+	if got.VesselID == nil || *got.VesselID != vB.ID {
+		t.Errorf("kapal tidak tersimpan: %v, mau %d", got.VesselID, vB.ID)
+	}
+
+	// Kosongkan kapal (Tanpa kapal): FK harus menjadi NULL.
+	in.Header.VesselID = nil
+	if _, err := svc.UpdateDraft(doc.ID, in); err != nil {
+		t.Fatalf("update lepas kapal gagal: %v", err)
+	}
+	got, err = svc.Get(doc.ID)
+	if err != nil {
+		t.Fatalf("get gagal: %v", err)
+	}
+	if got.VesselID != nil {
+		t.Errorf("kapal seharusnya kosong setelah dilepas: %v", got.VesselID)
+	}
+}

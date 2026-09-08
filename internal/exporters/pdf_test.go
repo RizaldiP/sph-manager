@@ -41,9 +41,9 @@ func TestPaginateSingleTallRowStillPlaced(t *testing.T) {
 
 func TestComputeCarry(t *testing.T) {
 	rows := []Row{
-		{ServiceTotal: 100, MaterialTotal: 10, Total: 110},
-		{ServiceTotal: 200, MaterialTotal: 20, Total: 220},
-		{ServiceTotal: 400, MaterialTotal: 40, Total: 440},
+		{Bold: true, ServiceTotal: 100, MaterialTotal: 10, Total: 110},
+		{Bold: true, ServiceTotal: 200, MaterialTotal: 20, Total: 220},
+		{Bold: true, ServiceTotal: 400, MaterialTotal: 40, Total: 440},
 	}
 	carry := computeCarry([][]int{{0, 1}, {2}}, rows)
 	if carry[0] != [3]int64{0, 0, 0} {
@@ -51,6 +51,36 @@ func TestComputeCarry(t *testing.T) {
 	}
 	if carry[1] != [3]int64{300, 30, 330} {
 		t.Errorf("carry halaman 2 salah: %v (mau [300 30 330])", carry[1])
+	}
+}
+
+// TestComputeCarrySkipsSubRows mencegah regresi: total baris main point sudah
+// mencakup sub-point-nya (roll-up), sehingga sub tidak boleh ikut dijumlahkan
+// atau sub akan dihitung dua kali dan carry melebihi Sub Total/Grand Total.
+func TestComputeCarrySkipsSubRows(t *testing.T) {
+	rows := []Row{
+		// main point 1 terisi: Total 1.000.000 sudah termasuk sub a (250.000)
+		{Bold: true, ServiceTotal: 750_000, MaterialTotal: 250_000, Total: 1_000_000},
+		{SubNo: "a", ServiceTotal: 200_000, MaterialTotal: 50_000, Total: 250_000},
+		// main point 2 terisi: Total 500.000 sudah termasuk sub b (100.000)
+		{Bold: true, ServiceTotal: 300_000, MaterialTotal: 200_000, Total: 500_000},
+		{SubNo: "b", ServiceTotal: 60_000, MaterialTotal: 40_000, Total: 100_000},
+		// halaman 2: baris baru tanpa sub
+		{Bold: true, ServiceTotal: 100_000, MaterialTotal: 400_000, Total: 500_000},
+	}
+	// halaman 1 = baris 0-3 (main + sub), halaman 2 = baris 4
+	carry := computeCarry([][]int{{0, 1, 2, 3}, {4}}, rows)
+	if carry[0] != [3]int64{0, 0, 0} {
+		t.Errorf("carry halaman 1 harus nol: %v", carry[0])
+	}
+	// carry halaman 2 = jumlah main point saja (baris 0 + baris 2), sub tidak dihitung.
+	want := [3]int64{1_050_000, 450_000, 1_500_000}
+	if carry[1] != want {
+		t.Errorf("carry halaman 2 salah: %v (mau %v)", carry[1], want)
+	}
+	// carry halaman 2 TIDAK boleh menyertakan sub (1.000.000+500.000+250.000+100.000 = 1.850.000)
+	if carry[1] == [3]int64{1_310_000, 340_000, 1_850_000} {
+		t.Errorf("carry ikut menghitung sub-point; harus hanya main point")
 	}
 }
 

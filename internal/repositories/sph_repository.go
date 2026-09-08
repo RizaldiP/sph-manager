@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/RizaldiP/sph-manager/internal/models"
 )
@@ -124,7 +125,10 @@ func (r *SphRepository) Create(db *gorm.DB, d *models.SphDocument) error {
 }
 
 func (r *SphRepository) Update(db *gorm.DB, d *models.SphDocument) error {
-	return db.Save(d).Error
+	// Omit associations: d mungkin membawa relasi Customer/Vessel ter-preload dari GetByID.
+	// Tanpa omit, GORM Save akan me-relink kolom FK (customer_id/vessel_id) kembali ke nilai
+	// relasi lama dan membatalkan perubahan manual pada CustomerID/VesselID.
+	return db.Omit(clause.Associations).Save(d).Error
 }
 
 func (r *SphRepository) SetStatus(db *gorm.DB, id uint, status string) error {

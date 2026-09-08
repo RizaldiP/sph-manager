@@ -16,7 +16,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const appVersion = "0.12.0"
+const appVersion = "0.13.1"
 
 type HealthInfo struct {
 	Status       string `json:"status"`

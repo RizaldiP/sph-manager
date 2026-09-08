@@ -257,12 +257,20 @@ func moveTailRows(pages [][]int, n int) [][]int {
 
 // computeCarry: carry[pi] = akumulasi (jasa, material, total) seluruh baris
 // HALAMAN SEBELUM halaman pi — angka yang tampil di baris "Pindahan".
+//
+// Hanya baris MAIN POINT (Bold) yang diakumulasi. Total baris main point sudah
+// mencakup seluruh sub-point-nya (roll-up di buildItems), sehingga menjumlahkan
+// baris main + sub sekaligus membuat sub dihitung DUA KALI dan carry melebihi
+// Sub Total/Grand Total aktual (yang juga dijumlahkan hanya dari main point).
 func computeCarry(pages [][]int, rows []Row) [][3]int64 {
 	carry := make([][3]int64, len(pages))
 	var svc, mat, jml int64
 	for p := range pages {
 		carry[p] = [3]int64{svc, mat, jml}
 		for _, ri := range pages[p] {
+			if !rows[ri].Bold {
+				continue
+			}
 			svc += rows[ri].ServiceTotal
 			mat += rows[ri].MaterialTotal
 			jml += rows[ri].Total
